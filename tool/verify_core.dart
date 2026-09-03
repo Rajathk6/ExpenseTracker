@@ -1,8 +1,10 @@
+// ignore_for_file: avoid_print
 // Standalone core verification (no flutter_test needed).
-// Mirrors test/core_test.dart using relative imports so plain `dart` can run it.
-import '../lib/core/category_parser.dart';
-import '../lib/core/ledger.dart';
-import '../lib/core/intake/share_parser.dart';
+// Uses package: imports; plain `dart tool/verify_core.dart` resolves them
+// via .dart_tool/package_config.json. Prints are intentional (CLI report).
+import 'package:expense_tracker/core/category_parser.dart';
+import 'package:expense_tracker/core/ledger.dart';
+import 'package:expense_tracker/core/intake/share_parser.dart';
 
 void check(bool cond, String name) {
   if (!cond) throw StateError('FAIL: $name');
