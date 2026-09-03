@@ -119,6 +119,12 @@ class AppDatabase extends _$AppDatabase {
     return (await q.get()).map((r) => r.read(transactions.item)!).toList()..sort();
   }
 
+  /// Every raw category string ever typed, for autocomplete suggestions.
+  Future<List<String>> distinctCategories() async {
+    final q = selectOnly(transactions, distinct: true)..addColumns([transactions.categoryRaw]);
+    return (await q.get()).map((r) => r.read(transactions.categoryRaw)!).toList()..sort();
+  }
+
   // --- Budgets ---
 
   Future<Budget?> getBudget(String month) =>
