@@ -28,5 +28,10 @@
 - Codegen gotchas: (a) column getter must not shadow Drift builders (`dateTime` → `occurredAt`); (b) dropped DB-level `.references()` FK (drift_dev/analyzer-14 conflict), discipline in repos; (c) `sqlite3` added as direct dep for UNIQUE mapping.
 - Validation: Flex ✅ 2026-09-04 (data layer + tests; entry UI in later phases).
 - Next: Phase 2 transactions UI. PR #1 (develop→main) open, CI green, awaiting your merge call.
+
+## EOD 2026-09-04 — Phase 2 WIP paused / `feature/02-transactions` (pushed, NOT merged)
+- Done: entry UI + list + item search committed (07f8b30); `flutter test` 26/26 green, `flutter analyze` clean. Android shell generated (`dev.rajath.expense_tracker`); Java 17 at `~/jdk-17`; cmdline-tools zip saved at `~/android-cmdtools.zip` (moved out of /tmp so it survives reboot).
+- NOT done: SDK install, debug APK build, CI apk-proof job, versioning docs, VALIDATION #1 flip, merge to develop.
+- Resume tomorrow: (1) unzip cmdtools → `~/android-sdk`, sdkmanager install platform/build-tools, licenses; (2) `flutter build apk --debug`; (3) CI apk job + release process; (4) flip #1, merge, push, watch CI.
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
