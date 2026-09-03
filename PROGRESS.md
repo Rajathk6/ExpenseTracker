@@ -27,7 +27,6 @@
 - Phase 1 done: Drift schema v1 (accounts/transactions/budgets) + `database.g.dart`; repositories (Account/Budget/Transaction) + `bucket_math` (presets, sum=100 validation, allocate); Riverpod providers. `flutter test` all pass, `flutter analyze` clean.
 - Codegen gotchas: (a) column getter must not shadow Drift builders (`dateTime` → `occurredAt`); (b) dropped DB-level `.references()` FK (drift_dev/analyzer-14 conflict), discipline in repos; (c) `sqlite3` added as direct dep for UNIQUE mapping.
 - Validation: Flex ✅ 2026-09-04 (data layer + tests; entry UI in later phases).
-- Next: merge to develop → open PR develop→main (no merge) to demo live CI gate → Phase 2 transactions UI.
-
+- Next: Phase 2 transactions UI. PR #1 (develop→main) open, CI green, awaiting your merge call.
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
