@@ -3,7 +3,7 @@
 | # | Module | Acceptance | Status |
 |---|--------|------------|--------|
 | 0 | Foundation | `flutter test` passes (category parser); app boots locked behind PIN/biometric stub; docs present | ✅ 2026-09-04 / `feature/00-foundation` (8/8 tests, Flutter 3.47.2) |
-| Flex | Customization | Create/rename/delete buckets + sources/dests; ratios !=100 blocked; categories freeform; no hardcoded dropdown | ☐ TODO |
+| Flex | Customization | Create/rename/delete buckets + sources/dests; ratios !=100 blocked; categories freeform; no hardcoded dropdown | ✅ 2026-09-04 / `feature/01-custom-core` (data layer + 13 tests; UI later) |
 | 1 | Txn+Cat | In/out with datetime saves offline; `food junk gobi-65` parses to levels+item; search `gobi-65` → sum/count/month/year | ☐ TODO |
 | 2 | Budget+Sim | Monthly total set; ins/outs vs budget correct; N buckets editable; simulator previews ratio on last 3 months | ☐ TODO |
 | 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ☐ TODO |

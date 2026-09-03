@@ -3,7 +3,7 @@
 | Phase | Branch | Status | Validation | Commit |
 |-------|--------|--------|------------|--------|
 | 0 foundation | `feature/00-foundation` | done | #0 ✅ 2026-09-04 | 79d2190 + verify commit |
-| 1 customization core | `feature/01-custom-core` | todo | Flex TODO | — |
+| 1 customization core | `feature/01-custom-core` | done | Flex ✅ 2026-09-04 | see below |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -21,6 +21,13 @@
 ## 2026-09-04 — Push / `develop` + `feature/00-foundation` (remote wired, main untouched)
 - Done: `gh auth` confirmed (Rajathk6); pushed `develop` (8af3cf4) + `feature/00-foundation` (ab3f7c7) to github.com/Rajathk6/ExpenseTracker. Remote has only those two refs — `main` never pushed per rule.
 - Next: Phase 1 `feature/01-custom-core`.
+
+## 2026-09-04 — CI gate + Phase 1 / `feature/ci-main-gate` + `feature/01-custom-core`
+- CI: `.github/workflows/ci.yml` (analyze+test on PRs to main/develop, pushes to develop; Flutter 3.47.2 pinned). `main` bootstrapped from green develop (one-time), protected: PR-only (0 approvals, solo-mergeable), strict `ci / analyze` + `ci / test`, enforce_admins, no force-push. Direct-push probe rejected by hook as expected.
+- Phase 1 done: Drift schema v1 (accounts/transactions/budgets) + `database.g.dart`; repositories (Account/Budget/Transaction) + `bucket_math` (presets, sum=100 validation, allocate); Riverpod providers. `flutter test` all pass, `flutter analyze` clean.
+- Codegen gotchas: (a) column getter must not shadow Drift builders (`dateTime` → `occurredAt`); (b) dropped DB-level `.references()` FK (drift_dev/analyzer-14 conflict), discipline in repos; (c) `sqlite3` added as direct dep for UNIQUE mapping.
+- Validation: Flex ✅ 2026-09-04 (data layer + tests; entry UI in later phases).
+- Next: merge to develop → open PR develop→main (no merge) to demo live CI gate → Phase 2 transactions UI.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

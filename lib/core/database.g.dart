@@ -1,0 +1,1983 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'database.dart';
+
+// ignore_for_file: type=lint
+class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AccountsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('cash'));
+  static const VerificationMeta _openingBalanceMeta =
+      const VerificationMeta('openingBalance');
+  @override
+  late final GeneratedColumn<double> openingBalance = GeneratedColumn<double>(
+      'opening_balance', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, kind, openingBalance, note, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'accounts';
+  @override
+  VerificationContext validateIntegrity(Insertable<Account> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    }
+    if (data.containsKey('opening_balance')) {
+      context.handle(
+          _openingBalanceMeta,
+          openingBalance.isAcceptableOrUnknown(
+              data['opening_balance']!, _openingBalanceMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Account map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Account(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      openingBalance: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}opening_balance'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $AccountsTable createAlias(String alias) {
+    return $AccountsTable(attachedDatabase, alias);
+  }
+}
+
+class Account extends DataClass implements Insertable<Account> {
+  final String id;
+  final String name;
+  final String kind;
+  final double openingBalance;
+  final String? note;
+  final DateTime createdAt;
+  const Account(
+      {required this.id,
+      required this.name,
+      required this.kind,
+      required this.openingBalance,
+      this.note,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['kind'] = Variable<String>(kind);
+    map['opening_balance'] = Variable<double>(openingBalance);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AccountsCompanion toCompanion(bool nullToAbsent) {
+    return AccountsCompanion(
+      id: Value(id),
+      name: Value(name),
+      kind: Value(kind),
+      openingBalance: Value(openingBalance),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Account.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Account(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: serializer.fromJson<String>(json['kind']),
+      openingBalance: serializer.fromJson<double>(json['openingBalance']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(kind),
+      'openingBalance': serializer.toJson<double>(openingBalance),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Account copyWith(
+          {String? id,
+          String? name,
+          String? kind,
+          double? openingBalance,
+          Value<String?> note = const Value.absent(),
+          DateTime? createdAt}) =>
+      Account(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        kind: kind ?? this.kind,
+        openingBalance: openingBalance ?? this.openingBalance,
+        note: note.present ? note.value : this.note,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Account copyWithCompanion(AccountsCompanion data) {
+    return Account(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      openingBalance: data.openingBalance.present
+          ? data.openingBalance.value
+          : this.openingBalance,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Account(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('openingBalance: $openingBalance, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, kind, openingBalance, note, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Account &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.openingBalance == this.openingBalance &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt);
+}
+
+class AccountsCompanion extends UpdateCompanion<Account> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> kind;
+  final Value<double> openingBalance;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AccountsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.openingBalance = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AccountsCompanion.insert({
+    required String id,
+    required String name,
+    this.kind = const Value.absent(),
+    this.openingBalance = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name);
+  static Insertable<Account> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<double>? openingBalance,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (openingBalance != null) 'opening_balance': openingBalance,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AccountsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? kind,
+      Value<double>? openingBalance,
+      Value<String?>? note,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return AccountsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      openingBalance: openingBalance ?? this.openingBalance,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (openingBalance.present) {
+      map['opening_balance'] = Variable<double>(openingBalance.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AccountsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('openingBalance: $openingBalance, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TransactionsTable extends Transactions
+    with TableInfo<$TransactionsTable, Transaction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _actualMeta = const VerificationMeta('actual');
+  @override
+  late final GeneratedColumn<double> actual = GeneratedColumn<double>(
+      'actual', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _budgetImpactMeta =
+      const VerificationMeta('budgetImpact');
+  @override
+  late final GeneratedColumn<double> budgetImpact = GeneratedColumn<double>(
+      'budget_impact', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _occurredAtMeta =
+      const VerificationMeta('occurredAt');
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+      'occurred_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _categoryRawMeta =
+      const VerificationMeta('categoryRaw');
+  @override
+  late final GeneratedColumn<String> categoryRaw = GeneratedColumn<String>(
+      'category_raw', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _level0Meta = const VerificationMeta('level0');
+  @override
+  late final GeneratedColumn<String> level0 = GeneratedColumn<String>(
+      'level0', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _level1Meta = const VerificationMeta('level1');
+  @override
+  late final GeneratedColumn<String> level1 = GeneratedColumn<String>(
+      'level1', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _level2Meta = const VerificationMeta('level2');
+  @override
+  late final GeneratedColumn<String> level2 = GeneratedColumn<String>(
+      'level2', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _itemMeta = const VerificationMeta('item');
+  @override
+  late final GeneratedColumn<String> item = GeneratedColumn<String>(
+      'item', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _accountIdMeta =
+      const VerificationMeta('accountId');
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+      'account_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _linkIdMeta = const VerificationMeta('linkId');
+  @override
+  late final GeneratedColumn<String> linkId = GeneratedColumn<String>(
+      'link_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _linkTypeMeta =
+      const VerificationMeta('linkType');
+  @override
+  late final GeneratedColumn<String> linkType = GeneratedColumn<String>(
+      'link_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        kind,
+        actual,
+        budgetImpact,
+        occurredAt,
+        categoryRaw,
+        level0,
+        level1,
+        level2,
+        item,
+        note,
+        accountId,
+        linkId,
+        linkType,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transactions';
+  @override
+  VerificationContext validateIntegrity(Insertable<Transaction> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('actual')) {
+      context.handle(_actualMeta,
+          actual.isAcceptableOrUnknown(data['actual']!, _actualMeta));
+    } else if (isInserting) {
+      context.missing(_actualMeta);
+    }
+    if (data.containsKey('budget_impact')) {
+      context.handle(
+          _budgetImpactMeta,
+          budgetImpact.isAcceptableOrUnknown(
+              data['budget_impact']!, _budgetImpactMeta));
+    } else if (isInserting) {
+      context.missing(_budgetImpactMeta);
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+          _occurredAtMeta,
+          occurredAt.isAcceptableOrUnknown(
+              data['occurred_at']!, _occurredAtMeta));
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('category_raw')) {
+      context.handle(
+          _categoryRawMeta,
+          categoryRaw.isAcceptableOrUnknown(
+              data['category_raw']!, _categoryRawMeta));
+    } else if (isInserting) {
+      context.missing(_categoryRawMeta);
+    }
+    if (data.containsKey('level0')) {
+      context.handle(_level0Meta,
+          level0.isAcceptableOrUnknown(data['level0']!, _level0Meta));
+    }
+    if (data.containsKey('level1')) {
+      context.handle(_level1Meta,
+          level1.isAcceptableOrUnknown(data['level1']!, _level1Meta));
+    }
+    if (data.containsKey('level2')) {
+      context.handle(_level2Meta,
+          level2.isAcceptableOrUnknown(data['level2']!, _level2Meta));
+    }
+    if (data.containsKey('item')) {
+      context.handle(
+          _itemMeta, item.isAcceptableOrUnknown(data['item']!, _itemMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(_accountIdMeta,
+          accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
+    }
+    if (data.containsKey('link_id')) {
+      context.handle(_linkIdMeta,
+          linkId.isAcceptableOrUnknown(data['link_id']!, _linkIdMeta));
+    }
+    if (data.containsKey('link_type')) {
+      context.handle(_linkTypeMeta,
+          linkType.isAcceptableOrUnknown(data['link_type']!, _linkTypeMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Transaction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Transaction(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      actual: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}actual'])!,
+      budgetImpact: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}budget_impact'])!,
+      occurredAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}occurred_at'])!,
+      categoryRaw: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_raw'])!,
+      level0: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}level0']),
+      level1: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}level1']),
+      level2: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}level2']),
+      item: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item']),
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      accountId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}account_id']),
+      linkId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}link_id']),
+      linkType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}link_type']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $TransactionsTable createAlias(String alias) {
+    return $TransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class Transaction extends DataClass implements Insertable<Transaction> {
+  final String id;
+
+  /// Freeform: in / out / neutral / lend / borrow / split / settle / transfer / invest.
+  final String kind;
+
+  /// Statement truth: what entered/left the account.
+  final double actual;
+
+  /// Planning truth: what counts toward the monthly budget.
+  final double budgetImpact;
+
+  /// When the money moved (user-picked date/time, not insertion time).
+  final DateTime occurredAt;
+  final String categoryRaw;
+  final String? level0;
+  final String? level1;
+  final String? level2;
+
+  /// Exact item token incl. hyphen part, e.g. `gobi-65`. Null when none.
+  final String? item;
+  final String? note;
+
+  /// Owning account id. Plain text, no DB-level FK (keeps drift codegen
+  /// robust across analyzer versions; repositories own the discipline).
+  final String? accountId;
+  final String? linkId;
+  final String? linkType;
+  final DateTime createdAt;
+  const Transaction(
+      {required this.id,
+      required this.kind,
+      required this.actual,
+      required this.budgetImpact,
+      required this.occurredAt,
+      required this.categoryRaw,
+      this.level0,
+      this.level1,
+      this.level2,
+      this.item,
+      this.note,
+      this.accountId,
+      this.linkId,
+      this.linkType,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['kind'] = Variable<String>(kind);
+    map['actual'] = Variable<double>(actual);
+    map['budget_impact'] = Variable<double>(budgetImpact);
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['category_raw'] = Variable<String>(categoryRaw);
+    if (!nullToAbsent || level0 != null) {
+      map['level0'] = Variable<String>(level0);
+    }
+    if (!nullToAbsent || level1 != null) {
+      map['level1'] = Variable<String>(level1);
+    }
+    if (!nullToAbsent || level2 != null) {
+      map['level2'] = Variable<String>(level2);
+    }
+    if (!nullToAbsent || item != null) {
+      map['item'] = Variable<String>(item);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || accountId != null) {
+      map['account_id'] = Variable<String>(accountId);
+    }
+    if (!nullToAbsent || linkId != null) {
+      map['link_id'] = Variable<String>(linkId);
+    }
+    if (!nullToAbsent || linkType != null) {
+      map['link_type'] = Variable<String>(linkType);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TransactionsCompanion toCompanion(bool nullToAbsent) {
+    return TransactionsCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      actual: Value(actual),
+      budgetImpact: Value(budgetImpact),
+      occurredAt: Value(occurredAt),
+      categoryRaw: Value(categoryRaw),
+      level0:
+          level0 == null && nullToAbsent ? const Value.absent() : Value(level0),
+      level1:
+          level1 == null && nullToAbsent ? const Value.absent() : Value(level1),
+      level2:
+          level2 == null && nullToAbsent ? const Value.absent() : Value(level2),
+      item: item == null && nullToAbsent ? const Value.absent() : Value(item),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      accountId: accountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountId),
+      linkId:
+          linkId == null && nullToAbsent ? const Value.absent() : Value(linkId),
+      linkType: linkType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkType),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Transaction.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Transaction(
+      id: serializer.fromJson<String>(json['id']),
+      kind: serializer.fromJson<String>(json['kind']),
+      actual: serializer.fromJson<double>(json['actual']),
+      budgetImpact: serializer.fromJson<double>(json['budgetImpact']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      categoryRaw: serializer.fromJson<String>(json['categoryRaw']),
+      level0: serializer.fromJson<String?>(json['level0']),
+      level1: serializer.fromJson<String?>(json['level1']),
+      level2: serializer.fromJson<String?>(json['level2']),
+      item: serializer.fromJson<String?>(json['item']),
+      note: serializer.fromJson<String?>(json['note']),
+      accountId: serializer.fromJson<String?>(json['accountId']),
+      linkId: serializer.fromJson<String?>(json['linkId']),
+      linkType: serializer.fromJson<String?>(json['linkType']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kind': serializer.toJson<String>(kind),
+      'actual': serializer.toJson<double>(actual),
+      'budgetImpact': serializer.toJson<double>(budgetImpact),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'categoryRaw': serializer.toJson<String>(categoryRaw),
+      'level0': serializer.toJson<String?>(level0),
+      'level1': serializer.toJson<String?>(level1),
+      'level2': serializer.toJson<String?>(level2),
+      'item': serializer.toJson<String?>(item),
+      'note': serializer.toJson<String?>(note),
+      'accountId': serializer.toJson<String?>(accountId),
+      'linkId': serializer.toJson<String?>(linkId),
+      'linkType': serializer.toJson<String?>(linkType),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Transaction copyWith(
+          {String? id,
+          String? kind,
+          double? actual,
+          double? budgetImpact,
+          DateTime? occurredAt,
+          String? categoryRaw,
+          Value<String?> level0 = const Value.absent(),
+          Value<String?> level1 = const Value.absent(),
+          Value<String?> level2 = const Value.absent(),
+          Value<String?> item = const Value.absent(),
+          Value<String?> note = const Value.absent(),
+          Value<String?> accountId = const Value.absent(),
+          Value<String?> linkId = const Value.absent(),
+          Value<String?> linkType = const Value.absent(),
+          DateTime? createdAt}) =>
+      Transaction(
+        id: id ?? this.id,
+        kind: kind ?? this.kind,
+        actual: actual ?? this.actual,
+        budgetImpact: budgetImpact ?? this.budgetImpact,
+        occurredAt: occurredAt ?? this.occurredAt,
+        categoryRaw: categoryRaw ?? this.categoryRaw,
+        level0: level0.present ? level0.value : this.level0,
+        level1: level1.present ? level1.value : this.level1,
+        level2: level2.present ? level2.value : this.level2,
+        item: item.present ? item.value : this.item,
+        note: note.present ? note.value : this.note,
+        accountId: accountId.present ? accountId.value : this.accountId,
+        linkId: linkId.present ? linkId.value : this.linkId,
+        linkType: linkType.present ? linkType.value : this.linkType,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Transaction copyWithCompanion(TransactionsCompanion data) {
+    return Transaction(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      actual: data.actual.present ? data.actual.value : this.actual,
+      budgetImpact: data.budgetImpact.present
+          ? data.budgetImpact.value
+          : this.budgetImpact,
+      occurredAt:
+          data.occurredAt.present ? data.occurredAt.value : this.occurredAt,
+      categoryRaw:
+          data.categoryRaw.present ? data.categoryRaw.value : this.categoryRaw,
+      level0: data.level0.present ? data.level0.value : this.level0,
+      level1: data.level1.present ? data.level1.value : this.level1,
+      level2: data.level2.present ? data.level2.value : this.level2,
+      item: data.item.present ? data.item.value : this.item,
+      note: data.note.present ? data.note.value : this.note,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      linkId: data.linkId.present ? data.linkId.value : this.linkId,
+      linkType: data.linkType.present ? data.linkType.value : this.linkType,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Transaction(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('actual: $actual, ')
+          ..write('budgetImpact: $budgetImpact, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('categoryRaw: $categoryRaw, ')
+          ..write('level0: $level0, ')
+          ..write('level1: $level1, ')
+          ..write('level2: $level2, ')
+          ..write('item: $item, ')
+          ..write('note: $note, ')
+          ..write('accountId: $accountId, ')
+          ..write('linkId: $linkId, ')
+          ..write('linkType: $linkType, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      kind,
+      actual,
+      budgetImpact,
+      occurredAt,
+      categoryRaw,
+      level0,
+      level1,
+      level2,
+      item,
+      note,
+      accountId,
+      linkId,
+      linkType,
+      createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Transaction &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.actual == this.actual &&
+          other.budgetImpact == this.budgetImpact &&
+          other.occurredAt == this.occurredAt &&
+          other.categoryRaw == this.categoryRaw &&
+          other.level0 == this.level0 &&
+          other.level1 == this.level1 &&
+          other.level2 == this.level2 &&
+          other.item == this.item &&
+          other.note == this.note &&
+          other.accountId == this.accountId &&
+          other.linkId == this.linkId &&
+          other.linkType == this.linkType &&
+          other.createdAt == this.createdAt);
+}
+
+class TransactionsCompanion extends UpdateCompanion<Transaction> {
+  final Value<String> id;
+  final Value<String> kind;
+  final Value<double> actual;
+  final Value<double> budgetImpact;
+  final Value<DateTime> occurredAt;
+  final Value<String> categoryRaw;
+  final Value<String?> level0;
+  final Value<String?> level1;
+  final Value<String?> level2;
+  final Value<String?> item;
+  final Value<String?> note;
+  final Value<String?> accountId;
+  final Value<String?> linkId;
+  final Value<String?> linkType;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const TransactionsCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.actual = const Value.absent(),
+    this.budgetImpact = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.categoryRaw = const Value.absent(),
+    this.level0 = const Value.absent(),
+    this.level1 = const Value.absent(),
+    this.level2 = const Value.absent(),
+    this.item = const Value.absent(),
+    this.note = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.linkId = const Value.absent(),
+    this.linkType = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TransactionsCompanion.insert({
+    required String id,
+    required String kind,
+    required double actual,
+    required double budgetImpact,
+    required DateTime occurredAt,
+    required String categoryRaw,
+    this.level0 = const Value.absent(),
+    this.level1 = const Value.absent(),
+    this.level2 = const Value.absent(),
+    this.item = const Value.absent(),
+    this.note = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.linkId = const Value.absent(),
+    this.linkType = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        kind = Value(kind),
+        actual = Value(actual),
+        budgetImpact = Value(budgetImpact),
+        occurredAt = Value(occurredAt),
+        categoryRaw = Value(categoryRaw);
+  static Insertable<Transaction> custom({
+    Expression<String>? id,
+    Expression<String>? kind,
+    Expression<double>? actual,
+    Expression<double>? budgetImpact,
+    Expression<DateTime>? occurredAt,
+    Expression<String>? categoryRaw,
+    Expression<String>? level0,
+    Expression<String>? level1,
+    Expression<String>? level2,
+    Expression<String>? item,
+    Expression<String>? note,
+    Expression<String>? accountId,
+    Expression<String>? linkId,
+    Expression<String>? linkType,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (actual != null) 'actual': actual,
+      if (budgetImpact != null) 'budget_impact': budgetImpact,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (categoryRaw != null) 'category_raw': categoryRaw,
+      if (level0 != null) 'level0': level0,
+      if (level1 != null) 'level1': level1,
+      if (level2 != null) 'level2': level2,
+      if (item != null) 'item': item,
+      if (note != null) 'note': note,
+      if (accountId != null) 'account_id': accountId,
+      if (linkId != null) 'link_id': linkId,
+      if (linkType != null) 'link_type': linkType,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TransactionsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? kind,
+      Value<double>? actual,
+      Value<double>? budgetImpact,
+      Value<DateTime>? occurredAt,
+      Value<String>? categoryRaw,
+      Value<String?>? level0,
+      Value<String?>? level1,
+      Value<String?>? level2,
+      Value<String?>? item,
+      Value<String?>? note,
+      Value<String?>? accountId,
+      Value<String?>? linkId,
+      Value<String?>? linkType,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return TransactionsCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      actual: actual ?? this.actual,
+      budgetImpact: budgetImpact ?? this.budgetImpact,
+      occurredAt: occurredAt ?? this.occurredAt,
+      categoryRaw: categoryRaw ?? this.categoryRaw,
+      level0: level0 ?? this.level0,
+      level1: level1 ?? this.level1,
+      level2: level2 ?? this.level2,
+      item: item ?? this.item,
+      note: note ?? this.note,
+      accountId: accountId ?? this.accountId,
+      linkId: linkId ?? this.linkId,
+      linkType: linkType ?? this.linkType,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (actual.present) {
+      map['actual'] = Variable<double>(actual.value);
+    }
+    if (budgetImpact.present) {
+      map['budget_impact'] = Variable<double>(budgetImpact.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (categoryRaw.present) {
+      map['category_raw'] = Variable<String>(categoryRaw.value);
+    }
+    if (level0.present) {
+      map['level0'] = Variable<String>(level0.value);
+    }
+    if (level1.present) {
+      map['level1'] = Variable<String>(level1.value);
+    }
+    if (level2.present) {
+      map['level2'] = Variable<String>(level2.value);
+    }
+    if (item.present) {
+      map['item'] = Variable<String>(item.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (linkId.present) {
+      map['link_id'] = Variable<String>(linkId.value);
+    }
+    if (linkType.present) {
+      map['link_type'] = Variable<String>(linkType.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('actual: $actual, ')
+          ..write('budgetImpact: $budgetImpact, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('categoryRaw: $categoryRaw, ')
+          ..write('level0: $level0, ')
+          ..write('level1: $level1, ')
+          ..write('level2: $level2, ')
+          ..write('item: $item, ')
+          ..write('note: $note, ')
+          ..write('accountId: $accountId, ')
+          ..write('linkId: $linkId, ')
+          ..write('linkType: $linkType, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<String> month = GeneratedColumn<String>(
+      'month', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<double> total = GeneratedColumn<double>(
+      'total', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _bucketsJsonMeta =
+      const VerificationMeta('bucketsJson');
+  @override
+  late final GeneratedColumn<String> bucketsJson = GeneratedColumn<String>(
+      'buckets_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [month, total, bucketsJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budgets';
+  @override
+  VerificationContext validateIntegrity(Insertable<Budget> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('month')) {
+      context.handle(
+          _monthMeta, month.isAcceptableOrUnknown(data['month']!, _monthMeta));
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+          _totalMeta, total.isAcceptableOrUnknown(data['total']!, _totalMeta));
+    } else if (isInserting) {
+      context.missing(_totalMeta);
+    }
+    if (data.containsKey('buckets_json')) {
+      context.handle(
+          _bucketsJsonMeta,
+          bucketsJson.isAcceptableOrUnknown(
+              data['buckets_json']!, _bucketsJsonMeta));
+    } else if (isInserting) {
+      context.missing(_bucketsJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {month};
+  @override
+  Budget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Budget(
+      month: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}month'])!,
+      total: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total'])!,
+      bucketsJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}buckets_json'])!,
+    );
+  }
+
+  @override
+  $BudgetsTable createAlias(String alias) {
+    return $BudgetsTable(attachedDatabase, alias);
+  }
+}
+
+class Budget extends DataClass implements Insertable<Budget> {
+  /// `YYYY-MM`.
+  final String month;
+  final double total;
+  final String bucketsJson;
+  const Budget(
+      {required this.month, required this.total, required this.bucketsJson});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['month'] = Variable<String>(month);
+    map['total'] = Variable<double>(total);
+    map['buckets_json'] = Variable<String>(bucketsJson);
+    return map;
+  }
+
+  BudgetsCompanion toCompanion(bool nullToAbsent) {
+    return BudgetsCompanion(
+      month: Value(month),
+      total: Value(total),
+      bucketsJson: Value(bucketsJson),
+    );
+  }
+
+  factory Budget.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Budget(
+      month: serializer.fromJson<String>(json['month']),
+      total: serializer.fromJson<double>(json['total']),
+      bucketsJson: serializer.fromJson<String>(json['bucketsJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'month': serializer.toJson<String>(month),
+      'total': serializer.toJson<double>(total),
+      'bucketsJson': serializer.toJson<String>(bucketsJson),
+    };
+  }
+
+  Budget copyWith({String? month, double? total, String? bucketsJson}) =>
+      Budget(
+        month: month ?? this.month,
+        total: total ?? this.total,
+        bucketsJson: bucketsJson ?? this.bucketsJson,
+      );
+  Budget copyWithCompanion(BudgetsCompanion data) {
+    return Budget(
+      month: data.month.present ? data.month.value : this.month,
+      total: data.total.present ? data.total.value : this.total,
+      bucketsJson:
+          data.bucketsJson.present ? data.bucketsJson.value : this.bucketsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Budget(')
+          ..write('month: $month, ')
+          ..write('total: $total, ')
+          ..write('bucketsJson: $bucketsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(month, total, bucketsJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Budget &&
+          other.month == this.month &&
+          other.total == this.total &&
+          other.bucketsJson == this.bucketsJson);
+}
+
+class BudgetsCompanion extends UpdateCompanion<Budget> {
+  final Value<String> month;
+  final Value<double> total;
+  final Value<String> bucketsJson;
+  final Value<int> rowid;
+  const BudgetsCompanion({
+    this.month = const Value.absent(),
+    this.total = const Value.absent(),
+    this.bucketsJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BudgetsCompanion.insert({
+    required String month,
+    required double total,
+    required String bucketsJson,
+    this.rowid = const Value.absent(),
+  })  : month = Value(month),
+        total = Value(total),
+        bucketsJson = Value(bucketsJson);
+  static Insertable<Budget> custom({
+    Expression<String>? month,
+    Expression<double>? total,
+    Expression<String>? bucketsJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (month != null) 'month': month,
+      if (total != null) 'total': total,
+      if (bucketsJson != null) 'buckets_json': bucketsJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BudgetsCompanion copyWith(
+      {Value<String>? month,
+      Value<double>? total,
+      Value<String>? bucketsJson,
+      Value<int>? rowid}) {
+    return BudgetsCompanion(
+      month: month ?? this.month,
+      total: total ?? this.total,
+      bucketsJson: bucketsJson ?? this.bucketsJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (month.present) {
+      map['month'] = Variable<String>(month.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<double>(total.value);
+    }
+    if (bucketsJson.present) {
+      map['buckets_json'] = Variable<String>(bucketsJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetsCompanion(')
+          ..write('month: $month, ')
+          ..write('total: $total, ')
+          ..write('bucketsJson: $bucketsJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+abstract class _$AppDatabase extends GeneratedDatabase {
+  _$AppDatabase(QueryExecutor e) : super(e);
+  $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $AccountsTable accounts = $AccountsTable(this);
+  late final $TransactionsTable transactions = $TransactionsTable(this);
+  late final $BudgetsTable budgets = $BudgetsTable(this);
+  @override
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  @override
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [accounts, transactions, budgets];
+}
+
+typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
+  required String id,
+  required String name,
+  Value<String> kind,
+  Value<double> openingBalance,
+  Value<String?> note,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> kind,
+  Value<double> openingBalance,
+  Value<String?> note,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$AccountsTableFilterComposer
+    extends Composer<_$AppDatabase, $AccountsTable> {
+  $$AccountsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get openingBalance => $composableBuilder(
+      column: $table.openingBalance,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AccountsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AccountsTable> {
+  $$AccountsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get openingBalance => $composableBuilder(
+      column: $table.openingBalance,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AccountsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AccountsTable> {
+  $$AccountsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get openingBalance => $composableBuilder(
+      column: $table.openingBalance, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AccountsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AccountsTable,
+    Account,
+    $$AccountsTableFilterComposer,
+    $$AccountsTableOrderingComposer,
+    $$AccountsTableAnnotationComposer,
+    $$AccountsTableCreateCompanionBuilder,
+    $$AccountsTableUpdateCompanionBuilder,
+    (Account, BaseReferences<_$AppDatabase, $AccountsTable, Account>),
+    Account,
+    PrefetchHooks Function()> {
+  $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AccountsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AccountsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AccountsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<double> openingBalance = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AccountsCompanion(
+            id: id,
+            name: name,
+            kind: kind,
+            openingBalance: openingBalance,
+            note: note,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String> kind = const Value.absent(),
+            Value<double> openingBalance = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AccountsCompanion.insert(
+            id: id,
+            name: name,
+            kind: kind,
+            openingBalance: openingBalance,
+            note: note,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$AccountsTable, Account>(table),
+                    BaseReferences<_$AppDatabase, $AccountsTable, Account>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AccountsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AccountsTable,
+    Account,
+    $$AccountsTableFilterComposer,
+    $$AccountsTableOrderingComposer,
+    $$AccountsTableAnnotationComposer,
+    $$AccountsTableCreateCompanionBuilder,
+    $$AccountsTableUpdateCompanionBuilder,
+    (Account, BaseReferences<_$AppDatabase, $AccountsTable, Account>),
+    Account,
+    PrefetchHooks Function()>;
+typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
+    Function({
+  required String id,
+  required String kind,
+  required double actual,
+  required double budgetImpact,
+  required DateTime occurredAt,
+  required String categoryRaw,
+  Value<String?> level0,
+  Value<String?> level1,
+  Value<String?> level2,
+  Value<String?> item,
+  Value<String?> note,
+  Value<String?> accountId,
+  Value<String?> linkId,
+  Value<String?> linkType,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
+    Function({
+  Value<String> id,
+  Value<String> kind,
+  Value<double> actual,
+  Value<double> budgetImpact,
+  Value<DateTime> occurredAt,
+  Value<String> categoryRaw,
+  Value<String?> level0,
+  Value<String?> level1,
+  Value<String?> level2,
+  Value<String?> item,
+  Value<String?> note,
+  Value<String?> accountId,
+  Value<String?> linkId,
+  Value<String?> linkType,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$TransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get actual => $composableBuilder(
+      column: $table.actual, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get budgetImpact => $composableBuilder(
+      column: $table.budgetImpact, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+      column: $table.occurredAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryRaw => $composableBuilder(
+      column: $table.categoryRaw, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get level0 => $composableBuilder(
+      column: $table.level0, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get level1 => $composableBuilder(
+      column: $table.level1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get level2 => $composableBuilder(
+      column: $table.level2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get item => $composableBuilder(
+      column: $table.item, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkId => $composableBuilder(
+      column: $table.linkId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkType => $composableBuilder(
+      column: $table.linkType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$TransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get actual => $composableBuilder(
+      column: $table.actual, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get budgetImpact => $composableBuilder(
+      column: $table.budgetImpact,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+      column: $table.occurredAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryRaw => $composableBuilder(
+      column: $table.categoryRaw, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get level0 => $composableBuilder(
+      column: $table.level0, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get level1 => $composableBuilder(
+      column: $table.level1, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get level2 => $composableBuilder(
+      column: $table.level2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get item => $composableBuilder(
+      column: $table.item, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkId => $composableBuilder(
+      column: $table.linkId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkType => $composableBuilder(
+      column: $table.linkType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$TransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get actual =>
+      $composableBuilder(column: $table.actual, builder: (column) => column);
+
+  GeneratedColumn<double> get budgetImpact => $composableBuilder(
+      column: $table.budgetImpact, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+      column: $table.occurredAt, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryRaw => $composableBuilder(
+      column: $table.categoryRaw, builder: (column) => column);
+
+  GeneratedColumn<String> get level0 =>
+      $composableBuilder(column: $table.level0, builder: (column) => column);
+
+  GeneratedColumn<String> get level1 =>
+      $composableBuilder(column: $table.level1, builder: (column) => column);
+
+  GeneratedColumn<String> get level2 =>
+      $composableBuilder(column: $table.level2, builder: (column) => column);
+
+  GeneratedColumn<String> get item =>
+      $composableBuilder(column: $table.item, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get linkId =>
+      $composableBuilder(column: $table.linkId, builder: (column) => column);
+
+  GeneratedColumn<String> get linkType =>
+      $composableBuilder(column: $table.linkType, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$TransactionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TransactionsTable,
+    Transaction,
+    $$TransactionsTableFilterComposer,
+    $$TransactionsTableOrderingComposer,
+    $$TransactionsTableAnnotationComposer,
+    $$TransactionsTableCreateCompanionBuilder,
+    $$TransactionsTableUpdateCompanionBuilder,
+    (
+      Transaction,
+      BaseReferences<_$AppDatabase, $TransactionsTable, Transaction>
+    ),
+    Transaction,
+    PrefetchHooks Function()> {
+  $$TransactionsTableTableManager(_$AppDatabase db, $TransactionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TransactionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<double> actual = const Value.absent(),
+            Value<double> budgetImpact = const Value.absent(),
+            Value<DateTime> occurredAt = const Value.absent(),
+            Value<String> categoryRaw = const Value.absent(),
+            Value<String?> level0 = const Value.absent(),
+            Value<String?> level1 = const Value.absent(),
+            Value<String?> level2 = const Value.absent(),
+            Value<String?> item = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String?> accountId = const Value.absent(),
+            Value<String?> linkId = const Value.absent(),
+            Value<String?> linkType = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TransactionsCompanion(
+            id: id,
+            kind: kind,
+            actual: actual,
+            budgetImpact: budgetImpact,
+            occurredAt: occurredAt,
+            categoryRaw: categoryRaw,
+            level0: level0,
+            level1: level1,
+            level2: level2,
+            item: item,
+            note: note,
+            accountId: accountId,
+            linkId: linkId,
+            linkType: linkType,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String kind,
+            required double actual,
+            required double budgetImpact,
+            required DateTime occurredAt,
+            required String categoryRaw,
+            Value<String?> level0 = const Value.absent(),
+            Value<String?> level1 = const Value.absent(),
+            Value<String?> level2 = const Value.absent(),
+            Value<String?> item = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String?> accountId = const Value.absent(),
+            Value<String?> linkId = const Value.absent(),
+            Value<String?> linkType = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TransactionsCompanion.insert(
+            id: id,
+            kind: kind,
+            actual: actual,
+            budgetImpact: budgetImpact,
+            occurredAt: occurredAt,
+            categoryRaw: categoryRaw,
+            level0: level0,
+            level1: level1,
+            level2: level2,
+            item: item,
+            note: note,
+            accountId: accountId,
+            linkId: linkId,
+            linkType: linkType,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$TransactionsTable, Transaction>(table),
+                    BaseReferences<_$AppDatabase, $TransactionsTable,
+                        Transaction>(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$TransactionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TransactionsTable,
+    Transaction,
+    $$TransactionsTableFilterComposer,
+    $$TransactionsTableOrderingComposer,
+    $$TransactionsTableAnnotationComposer,
+    $$TransactionsTableCreateCompanionBuilder,
+    $$TransactionsTableUpdateCompanionBuilder,
+    (
+      Transaction,
+      BaseReferences<_$AppDatabase, $TransactionsTable, Transaction>
+    ),
+    Transaction,
+    PrefetchHooks Function()>;
+typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
+  required String month,
+  required double total,
+  required String bucketsJson,
+  Value<int> rowid,
+});
+typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
+  Value<String> month,
+  Value<double> total,
+  Value<String> bucketsJson,
+  Value<int> rowid,
+});
+
+class $$BudgetsTableFilterComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get total => $composableBuilder(
+      column: $table.total, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bucketsJson => $composableBuilder(
+      column: $table.bucketsJson, builder: (column) => ColumnFilters(column));
+}
+
+class $$BudgetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get total => $composableBuilder(
+      column: $table.total, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bucketsJson => $composableBuilder(
+      column: $table.bucketsJson, builder: (column) => ColumnOrderings(column));
+}
+
+class $$BudgetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<double> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get bucketsJson => $composableBuilder(
+      column: $table.bucketsJson, builder: (column) => column);
+}
+
+class $$BudgetsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $BudgetsTable,
+    Budget,
+    $$BudgetsTableFilterComposer,
+    $$BudgetsTableOrderingComposer,
+    $$BudgetsTableAnnotationComposer,
+    $$BudgetsTableCreateCompanionBuilder,
+    $$BudgetsTableUpdateCompanionBuilder,
+    (Budget, BaseReferences<_$AppDatabase, $BudgetsTable, Budget>),
+    Budget,
+    PrefetchHooks Function()> {
+  $$BudgetsTableTableManager(_$AppDatabase db, $BudgetsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BudgetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> month = const Value.absent(),
+            Value<double> total = const Value.absent(),
+            Value<String> bucketsJson = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              BudgetsCompanion(
+            month: month,
+            total: total,
+            bucketsJson: bucketsJson,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String month,
+            required double total,
+            required String bucketsJson,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              BudgetsCompanion.insert(
+            month: month,
+            total: total,
+            bucketsJson: bucketsJson,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$BudgetsTable, Budget>(table),
+                    BaseReferences<_$AppDatabase, $BudgetsTable, Budget>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$BudgetsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $BudgetsTable,
+    Budget,
+    $$BudgetsTableFilterComposer,
+    $$BudgetsTableOrderingComposer,
+    $$BudgetsTableAnnotationComposer,
+    $$BudgetsTableCreateCompanionBuilder,
+    $$BudgetsTableUpdateCompanionBuilder,
+    (Budget, BaseReferences<_$AppDatabase, $BudgetsTable, Budget>),
+    Budget,
+    PrefetchHooks Function()>;
+
+class $AppDatabaseManager {
+  final _$AppDatabase _db;
+  $AppDatabaseManager(this._db);
+  $$AccountsTableTableManager get accounts =>
+      $$AccountsTableTableManager(_db, _db.accounts);
+  $$TransactionsTableTableManager get transactions =>
+      $$TransactionsTableTableManager(_db, _db.transactions);
+  $$BudgetsTableTableManager get budgets =>
+      $$BudgetsTableTableManager(_db, _db.budgets);
+}
