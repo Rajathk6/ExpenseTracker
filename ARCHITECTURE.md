@@ -29,11 +29,9 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v1, Phase 1 will implement)
-- `transactions(id, kind, actual, budgetImpact, dateTime, categoryRaw, level0..2, item, note, accountId, linkId, linkType)`
-- `lookups(kind[bucket/source/account], value, meta)` — everything customizable lives here.
-- `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100.
-- `debts(id, counterparty, principal, paid, direction, dueDate, nudgeDate, note, status)`
-- `splits(id, totalPaid, myShare, membersJson, status)` + `settlements(splitId, who, amount, date)`
-- `accounts(id, type[bank/cash/card/wallet], name, openBal)` + `snapshots(month, accountId, open, close)`
-- `prices(item, amount, date, place)` — price memory log (append-only).
+## Data model (Drift v1, Phase 1 implemented ✅)
+- `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
+- `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
+- `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
+- Later: `debts(...)`, `splits(...) + settlements(...)`, `snapshots(month, accountId, open, close)`, `prices(item, amount, date, place)`.
+- Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.
