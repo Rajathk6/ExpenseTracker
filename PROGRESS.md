@@ -18,5 +18,9 @@
 - Next: install Flutter SDK → `flutter pub get` → `build_runner` → `flutter test` → commit → merge to develop.
 - Env note: `flutter`/`dart` not found in this machine. Scaffold hand-written, not compiled.
 
+## 2026-09-04 — Push / `develop` + `feature/00-foundation` (remote wired, main untouched)
+- Done: `gh auth` confirmed (Rajathk6); pushed `develop` (8af3cf4) + `feature/00-foundation` (ab3f7c7) to github.com/Rajathk6/ExpenseTracker. Remote has only those two refs — `main` never pushed per rule.
+- Next: Phase 1 `feature/01-custom-core`.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
