@@ -1,0 +1,23 @@
+# VALIDATION — acceptance checks (check each session, no merge if red)
+
+| # | Module | Acceptance | Status |
+|---|--------|------------|--------|
+| 0 | Foundation | `flutter test` passes (category parser); app boots locked behind PIN/biometric stub; docs present | ☐ TODO |
+| Flex | Customization | Create/rename/delete buckets + sources/dests; ratios !=100 blocked; categories freeform; no hardcoded dropdown | ☐ TODO |
+| 1 | Txn+Cat | In/out with datetime saves offline; `food junk gobi-65` parses to levels+item; search `gobi-65` → sum/count/month/year | ☐ TODO |
+| 2 | Budget+Sim | Monthly total set; ins/outs vs budget correct; N buckets editable; simulator previews ratio on last 3 months | ☐ TODO |
+| 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ☐ TODO |
+| 4 | Split | Pay 1000/10: budget=-100, receivable=900; settle 100 reconciles to bank; unpaid flagged absorbed | ☐ TODO |
+| 5 | Instruments | Bank/card/stock/paper/notes save; P/L% = (cur-inv)/inv*100 correct; interest calc correct | ☐ TODO |
+| 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | ☐ TODO |
+| 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | ☐ TODO |
+| 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | ☐ TODO |
+| 7 | Reports | Graphs per module, tap drills to txn list | ☐ TODO |
+| Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | ☐ TODO |
+| Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | ☐ TODO |
+| Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | ☐ TODO |
+| Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | ☐ TODO |
+| 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | ☐ TODO |
+| 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | ☐ TODO |
+
+Mark `✅ date/branch` when green. Merge rule: row green + `flutter test` green.

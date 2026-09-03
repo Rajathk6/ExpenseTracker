@@ -1,0 +1,25 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Pods/
+android/.gradle/
+android/app/build/
+*.iml
+.idea/
+.vscode/
+*.log
+
+# Backups (never commit real data)
+*.etbackup
+*.db
+*.sqlite
+/backups/
+
+# OS
+.DS_Store
+Thumbs.db
