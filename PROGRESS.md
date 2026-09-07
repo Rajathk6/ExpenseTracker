@@ -4,6 +4,7 @@
 |-------|--------|--------|------------|--------|
 | 0 foundation | `feature/00-foundation` | done | #0 ✅ 2026-09-04 | 79d2190 + verify commit |
 | 1 customization core | `feature/01-custom-core` | done | Flex ✅ 2026-09-04 | see below |
+| 2 transactions | `feature/02-transactions` | done | #1 ✅ 2026-09-07 | see below |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -33,5 +34,13 @@
 - Done: entry UI + list + item search committed (07f8b30); `flutter test` 26/26 green, `flutter analyze` clean. Android shell generated (`dev.rajath.expense_tracker`); Java 17 at `~/jdk-17`; cmdline-tools zip saved at `~/android-cmdtools.zip` (moved out of /tmp so it survives reboot).
 - NOT done: SDK install, debug APK build, CI apk-proof job, versioning docs, VALIDATION #1 flip, merge to develop.
 - Resume tomorrow: (1) unzip cmdtools → `~/android-sdk`, sdkmanager install platform/build-tools, licenses; (2) `flutter build apk --debug`; (3) CI apk job + release process; (4) flip #1, merge, push, watch CI.
+
+## 2026-09-07 — Phase 2 done + first APK / `feature/02-transactions`
+- Env: Java 17 Temurin `~/jdk-17`, Android SDK 36 `~/android-sdk` (cmdline-tools + platform-tools + platforms 34/35/36 + build-tools 36.0.0), `flutter doctor` Android toolchain ✓. Gradle safety: IPv4-preferred, no parallel, long timeouts (`~/.gradle/gradle.properties`, machine-local).
+- APK: `flutter build apk --debug` ✅ → `app-debug.apk` (aapt-verified: dev.rajath.expense_tracker, v0.1.0+1, SDK 36, debuggable).
+- Fights won: (a) Maven Central flakes → retry loop; (b) rsi 1.9/file-storage 11.x need unpublished compileSdk 37; (c) share_plus 13.3.0 upstream Kotlin breakage; (d) old-plugin JVM-target clash. Fix: trimmed Phase 9/10-only native deps (share/file/auth/OCR/widget/Drive) — zero Dart usages, pure-Dart logic stays; re-added at their phases. compileSdk stays on Flutter pin 36, no hacks.
+- CI: `apk-debug` job added (PRs to main, artifact 14d); `main` now requires analyze+test+apk-debug. Release process in PLAN.md (version+tag per main merge, debug-signed for personal use).
+- Validation: #1 ✅ 2026-09-07.
+- Next: merge to develop, push, watch CI (PR #1 triple-check), then Phase 3 budgets UI.
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
