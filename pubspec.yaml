@@ -15,28 +15,21 @@ dependencies:
   # Offline DB
   drift: ^2.20.0
   sqlite3_flutter_libs: ^0.5.0
+  sqlite3: ^3.0.0
   path_provider: ^2.1.2
   path: ^1.9.0
-  # Security
-  local_auth: ^2.1.7
-  flutter_secure_storage: ^9.2.2
+  # Security plugins (local_auth, secure_storage) are Phase 10 — re-added then.
+  # Pure-Dart crypto stays for future PIN hashing.
   cryptography: ^2.7.0
-  # Backup / share intake
-  receive_sharing_intent: ^1.8.0
-  share_plus: ^10.1.2
-  file_picker: ^8.0.0
+  # Backup / share intake / OCR / widgets are Phase 9-10 (native deps re-added
+  # then at then-current versions — pure-Dart share_parser + ZIP stay).
   archive: ^3.6.1
-  google_sign_in: ^6.2.1
-  googleapis: ^13.1.0
-  googleapis_auth: ^1.6.0
   # Charts / UI
   fl_chart: ^0.68.0
   intl: ^0.19.0
   uuid: ^4.4.0
-  # OCR for payment screenshots (on-device, offline)
-  google_mlkit_text_recognition: ^0.13.1
-  # Home widget / quick add
-  home_widget: ^0.6.0
+  # OCR for payment screenshots (Phase 9; re-added then)
+  # Home widget / quick add (Phase 9; re-added then)
 
 dev_dependencies:
   flutter_test:

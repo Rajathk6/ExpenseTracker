@@ -43,3 +43,19 @@ Split 1000/10 (mine 100): actual = -1000, budgetImpact = -100, receivable = 900
 - **11 hardening** (`feature/11-hardening`): full tests, perf, release build.
 
 Rules: never start N+1 with N red. One failure must not block manual entry.
+
+## Release process (every `main` merge = installable APK)
+- Versioning: `pubspec.yaml` `version: X.Y.Z+N` (Z+N bump per release).
+  Tag the merge commit `vX.Y.Z`. Minor = phase lands, patch = fix.
+- Gate: PR `develop`→`main` needs `ci / analyze` + `ci / test` +
+  `ci / apk-debug` (builds debug APK, uploads artifact 14d). Direct pushes
+  to `main` are hook-rejected.
+- Install: download `app-debug.apk` from the CI run (or build locally with
+  `flutter build apk --debug`; needs Java 17 + Android SDK 36, see PROGRESS
+  2026-09-07 env notes). Debug-signed = fine for personal distribution.
+- Release signing + Play/artifacts land with Phase 10/11.
+- Dependency policy: native plugins stay on versions that build against
+  Flutter's pinned compileSdk (36) with zero Gradle hacks. Phase 9/10-only
+  native deps (share/file/auth/OCR/widget/Drive) were trimmed 2026-09-07
+  after upstream breakage (SDK-37 requirements, Kotlin mismatches) and get
+  re-added at their phases — pure-Dart logic (share_parser, ZIP) stays.

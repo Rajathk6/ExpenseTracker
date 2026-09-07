@@ -4,6 +4,9 @@
 .flutter-plugins-dependencies
 .packages
 build/
+android/local.properties
+android/.gradle/
+android/app/build/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 ios/Pods/

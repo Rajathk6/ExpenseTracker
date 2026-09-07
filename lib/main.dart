@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/lock_service.dart';
+import 'core/db_open.dart';
+import 'core/providers.dart';
 import 'core/router.dart';
 
-/// Entry point. No business logic here — just providers + lock gate + router.
+/// Entry point. Opens the file DB once, then gates everything behind AppLock.
 /// See ARCHITECTURE.md for module map.
-void main() {
-  runApp(const ProviderScope(child: ExpenseTrackerApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final db = await openFileDatabase();
+  runApp(
+    ProviderScope(
+      overrides: [databaseProvider.overrideWithValue(db)],
+      child: const ExpenseTrackerApp(),
+    ),
+  );
 }
 
 class ExpenseTrackerApp extends ConsumerWidget {
