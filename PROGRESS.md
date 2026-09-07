@@ -41,6 +41,5 @@
 - Fights won: (a) Maven Central flakes → retry loop; (b) rsi 1.9/file-storage 11.x need unpublished compileSdk 37; (c) share_plus 13.3.0 upstream Kotlin breakage; (d) old-plugin JVM-target clash. Fix: trimmed Phase 9/10-only native deps (share/file/auth/OCR/widget/Drive) — zero Dart usages, pure-Dart logic stays; re-added at their phases. compileSdk stays on Flutter pin 36, no hacks.
 - CI: `apk-debug` job added (PRs to main, artifact 14d); `main` now requires analyze+test+apk-debug. Release process in PLAN.md (version+tag per main merge, debug-signed for personal use).
 - Validation: #1 ✅ 2026-09-07.
-- Next: merge to develop, push, watch CI (PR #1 triple-check), then Phase 3 budgets UI.
-## How to update
+- Next: Phase 3 budgets UI (`feature/03-budgets`). PR #1 triple-check done 2026-09-07: analyze ✅ ~45s, test ✅ ~48s, apk-debug ✅ ~4m10s (artifact uploaded). Awaiting your merge call for first versioned `main`.## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
