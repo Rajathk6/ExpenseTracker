@@ -23,3 +23,25 @@ final budgetProvider = FutureProvider.family<({double total, List<Bucket> bucket
   if (b == null) return null;
   return (total: b.total, buckets: b.buckets);
 });
+
+// --- Transactions UI ---
+
+final recentTransactionsProvider =
+    FutureProvider((ref) => ref.watch(transactionRepositoryProvider).recent());
+
+/// `YYYY-M` key → sums for that calendar month.
+final monthSummaryProvider = FutureProvider.family<
+    ({double inActual, double outActual, double inBudget, double outBudget, int count}), String>((ref, key) async {
+  final parts = key.split('-');
+  final start = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+  return ref.watch(transactionRepositoryProvider).sumsBetween(start, end);
+});
+
+final categoryHistoryProvider =
+    FutureProvider((ref) => ref.watch(transactionRepositoryProvider).db.distinctCategories());
+
+final allItemsProvider = FutureProvider((ref) => ref.watch(transactionRepositoryProvider).allItems());
+
+final itemRowsProvider =
+    FutureProvider.family((ref, String item) => ref.watch(transactionRepositoryProvider).forItem(item));

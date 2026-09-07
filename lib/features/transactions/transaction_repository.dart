@@ -57,4 +57,42 @@ class TransactionRepository {
   }
 
   Future<List<String>> allItems() => db.distinctItems();
+
+  /// Category autocomplete: past raw categories containing [prefix] (case-insensitive).
+  Future<List<String>> suggestions(String prefix) async {
+    final all = await db.distinctCategories();
+    final q = prefix.trim().toLowerCase();
+    if (q.isEmpty) return all;
+    return all.where((c) => c.toLowerCase().contains(q)).toList();
+  }
+
+  /// Month (or any range) totals. Positive `inflow`, negative `outflow` sums
+  /// for both statement (actual) and planning (budgetImpact) truths.
+  Future<({double inActual, double outActual, double inBudget, double outBudget, int count})> sumsBetween(
+    DateTime from,
+    DateTime to,
+  ) async {
+    final rows = await db.transactionsBetween(from, to);
+    var inActual = 0.0, outActual = 0.0, inBudget = 0.0, outBudget = 0.0;
+    for (final r in rows) {
+      if (r.actual >= 0) {
+        inActual += r.actual;
+      } else {
+        outActual += r.actual;
+      }
+      if (r.budgetImpact >= 0) {
+        inBudget += r.budgetImpact;
+      } else {
+        outBudget += r.budgetImpact;
+      }
+    }
+    return (inActual: inActual, outActual: outActual, inBudget: inBudget, outBudget: outBudget, count: rows.length);
+  }
+
+  Future<List<Transaction>> recent({int limit = 200}) async {
+    final q = db.select(db.transactions)
+      ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
+      ..limit(limit);
+    return q.get();
+  }
 }
