@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
 import '../../core/providers.dart';
+import '../budgets/budget_screen.dart';
+import '../customization/accounts_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
 
@@ -52,9 +54,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         title: const Text('Transactions'),
         actions: [
           IconButton(
-            tooltip: 'Search items',
+            tooltip: 'Accounts',
+            icon: const Icon(Icons.account_balance_wallet),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AccountsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Search',
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ItemSearchScreen())),
+          ),
+          IconButton(
+            tooltip: 'Budgets',
+            icon: const Icon(Icons.pie_chart_outline),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
           ),
         ],
       ),

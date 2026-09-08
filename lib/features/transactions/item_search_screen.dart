@@ -1,5 +1,6 @@
-/// Item search + detail: type `gobi-65`, see count / total / average /
-/// monthly breakdown and every matching entry. Read-only.
+/// Search + detail: matches raw category, any level, or item
+/// (`food`, `junk`, `gobi-65` all find `food junk gobi-65`).
+/// Exact hyphenated items additionally offer a stats drill-down. Read-only.
 library;
 
 import 'package:flutter/material.dart';
@@ -31,8 +32,10 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(allItemsProvider);
+    final q = _q.text.trim();
+    final results = ref.watch(searchProvider(q));
     return Scaffold(
-      appBar: AppBar(title: const Text('Search items')),
+      appBar: AppBar(title: const Text('Search')),
       body: Column(
         children: [
           Padding(
@@ -42,34 +45,79 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
               autofocus: true,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
-                labelText: 'Item (e.g. gobi-65)',
+                labelText: 'Category, level or item (e.g. food, junk, gobi-65)',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
             ),
           ),
-          Expanded(
-            child: items.when(
-              data: (all) {
-                final q = _q.text.trim().toLowerCase();
-                final hits = all.where((i) => q.isEmpty || i.toLowerCase().contains(q)).toList();
-                if (hits.isEmpty) return const Center(child: Text('No matches yet.'));
-                return ListView.builder(
-                  itemCount: hits.length,
-                  itemBuilder: (_, i) => ListTile(
-                    leading: const Icon(Icons.fastfood),
-                    title: Text(hits[i]),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => ItemDetailScreen(item: hits[i])),
-                    ),
-                  ),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Could not load: $e')),
+          if (q.isEmpty)
+            Expanded(
+              child: items.when(
+                data: (all) {
+                  if (all.isEmpty) {
+                    return const Center(child: Text('No entries yet — tap Add on the home screen.'));
+                  }
+                  return ListView(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: Text('Browse items — tap for stats'),
+                      ),
+                      for (final item in all)
+                        ListTile(
+                          leading: const Icon(Icons.fastfood),
+                          title: Text(item),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Could not load: $e')),
+              ),
+            )
+          else
+            Expanded(
+              child: results.when(
+                data: (rows) {
+                  if (rows.isEmpty) {
+                    return Center(child: Text('No matches for "$q".'));
+                  }
+                  final spent = rows.where((r) => r.actual < 0).fold<double>(0, (s, r) => s + r.actual);
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: Text(
+                          '${rows.length} entr${rows.length == 1 ? 'y' : 'ies'} · total ₹${spent.abs().toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: rows.length,
+                          itemBuilder: (_, i) => ListTile(
+                            leading: Icon(
+                              rows[i].actual < 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                              color: rows[i].actual < 0 ? Colors.red : Colors.green,
+                            ),
+                            title: Text(rows[i].categoryRaw),
+                            subtitle: Text(_dayFmt.format(rows[i].occurredAt)),
+                            trailing: Text('₹${rows[i].actual.toStringAsFixed(0)}'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Could not load: $e')),
+              ),
             ),
-          ),
         ],
       ),
     );

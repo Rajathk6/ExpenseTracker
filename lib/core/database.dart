@@ -119,6 +119,26 @@ class AppDatabase extends _$AppDatabase {
     return (await q.get()).map((r) => r.read(transactions.item)!).toList()..sort();
   }
 
+  /// Full-text-ish search across raw category, levels and item.
+  /// Matches substrings, case-insensitive for ASCII. `%`/`_` stripped.
+  Future<List<Transaction>> searchTransactions(String query) {
+    final clean = query.trim().toLowerCase().replaceAll(RegExp(r'[%_]'), '');
+    if (clean.isEmpty) return Future.value(const <Transaction>[]);
+    final pattern = '%$clean%';
+    return (select(transactions)
+          ..where(
+            (t) =>
+                t.categoryRaw.lower().like(pattern) |
+                t.level0.lower().like(pattern) |
+                t.level1.lower().like(pattern) |
+                t.level2.lower().like(pattern) |
+                t.item.lower().like(pattern),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
+          ..limit(200))
+        .get();
+  }
+
   /// Every raw category string ever typed, for autocomplete suggestions.
   Future<List<String>> distinctCategories() async {
     final q = selectOnly(transactions, distinct: true)..addColumns([transactions.categoryRaw]);
