@@ -67,6 +67,10 @@
 - PR #3 (Phase 4 → main) left OPEN, unmerged — merge + v0.3.0 release tomorrow if phone test passes.
 - Next: pending works list below (Phase 4 needs release before phone testing).
 
+## 2026-09-08 — v0.3.0 released / PR #3 merged + tag + GitHub Release
+- Version bump 0.3.0+3 on develop; PR #3 merged (f5cb765, no CI wait per relaxed gate); tag `v0.3.0`; Release published with arm64 (20.6MB) + armeabi (18.0MB), debug-signed.
+- x86_64 still pending upload (slow uplink); attach any time.
+
 ## PENDING WORKS (remaining, in order)
 1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
 2. **Phone findings (fixed 2026-09-08):** (a) only Cash source → new Accounts manager (add/rename/delete, freeform kinds), reachable from Transactions AppBar; entry banner kept for first run. (b) search felt broken → it only matched hyphenated items; now matches raw category + any level + item, with empty-query item browser + stats drill-down kept.
