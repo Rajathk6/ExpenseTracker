@@ -62,6 +62,11 @@
 - Validation: #3 ✅ 2026-09-08.
 - Next: merge to develop, PR #3, v0.3.0 on your call, then Phase 5 splits.
 
+## 2026-09-08 — CI relaxed + EOD pause / `develop`
+- Decision: CI triple gate was costing more wait than value at this stage. Required status checks REMOVED from `main` protection (workflow files stay, free to re-enable). `main` still PR-only (0 approvals) + no force-push + no direct push.
+- PR #3 (Phase 4 → main) left OPEN, unmerged — merge + v0.3.0 release tomorrow if phone test passes.
+- Next: pending works list below (Phase 4 needs release before phone testing).
+
 ## PENDING WORKS (remaining, in order)
 1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
 2. **Phone findings (fixed 2026-09-08):** (a) only Cash source → new Accounts manager (add/rename/delete, freeform kinds), reachable from Transactions AppBar; entry banner kept for first run. (b) search felt broken → it only matched hyphenated items; now matches raw category + any level + item, with empty-query item browser + stats drill-down kept.
