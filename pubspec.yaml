@@ -1,7 +1,7 @@
 name: expense_tracker
 description: Offline-first personal expense tracker with budgeting, lending, splits, and net-worth.
 publish_to: "none"
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
