@@ -41,5 +41,18 @@
 - Fights won: (a) Maven Central flakes → retry loop; (b) rsi 1.9/file-storage 11.x need unpublished compileSdk 37; (c) share_plus 13.3.0 upstream Kotlin breakage; (d) old-plugin JVM-target clash. Fix: trimmed Phase 9/10-only native deps (share/file/auth/OCR/widget/Drive) — zero Dart usages, pure-Dart logic stays; re-added at their phases. compileSdk stays on Flutter pin 36, no hacks.
 - CI: `apk-debug` job added (PRs to main, artifact 14d); `main` now requires analyze+test+apk-debug. Release process in PLAN.md (version+tag per main merge, debug-signed for personal use).
 - Validation: #1 ✅ 2026-09-07.
-- Next: Phase 3 budgets UI (`feature/03-budgets`). PR #1 triple-check done 2026-09-07: analyze ✅ ~45s, test ✅ ~48s, apk-debug ✅ ~4m10s (artifact uploaded). Awaiting your merge call for first versioned `main`.## How to update
+- Next: Phase 3 budgets UI (`feature/03-budgets`). PR #1 triple-check done 2026-09-07: analyze ✅ ~45s, test ✅ ~48s, apk-debug ✅ ~4m10s (artifact uploaded). Awaiting your merge call for first versioned `main`.
+
+## 2026-09-08 — v0.1.0 released / `main` + tag + GitHub Release
+- PR #1 merged to `main` (659dafb). Gate fix found by execution: protection matches BARE check-run names (`analyze`, not `ci / analyze`) — updated. Direct-push probe rejected again post-merge; PR-review rule (0 approvals) restored.
+- Release: tag `v0.1.0` → Release published with `app-arm64-v8a-release.apk` (20MB) + `app-armeabi-v7a-release.apk` (18MB), debug-signed, offline-first. Uplink is very slow (~50KB/s); large uploads need patience or split ABIs (lesson: always `--split-per-abi` for releases).
+- Next: pending works list below.
+
+## PENDING WORKS (remaining, in order)
+1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
+2. **Download + smoke-test the APK on your phone** — install arm64 build, create Cash wallet, add one in/out entry. Report any crash/misbehavior → becomes Phase 2 fix before Phase 3.
+3. **Phase 3 budgets UI** (`feature/03-budgets`) — monthly CRUD, N-bucket editor + simulator, budget-vs-actual screen. VALIDATION #2.
+4. **Phases 4–11** per PLAN.md (neutral/aging → splits → instruments → reconcile/prices/net-worth → reports → intake → backup/security → hardening).
+5. **Phase 9/10 native deps** — share/file/auth/OCR/widget/Drive re-added at their phases (trimmed 2026-09-07, zero Dart usages affected).
+6. **Release signing** (Phase 10/11) — replace debug signing with a personal keystore + `release` CI job.## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
