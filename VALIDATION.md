@@ -6,7 +6,7 @@
 | Flex | Customization | Create/rename/delete buckets + sources/dests; ratios !=100 blocked; categories freeform; no hardcoded dropdown | ✅ 2026-09-04 / `feature/01-custom-core` (data layer + 13 tests; UI later) |
 | 1 | Txn+Cat | In/out with datetime saves offline; `food junk gobi-65` parses to levels+item; search `gobi-65` → sum/count/month/year | ✅ 2026-09-07 / `feature/02-transactions` (entry UI + search screens, 26 tests, debug APK built+verified) |
 | 2 | Budget+Sim | Monthly total set; ins/outs vs budget correct; N buckets editable; simulator previews ratio on last 3 months | ✅ 2026-09-08 / `feature/03-budgets` (editor + simulator + spend progress, 32 tests) |
-| 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ☐ TODO |
+| 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ✅ 2026-09-08 / `feature/04-neutral` (debts UI + auto-settle, 38 tests) |
 | 4 | Split | Pay 1000/10: budget=-100, receivable=900; settle 100 reconciles to bank; unpaid flagged absorbed | ☐ TODO |
 | 5 | Instruments | Bank/card/stock/paper/notes save; P/L% = (cur-inv)/inv*100 correct; interest calc correct | ☐ TODO |
 | 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | ☐ TODO |
