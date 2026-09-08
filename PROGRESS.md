@@ -5,6 +5,7 @@
 | 0 foundation | `feature/00-foundation` | done | #0 ✅ 2026-09-04 | 79d2190 + verify commit |
 | 1 customization core | `feature/01-custom-core` | done | Flex ✅ 2026-09-04 | see below |
 | 2 transactions | `feature/02-transactions` | done | #1 ✅ 2026-09-07 | see below |
+| 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -48,11 +49,18 @@
 - Release: tag `v0.1.0` → Release published with `app-arm64-v8a-release.apk` (20MB) + `app-armeabi-v7a-release.apk` (18MB), debug-signed, offline-first. Uplink is very slow (~50KB/s); large uploads need patience or split ABIs (lesson: always `--split-per-abi` for releases).
 - Next: pending works list below.
 
-## PENDING WORKS (remaining, in order)
-1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
-2. **Download + smoke-test the APK on your phone** — install arm64 build, create Cash wallet, add one in/out entry. Report any crash/misbehavior → becomes Phase 2 fix before Phase 3.
+## PENDING WORKS (remaining, in order)1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
+2. **Phone findings (fixed 2026-09-08):** (a) only Cash source → new Accounts manager (add/rename/delete, freeform kinds), reachable from Transactions AppBar; entry banner kept for first run. (b) search felt broken → it only matched hyphenated items; now matches raw category + any level + item, with empty-query item browser + stats drill-down kept.
 3. **Phase 3 budgets UI** (`feature/03-budgets`) — monthly CRUD, N-bucket editor + simulator, budget-vs-actual screen. VALIDATION #2.
 4. **Phases 4–11** per PLAN.md (neutral/aging → splits → instruments → reconcile/prices/net-worth → reports → intake → backup/security → hardening).
 5. **Phase 9/10 native deps** — share/file/auth/OCR/widget/Drive re-added at their phases (trimmed 2026-09-07, zero Dart usages affected).
-6. **Release signing** (Phase 10/11) — replace debug signing with a personal keystore + `release` CI job.## How to update
+6. **Release signing** (Phase 10/11) — replace debug signing with a personal keystore + `release` CI job.
+
+## 2026-09-08 — Phase 3 budgets + phone fixes / `feature/03-budgets`
+- Accounts manager (add SBI/bank/card with freeform kind, rename, delete) + AppBar entry points (Accounts, Search, Budgets).
+- Search now matches raw/levels/item; empty query browses items with stats drill-down.
+- Budget screen: month nav, total + dynamic N-bucket editor, presets, validation, planned allocation chips, spend-vs-budget progress, 3-month simulator with preset switcher.
+- `flutter test` 32/32 green, `flutter analyze` clean.
+- Validation: #2 ✅ 2026-09-08.
+- Next: merge to develop, watch CI, cut v0.2.0 release on your call.## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
