@@ -10,6 +10,7 @@ import '../../core/database.dart';
 import '../../core/providers.dart';
 import '../budgets/budget_screen.dart';
 import '../customization/accounts_screen.dart';
+import '../neutral/debts_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
 
@@ -67,6 +68,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Budgets',
             icon: const Icon(Icons.pie_chart_outline),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
+          ),
+          IconButton(
+            tooltip: 'Lending & loans',
+            icon: const Icon(Icons.handshake_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DebtsScreen())),
           ),
         ],
       ),
