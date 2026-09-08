@@ -70,7 +70,27 @@ class Budgets extends Table {
   Set<Column> get primaryKey => {month};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets])
+/// Lend/borrow contracts. Money movement lives in [Transactions] with
+/// linkType='debt' + linkId; this table is the contract + payoff state.
+/// Phase 4. Budget impact of all linked txns is always 0 (neutral ledger).
+class Debts extends Table {
+  TextColumn get id => text()();
+  TextColumn get counterparty => text()();
+  /// 'lent' (I gave money) or 'borrowed' (I took money).
+  TextColumn get direction => text()();
+  RealColumn get principal => real()();
+  RealColumn get paid => real().withDefault(const Constant(0))();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  DateTimeColumn get nudgeDate => dateTime().nullable()();
+  /// 'open' or 'settled'. Auto-settled by DebtRepository; never edited by UI.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -81,7 +101,15 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(debts);
+        },
+      );
 
   // --- Accounts ---
 
@@ -151,6 +179,31 @@ class AppDatabase extends _$AppDatabase {
       (select(budgets)..where((b) => b.month.equals(month))).getSingleOrNull();
 
   Future<void> upsertBudget(BudgetsCompanion entry) => into(budgets).insertOnConflictUpdate(entry);
+
+  // --- Debts ---
+
+  Future<Debt> getDebt(String id) => (select(debts)..where((d) => d.id.equals(id))).getSingle();
+
+  Future<List<Debt>> openDebts() =>
+      (select(debts)
+            ..where((d) => d.status.equals('open'))
+            ..orderBy([(d) => OrderingTerm.asc(d.createdAt)]))
+          .get();
+
+  Future<List<Debt>> allDebts() =>
+      (select(debts)..orderBy([(d) => OrderingTerm.desc(d.createdAt)])).get();
+
+  Future<void> insertDebt(DebtsCompanion entry) => into(debts).insert(entry);
+
+  Future<void> updateDebt(String id, DebtsCompanion entry) =>
+      (update(debts)..where((d) => d.id.equals(id))).write(entry);
+
+  /// Money trail for one contract, oldest first.
+  Future<List<Transaction>> debtHistory(String debtId) =>
+      (select(transactions)
+            ..where((t) => t.linkId.equals(debtId) & t.linkType.equals('debt'))
+            ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+          .get();
 }
 
 /// JSON helpers for the budgets table (kept here so repositories stay thin).

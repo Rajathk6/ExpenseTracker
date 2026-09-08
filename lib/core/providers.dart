@@ -8,6 +8,7 @@ import '../core/database.dart';
 import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
+import '../features/neutral/debt_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override with real or memory DB'));
@@ -15,6 +16,7 @@ final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError
 final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(databaseProvider)));
 final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(databaseProvider)));
 final transactionRepositoryProvider = Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
+final debtRepositoryProvider = Provider((ref) => DebtRepository(ref.watch(databaseProvider)));
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
@@ -49,6 +51,15 @@ final itemRowsProvider =
 /// Live search across raw category / levels / item.
 final searchProvider =
     FutureProvider.family((ref, String query) => ref.watch(transactionRepositoryProvider).search(query));
+
+// --- Debts UI ---
+
+final openDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvider).open());
+
+final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvider).all());
+
+final debtHistoryProvider =
+    FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
 
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;
