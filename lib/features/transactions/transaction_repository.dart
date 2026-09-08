@@ -58,6 +58,10 @@ class TransactionRepository {
 
   Future<List<String>> allItems() => db.distinctItems();
 
+  /// Matches raw category, any level, or item (substring, case-insensitive).
+  /// Empty query returns empty (use allItems() to browse).
+  Future<List<Transaction>> search(String query) => db.searchTransactions(query);
+
   /// Category autocomplete: past raw categories containing [prefix] (case-insensitive).
   Future<List<String>> suggestions(String prefix) async {
     final all = await db.distinctCategories();

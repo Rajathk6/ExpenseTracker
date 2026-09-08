@@ -45,3 +45,34 @@ final allItemsProvider = FutureProvider((ref) => ref.watch(transactionRepository
 
 final itemRowsProvider =
     FutureProvider.family((ref, String item) => ref.watch(transactionRepositoryProvider).forItem(item));
+
+/// Live search across raw category / levels / item.
+final searchProvider =
+    FutureProvider.family((ref, String query) => ref.watch(transactionRepositoryProvider).search(query));
+
+String _shiftedKey(int year, int month, int back) {
+  var y = year, m = month - back;
+  while (m <= 0) {
+    m += 12;
+    y--;
+  }
+  return '$y-${m.toString().padLeft(2, '0')}';
+}
+
+/// Budget-planning truth per month for the 3 months ending at [key]
+/// (oldest first). Used by the budget simulator.
+final pastOutProvider = FutureProvider.family<List<({String key, double out})>, String>((ref, key) async {
+  final parts = key.split('-');
+  final year = int.parse(parts[0]), month = int.parse(parts[1]);
+  final repo = ref.watch(transactionRepositoryProvider);
+  final rows = <({String key, double out})>[];
+  for (var back = 2; back >= 0; back--) {
+    final k = _shiftedKey(year, month, back);
+    final kp = k.split('-');
+    final start = DateTime(int.parse(kp[0]), int.parse(kp[1]));
+    final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+    final s = await repo.sumsBetween(start, end);
+    rows.add((key: k, out: s.outBudget.abs()));
+  }
+  return rows;
+});
