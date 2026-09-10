@@ -9,6 +9,7 @@ import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
 import '../features/neutral/debt_repository.dart';
+import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override with real or memory DB'));
@@ -17,6 +18,7 @@ final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(
 final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(databaseProvider)));
 final transactionRepositoryProvider = Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
 final debtRepositoryProvider = Provider((ref) => DebtRepository(ref.watch(databaseProvider)));
+final splitRepositoryProvider = Provider((ref) => SplitRepository(ref.watch(databaseProvider)));
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
@@ -60,6 +62,15 @@ final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvide
 
 final debtHistoryProvider =
     FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
+
+// --- Splits UI ---
+
+final openSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvider).open());
+
+final allSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvider).all());
+
+final splitHistoryProvider =
+    FutureProvider.family((ref, String splitId) => ref.watch(splitRepositoryProvider).history(splitId));
 
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;

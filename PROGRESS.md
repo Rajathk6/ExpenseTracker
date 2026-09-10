@@ -7,6 +7,7 @@
 | 2 transactions | `feature/02-transactions` | done | #1 ✅ 2026-09-07 | see below |
 | 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
+| 5 splits | `feature/05-splits` | done | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -70,6 +71,15 @@
 ## 2026-09-08 — v0.3.0 released / PR #3 merged + tag + GitHub Release
 - Version bump 0.3.0+3 on develop; PR #3 merged (f5cb765, no CI wait per relaxed gate); tag `v0.3.0`; Release published with arm64 (20.6MB) + armeabi (18.0MB), debug-signed.
 - x86_64 still pending upload (slow uplink); attach any time.
+
+## 2026-09-08 — Phase 5 splits done / `feature/05-splits`
+- Splits table (schema v3 migration) + SplitRepository (front/settle/absorb) + pure settle-up optimizer.
+- Splits UI: open recovery progress, settle/absorb dialogs, money trail, closed archive, equal-split helpers. Group entry in Transactions bar.
+- Honesty model proven by test: front 1000/100 → bank -1000 but budget -100; +600 recovered → net -400 bank; 300 defaulted → absorb (actual 0, budget -300) → budget -400, contract closed.
+- Gotchas: over-settle cap must exclude my share (fixed before merge); drift `Split` clashes with Flutter's — `hide Split` on material import.
+- `flutter test` 43/43 green, `flutter analyze` clean.
+- Validation: #4 ✅ 2026-09-08.
+- Next: merge to develop, PR, v0.4.0 on your call, then Phase 6 instruments.
 
 ## PENDING WORKS (remaining, in order)
 1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
