@@ -90,7 +90,28 @@ class Debts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts])
+/// Group-expense splits. I pay [totalPaid] now; my fair share is [myShare];
+/// the rest ([totalPaid]-[myShare]) is receivable from others.
+/// Settlements + absorb-writeoffs live in [Transactions] (linkType='split').
+/// Phase 5.
+class Splits extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  RealColumn get totalPaid => real()();
+  RealColumn get myShare => real()();
+  RealColumn get received => real().withDefault(const Constant(0))();
+  RealColumn get absorbed => real().withDefault(const Constant(0))();
+  /// JSON list of member names for display, e.g. ["Ravi","Asha"].
+  TextColumn get membersJson => text().withDefault(const Constant('[]'))();
+  TextColumn get note => text().nullable()();
+  /// 'open' or 'closed'. Auto-closed when received+absorbed covers receivable.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -101,13 +122,14 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(debts);
+          if (from < 3) await m.createTable(splits);
         },
       );
 
@@ -202,6 +224,31 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Transaction>> debtHistory(String debtId) =>
       (select(transactions)
             ..where((t) => t.linkId.equals(debtId) & t.linkType.equals('debt'))
+            ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+          .get();
+
+  // --- Splits ---
+
+  Future<Split> getSplit(String id) => (select(splits)..where((s) => s.id.equals(id))).getSingle();
+
+  Future<List<Split>> openSplits() =>
+      (select(splits)
+            ..where((s) => s.status.equals('open'))
+            ..orderBy([(s) => OrderingTerm.desc(s.createdAt)]))
+          .get();
+
+  Future<List<Split>> allSplits() =>
+      (select(splits)..orderBy([(s) => OrderingTerm.desc(s.createdAt)])).get();
+
+  Future<void> insertSplit(SplitsCompanion entry) => into(splits).insert(entry);
+
+  Future<void> updateSplit(String id, SplitsCompanion entry) =>
+      (update(splits)..where((s) => s.id.equals(id))).write(entry);
+
+  /// Money trail for one split, oldest first.
+  Future<List<Transaction>> splitHistory(String splitId) =>
+      (select(transactions)
+            ..where((t) => t.linkId.equals(splitId) & t.linkType.equals('split'))
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
 }
