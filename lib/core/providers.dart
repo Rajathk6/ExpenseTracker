@@ -5,6 +5,9 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/database.dart';
+import 'auth/lock_service.dart';
+import 'auth/pin_service.dart';
+import 'backup/backup_service.dart';
 import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
@@ -17,7 +20,23 @@ import '../features/reports/reports_repository.dart';
 import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
-final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override with real or memory DB'));
+/// File handles opened once in main(). Tests override [databaseProvider]
+/// with `AppDatabase.memory()` instead — never touch these two there.
+final realDatabaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override in main()'));
+final demoDatabaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override in main()'));
+
+/// Security gate: the decoy PIN swaps the whole DB handle, so the demo
+/// vault is a separate file that never sees real rows.
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final decoy = ref.watch(lockProvider.select((s) => s.decoyMode));
+  if (decoy && !ref.watch(lockProvider.select((s) => s.locked))) {
+    return ref.watch(demoDatabaseProvider);
+  }
+  return ref.watch(realDatabaseProvider);
+});
+
+final pinServiceProvider = Provider((ref) => PinService(ref.watch(databaseProvider)));
+final backupServiceProvider = Provider((ref) => BackupService(ref.watch(databaseProvider)));
 
 final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(databaseProvider)));
 final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(databaseProvider)));

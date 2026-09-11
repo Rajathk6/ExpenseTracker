@@ -17,7 +17,7 @@
 | Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | 🟡 code-complete 2026-09-11 / `feature/09-intake` (OCR text parses via same extractor; on-device OCR plugin pending dev machine) |
 | Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | 🟡 code-complete 2026-09-11 / `feature/09-intake` (dual-row transfer + filter chips; verification pending) |
 | Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | 🟡 code-complete 2026-09-11 / `feature/09-intake` (sheet + entry point; home-widget native wiring pending dev machine) |
-| 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | ☐ TODO |
-| 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | ☐ TODO |
+| 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | 🟡 code-complete 2026-09-11 / `feature/10-backup-security` (encrypted ZIP codec + service + UI; Drive manual step; `build_runner` + `flutter test` pending) |
+| 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | 🟡 code-complete 2026-09-11 / `feature/10-backup-security` (PIN pad + decoy vault + auto-lock; biometric plugin + SQLCipher pending dev machine) |
 
 Mark `✅ date/branch` when green. Merge rule: row green + `flutter test` green.

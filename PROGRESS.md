@@ -12,6 +12,7 @@
 | 7 reconcile+price+networth | `feature/07-reconcile` | code-complete, verify pending | #6/#6b/#6c 🟡 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test |
 | 8 reports | `feature/08-reports` | code-complete, verify pending | #7 🟡 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test (no new tables) |
 | 9 intake+cash+quick | `feature/09-intake` | code-complete, verify pending | Intake×2/Cash/Quick 🟡 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test (no new tables, no native deps) |
+| 10 backup+security | `feature/10-backup-security` | code-complete, verify pending | #8/#9 🟡 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -128,6 +129,13 @@
 - Deliberately NOT added (needs dev-machine native verification): share_plus/receive-sharing-intent, google_mlkit_text_recognition (or equivalent), home_widget. Dev-machine wiring: (1) add plugin, `flutter pub get`, (2) pass shared text/OCR output into `IntakeScreen(initialText:)`, (3) widget button → MethodChannel → `openQuickAdd()`. Parser + confirm already handle the rest.
 - Validation: Intake/Intake-img/Cash/Quick 🟡 code-complete, verification pending.
 - Next: Phase 10 backup+security, then 11 hardening — still no release per owner.
+
+## 2026-09-11 — Phase 10 backup+security code-complete / `feature/10-backup-security` (code-only, no native deps added)
+- Branch ops: merged `feature/09-intake` → local `develop` (no push; `main`/origin untouched), branched `feature/10-backup-security`.
+- Done: `Settings` table (schema v6) + `pin_service` (6-digit + decoy, salted SHA-256, lock minutes) + lock gate v2 (verdicts, demo-vault flag, idle timer) + real/demo DB split (`databaseProvider` swaps handles; main opens both files; resume refreshes countdown) + PIN-pad `LockScreen` (first-run setup, wrong-PIN error) + `codec` (JSON→ZIP→AES-GCM/PBKDF2, clean wrong-password error) + `BackupService` (dump/restore all 8 tables, .etbak export, path-based import) + `SettingsScreen` (PIN/decoy/auto-lock/export/restore/about) + More-menu entry + `test/phase10_test.dart` + 0.8.0+8.
+- Deliberately NOT added (dev-machine native steps): local_auth (biometric button explains), flutter_secure_storage (hashes live in Settings meanwhile), file_picker (import takes a pasted path), google Drive API (manual Files-app upload per PLAN), SQLCipher (eval: file DB + encrypted exports cover the offline model until the signed release).
+- Validation: #8/#9 🟡 code-complete, verification pending (needs v6 codegen + `flutter test`).
+- Next: Phase 11 hardening — still no release per owner.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

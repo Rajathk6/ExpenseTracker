@@ -149,7 +149,18 @@ class Snapshots extends Table {
   Set<Column> get primaryKey => {month, accountId};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots])
+/// App settings as plain key/value rows (PIN hashes, auto-lock timeout…).
+/// Phase 10. Values are opaque strings owned by feature code; the only
+/// secrets stored are salted hashes, never raw PINs. (A move to
+/// flutter_secure_storage / SQLCipher is a dev-machine step, see PROGRESS.)
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -160,7 +171,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -170,6 +181,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) await m.createTable(splits);
           if (from < 4) await m.createTable(instruments);
           if (from < 5) await m.createTable(snapshots);
+          if (from < 6) await m.createTable(settings);
         },
       );
 
@@ -322,6 +334,25 @@ class AppDatabase extends _$AppDatabase {
       (select(snapshots)..where((s) => s.month.equals(month))).get();
 
   Future<void> upsertSnapshot(SnapshotsCompanion entry) => into(snapshots).insertOnConflictUpdate(entry);
+
+  // --- Settings (Phase 10, PIN hashes etc.) ---
+
+  Future<String?> getSetting(String key) async =>
+      (await (select(settings)..where((s) => s.key.equals(key))).getSingleOrNull())?.value;
+
+  Future<void> setSetting(String key, String value) =>
+      into(settings).insertOnConflictUpdate(SettingsCompanion(key: Value(key), value: Value(value)));
+
+  Future<int> deleteSetting(String key) => (delete(settings)..where((s) => s.key.equals(key))).go();
+
+  // --- Full-table reads for encrypted backup (Phase 10) ---
+
+  Future<List<Budget>> allBudgets() => select(budgets).get();
+
+  Future<List<Snapshot>> allSnapshots() => select(snapshots).get();
+
+  Future<List<Transaction>> allTransactions() =>
+      (select(transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();
 }
 
 /// JSON helpers for the budgets table (kept here so repositories stay thin).
