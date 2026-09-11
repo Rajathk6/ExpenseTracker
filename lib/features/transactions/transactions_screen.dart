@@ -15,6 +15,7 @@ import '../neutral/debts_screen.dart';
 import '../reconcile/networth_screen.dart';
 import '../reconcile/price_screen.dart';
 import '../reconcile/reconcile_screen.dart';
+import '../reports/reports_screen.dart';
 import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
@@ -97,6 +98,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 'reconcile' => const ReconcileScreen(),
                 'prices' => const PriceScreen(),
                 'networth' => const NetWorthScreen(),
+                'reports' => const ReportsScreen(),
                 _ => null,
               };
               if (dest != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => dest));
@@ -105,6 +107,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               PopupMenuItem(value: 'reconcile', child: Text('Reconcile')),
               PopupMenuItem(value: 'prices', child: Text('Price memory')),
               PopupMenuItem(value: 'networth', child: Text('Net worth')),
+              PopupMenuItem(value: 'reports', child: Text('Reports')),
             ],
           ),
         ],

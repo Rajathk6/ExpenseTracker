@@ -19,7 +19,10 @@ lib/
     instruments/   // Accounts/cards/stocks/paper/notes + P/L% + interest pure fns.
     reconcile/     // Month open/close: bank open/close + cash count + card spend vs budget.
                    // + price memory (stats over item history) + net-worth timeline.
-    reports/       // Read-only charts + drill queries. Never writes.
+    reports/       // Read-only dashboards + drill queries. Never writes.
+                   // Spend figures use budget truth; drill screens take row
+                   // lists directly (no extra providers). Month keys shared
+                   // via core/months.dart (re-exported by reconcile_logic).
     settings/      // PIN/biometric/decoy, Drive manual, about.
 ```
 

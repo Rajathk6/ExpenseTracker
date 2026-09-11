@@ -13,6 +13,7 @@ import '../features/neutral/debt_repository.dart';
 import '../features/reconcile/networth_logic.dart';
 import '../features/reconcile/reconcile_logic.dart';
 import '../features/reconcile/reconcile_repository.dart';
+import '../features/reports/reports_repository.dart';
 import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
@@ -160,3 +161,10 @@ final pastOutProvider = FutureProvider.family<List<({String key, double out})>, 
   }
   return rows;
 });
+
+// --- Reports dashboard (Phase 8, read-only) ---
+
+final reportsRepositoryProvider = Provider((ref) => ReportsRepository(ref.watch(databaseProvider)));
+
+final dashboardProvider =
+    FutureProvider.family<DashboardData, String>((ref, month) => ref.watch(reportsRepositoryProvider).dashboard(month));

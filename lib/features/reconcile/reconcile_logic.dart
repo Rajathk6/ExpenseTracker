@@ -1,40 +1,12 @@
-/// Pure reconcile math + month-key helpers. No DB — testable.
+/// Pure reconcile math. Month keys live in core/months.dart (re-exported
+/// here so existing importers keep working). No DB — testable.
 ///
 /// Model: each account snapshots an opening balance at month-start and a
 /// physically-counted close at month-end. Expected close comes from the
 /// ledger; the gap is untracked money.
 library;
 
-/// `YYYY-MM` key for a date.
-String monthKey(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
-
-/// First day of the month described by [key].
-DateTime monthStart(String key) {
-  final parts = key.split('-');
-  return DateTime(int.parse(parts[0]), int.parse(parts[1]));
-}
-
-/// Inclusive [start, end] bounds covering the whole calendar month.
-({DateTime start, DateTime end}) monthBounds(String key) {
-  final start = monthStart(key);
-  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
-  return (start: start, end: end);
-}
-
-/// Shifts a month key by [delta] months (negative = back). Handles year roll.
-String shiftMonthKey(String key, int delta) {
-  var y = int.parse(key.split('-')[0]);
-  var m = int.parse(key.split('-')[1]) + delta;
-  while (m <= 0) {
-    m += 12;
-    y--;
-  }
-  while (m > 12) {
-    m -= 12;
-    y++;
-  }
-  return '$y-${m.toString().padLeft(2, '0')}';
-}
+export '../../core/months.dart';
 
 /// Statement-truth close: what the ledger says should be there.
 /// [inflows] and [outflows] are absolute (non-negative) sums.
