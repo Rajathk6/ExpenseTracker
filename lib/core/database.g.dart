@@ -1810,6 +1810,1464 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
   }
 }
 
+class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SplitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _totalPaidMeta =
+      const VerificationMeta('totalPaid');
+  @override
+  late final GeneratedColumn<double> totalPaid = GeneratedColumn<double>(
+      'total_paid', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _myShareMeta =
+      const VerificationMeta('myShare');
+  @override
+  late final GeneratedColumn<double> myShare = GeneratedColumn<double>(
+      'my_share', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _receivedMeta =
+      const VerificationMeta('received');
+  @override
+  late final GeneratedColumn<double> received = GeneratedColumn<double>(
+      'received', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _absorbedMeta =
+      const VerificationMeta('absorbed');
+  @override
+  late final GeneratedColumn<double> absorbed = GeneratedColumn<double>(
+      'absorbed', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _membersJsonMeta =
+      const VerificationMeta('membersJson');
+  @override
+  late final GeneratedColumn<String> membersJson = GeneratedColumn<String>(
+      'members_json', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('open'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        totalPaid,
+        myShare,
+        received,
+        absorbed,
+        membersJson,
+        note,
+        status,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'splits';
+  @override
+  VerificationContext validateIntegrity(Insertable<Split> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('total_paid')) {
+      context.handle(_totalPaidMeta,
+          totalPaid.isAcceptableOrUnknown(data['total_paid']!, _totalPaidMeta));
+    } else if (isInserting) {
+      context.missing(_totalPaidMeta);
+    }
+    if (data.containsKey('my_share')) {
+      context.handle(_myShareMeta,
+          myShare.isAcceptableOrUnknown(data['my_share']!, _myShareMeta));
+    } else if (isInserting) {
+      context.missing(_myShareMeta);
+    }
+    if (data.containsKey('received')) {
+      context.handle(_receivedMeta,
+          received.isAcceptableOrUnknown(data['received']!, _receivedMeta));
+    }
+    if (data.containsKey('absorbed')) {
+      context.handle(_absorbedMeta,
+          absorbed.isAcceptableOrUnknown(data['absorbed']!, _absorbedMeta));
+    }
+    if (data.containsKey('members_json')) {
+      context.handle(
+          _membersJsonMeta,
+          membersJson.isAcceptableOrUnknown(
+              data['members_json']!, _membersJsonMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Split map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Split(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      totalPaid: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_paid'])!,
+      myShare: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}my_share'])!,
+      received: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}received'])!,
+      absorbed: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}absorbed'])!,
+      membersJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}members_json'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $SplitsTable createAlias(String alias) {
+    return $SplitsTable(attachedDatabase, alias);
+  }
+}
+
+class Split extends DataClass implements Insertable<Split> {
+  final String id;
+  final String title;
+  final double totalPaid;
+  final double myShare;
+  final double received;
+  final double absorbed;
+
+  /// JSON list of member names for display, e.g. ["Ravi","Asha"].
+  final String membersJson;
+  final String? note;
+
+  /// 'open' or 'closed'. Auto-closed when received+absorbed covers receivable.
+  final String status;
+  final DateTime createdAt;
+  const Split(
+      {required this.id,
+      required this.title,
+      required this.totalPaid,
+      required this.myShare,
+      required this.received,
+      required this.absorbed,
+      required this.membersJson,
+      this.note,
+      required this.status,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['total_paid'] = Variable<double>(totalPaid);
+    map['my_share'] = Variable<double>(myShare);
+    map['received'] = Variable<double>(received);
+    map['absorbed'] = Variable<double>(absorbed);
+    map['members_json'] = Variable<String>(membersJson);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SplitsCompanion toCompanion(bool nullToAbsent) {
+    return SplitsCompanion(
+      id: Value(id),
+      title: Value(title),
+      totalPaid: Value(totalPaid),
+      myShare: Value(myShare),
+      received: Value(received),
+      absorbed: Value(absorbed),
+      membersJson: Value(membersJson),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Split.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Split(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      totalPaid: serializer.fromJson<double>(json['totalPaid']),
+      myShare: serializer.fromJson<double>(json['myShare']),
+      received: serializer.fromJson<double>(json['received']),
+      absorbed: serializer.fromJson<double>(json['absorbed']),
+      membersJson: serializer.fromJson<String>(json['membersJson']),
+      note: serializer.fromJson<String?>(json['note']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'totalPaid': serializer.toJson<double>(totalPaid),
+      'myShare': serializer.toJson<double>(myShare),
+      'received': serializer.toJson<double>(received),
+      'absorbed': serializer.toJson<double>(absorbed),
+      'membersJson': serializer.toJson<String>(membersJson),
+      'note': serializer.toJson<String?>(note),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Split copyWith(
+          {String? id,
+          String? title,
+          double? totalPaid,
+          double? myShare,
+          double? received,
+          double? absorbed,
+          String? membersJson,
+          Value<String?> note = const Value.absent(),
+          String? status,
+          DateTime? createdAt}) =>
+      Split(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        totalPaid: totalPaid ?? this.totalPaid,
+        myShare: myShare ?? this.myShare,
+        received: received ?? this.received,
+        absorbed: absorbed ?? this.absorbed,
+        membersJson: membersJson ?? this.membersJson,
+        note: note.present ? note.value : this.note,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Split copyWithCompanion(SplitsCompanion data) {
+    return Split(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      totalPaid: data.totalPaid.present ? data.totalPaid.value : this.totalPaid,
+      myShare: data.myShare.present ? data.myShare.value : this.myShare,
+      received: data.received.present ? data.received.value : this.received,
+      absorbed: data.absorbed.present ? data.absorbed.value : this.absorbed,
+      membersJson:
+          data.membersJson.present ? data.membersJson.value : this.membersJson,
+      note: data.note.present ? data.note.value : this.note,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Split(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('totalPaid: $totalPaid, ')
+          ..write('myShare: $myShare, ')
+          ..write('received: $received, ')
+          ..write('absorbed: $absorbed, ')
+          ..write('membersJson: $membersJson, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, totalPaid, myShare, received,
+      absorbed, membersJson, note, status, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Split &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.totalPaid == this.totalPaid &&
+          other.myShare == this.myShare &&
+          other.received == this.received &&
+          other.absorbed == this.absorbed &&
+          other.membersJson == this.membersJson &&
+          other.note == this.note &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class SplitsCompanion extends UpdateCompanion<Split> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<double> totalPaid;
+  final Value<double> myShare;
+  final Value<double> received;
+  final Value<double> absorbed;
+  final Value<String> membersJson;
+  final Value<String?> note;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SplitsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.totalPaid = const Value.absent(),
+    this.myShare = const Value.absent(),
+    this.received = const Value.absent(),
+    this.absorbed = const Value.absent(),
+    this.membersJson = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SplitsCompanion.insert({
+    required String id,
+    required String title,
+    required double totalPaid,
+    required double myShare,
+    this.received = const Value.absent(),
+    this.absorbed = const Value.absent(),
+    this.membersJson = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        totalPaid = Value(totalPaid),
+        myShare = Value(myShare);
+  static Insertable<Split> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<double>? totalPaid,
+    Expression<double>? myShare,
+    Expression<double>? received,
+    Expression<double>? absorbed,
+    Expression<String>? membersJson,
+    Expression<String>? note,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (totalPaid != null) 'total_paid': totalPaid,
+      if (myShare != null) 'my_share': myShare,
+      if (received != null) 'received': received,
+      if (absorbed != null) 'absorbed': absorbed,
+      if (membersJson != null) 'members_json': membersJson,
+      if (note != null) 'note': note,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SplitsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<double>? totalPaid,
+      Value<double>? myShare,
+      Value<double>? received,
+      Value<double>? absorbed,
+      Value<String>? membersJson,
+      Value<String?>? note,
+      Value<String>? status,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return SplitsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      totalPaid: totalPaid ?? this.totalPaid,
+      myShare: myShare ?? this.myShare,
+      received: received ?? this.received,
+      absorbed: absorbed ?? this.absorbed,
+      membersJson: membersJson ?? this.membersJson,
+      note: note ?? this.note,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (totalPaid.present) {
+      map['total_paid'] = Variable<double>(totalPaid.value);
+    }
+    if (myShare.present) {
+      map['my_share'] = Variable<double>(myShare.value);
+    }
+    if (received.present) {
+      map['received'] = Variable<double>(received.value);
+    }
+    if (absorbed.present) {
+      map['absorbed'] = Variable<double>(absorbed.value);
+    }
+    if (membersJson.present) {
+      map['members_json'] = Variable<String>(membersJson.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SplitsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('totalPaid: $totalPaid, ')
+          ..write('myShare: $myShare, ')
+          ..write('received: $received, ')
+          ..write('absorbed: $absorbed, ')
+          ..write('membersJson: $membersJson, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstrumentsTable extends Instruments
+    with TableInfo<$InstrumentsTable, Instrument> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstrumentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('stock'));
+  static const VerificationMeta _investedMeta =
+      const VerificationMeta('invested');
+  @override
+  late final GeneratedColumn<double> invested = GeneratedColumn<double>(
+      'invested', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _currentMeta =
+      const VerificationMeta('current');
+  @override
+  late final GeneratedColumn<double> current = GeneratedColumn<double>(
+      'current', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('open'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, kind, invested, current, note, status, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'instruments';
+  @override
+  VerificationContext validateIntegrity(Insertable<Instrument> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    }
+    if (data.containsKey('invested')) {
+      context.handle(_investedMeta,
+          invested.isAcceptableOrUnknown(data['invested']!, _investedMeta));
+    }
+    if (data.containsKey('current')) {
+      context.handle(_currentMeta,
+          current.isAcceptableOrUnknown(data['current']!, _currentMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Instrument map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Instrument(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      invested: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}invested'])!,
+      current: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}current'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $InstrumentsTable createAlias(String alias) {
+    return $InstrumentsTable(attachedDatabase, alias);
+  }
+}
+
+class Instrument extends DataClass implements Insertable<Instrument> {
+  final String id;
+  final String name;
+  final String kind;
+
+  /// Money put in (principal / buy cost).
+  final double invested;
+
+  /// Latest marked value (manual update — vault is offline-first).
+  final double current;
+  final String? note;
+
+  /// 'open' or 'archived'. Archived rows leave totals and history intact.
+  final String status;
+  final DateTime createdAt;
+  const Instrument(
+      {required this.id,
+      required this.name,
+      required this.kind,
+      required this.invested,
+      required this.current,
+      this.note,
+      required this.status,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['kind'] = Variable<String>(kind);
+    map['invested'] = Variable<double>(invested);
+    map['current'] = Variable<double>(current);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InstrumentsCompanion toCompanion(bool nullToAbsent) {
+    return InstrumentsCompanion(
+      id: Value(id),
+      name: Value(name),
+      kind: Value(kind),
+      invested: Value(invested),
+      current: Value(current),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Instrument.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Instrument(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: serializer.fromJson<String>(json['kind']),
+      invested: serializer.fromJson<double>(json['invested']),
+      current: serializer.fromJson<double>(json['current']),
+      note: serializer.fromJson<String?>(json['note']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(kind),
+      'invested': serializer.toJson<double>(invested),
+      'current': serializer.toJson<double>(current),
+      'note': serializer.toJson<String?>(note),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Instrument copyWith(
+          {String? id,
+          String? name,
+          String? kind,
+          double? invested,
+          double? current,
+          Value<String?> note = const Value.absent(),
+          String? status,
+          DateTime? createdAt}) =>
+      Instrument(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        kind: kind ?? this.kind,
+        invested: invested ?? this.invested,
+        current: current ?? this.current,
+        note: note.present ? note.value : this.note,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Instrument copyWithCompanion(InstrumentsCompanion data) {
+    return Instrument(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      invested: data.invested.present ? data.invested.value : this.invested,
+      current: data.current.present ? data.current.value : this.current,
+      note: data.note.present ? data.note.value : this.note,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Instrument(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('invested: $invested, ')
+          ..write('current: $current, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, kind, invested, current, note, status, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Instrument &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.invested == this.invested &&
+          other.current == this.current &&
+          other.note == this.note &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class InstrumentsCompanion extends UpdateCompanion<Instrument> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> kind;
+  final Value<double> invested;
+  final Value<double> current;
+  final Value<String?> note;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const InstrumentsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.invested = const Value.absent(),
+    this.current = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstrumentsCompanion.insert({
+    required String id,
+    required String name,
+    this.kind = const Value.absent(),
+    this.invested = const Value.absent(),
+    this.current = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name);
+  static Insertable<Instrument> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<double>? invested,
+    Expression<double>? current,
+    Expression<String>? note,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (invested != null) 'invested': invested,
+      if (current != null) 'current': current,
+      if (note != null) 'note': note,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstrumentsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? kind,
+      Value<double>? invested,
+      Value<double>? current,
+      Value<String?>? note,
+      Value<String>? status,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return InstrumentsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      invested: invested ?? this.invested,
+      current: current ?? this.current,
+      note: note ?? this.note,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (invested.present) {
+      map['invested'] = Variable<double>(invested.value);
+    }
+    if (current.present) {
+      map['current'] = Variable<double>(current.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstrumentsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('invested: $invested, ')
+          ..write('current: $current, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SnapshotsTable extends Snapshots
+    with TableInfo<$SnapshotsTable, Snapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<String> month = GeneratedColumn<String>(
+      'month', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _accountIdMeta =
+      const VerificationMeta('accountId');
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+      'account_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _openBalanceMeta =
+      const VerificationMeta('openBalance');
+  @override
+  late final GeneratedColumn<double> openBalance = GeneratedColumn<double>(
+      'open_balance', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _countedCloseMeta =
+      const VerificationMeta('countedClose');
+  @override
+  late final GeneratedColumn<double> countedClose = GeneratedColumn<double>(
+      'counted_close', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _hasCloseMeta =
+      const VerificationMeta('hasClose');
+  @override
+  late final GeneratedColumn<int> hasClose = GeneratedColumn<int>(
+      'has_close', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [month, accountId, openBalance, countedClose, hasClose, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshots';
+  @override
+  VerificationContext validateIntegrity(Insertable<Snapshot> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('month')) {
+      context.handle(
+          _monthMeta, month.isAcceptableOrUnknown(data['month']!, _monthMeta));
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(_accountIdMeta,
+          accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('open_balance')) {
+      context.handle(
+          _openBalanceMeta,
+          openBalance.isAcceptableOrUnknown(
+              data['open_balance']!, _openBalanceMeta));
+    }
+    if (data.containsKey('counted_close')) {
+      context.handle(
+          _countedCloseMeta,
+          countedClose.isAcceptableOrUnknown(
+              data['counted_close']!, _countedCloseMeta));
+    }
+    if (data.containsKey('has_close')) {
+      context.handle(_hasCloseMeta,
+          hasClose.isAcceptableOrUnknown(data['has_close']!, _hasCloseMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {month, accountId};
+  @override
+  Snapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Snapshot(
+      month: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}month'])!,
+      accountId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}account_id'])!,
+      openBalance: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}open_balance'])!,
+      countedClose: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}counted_close'])!,
+      hasClose: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}has_close'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $SnapshotsTable createAlias(String alias) {
+    return $SnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class Snapshot extends DataClass implements Insertable<Snapshot> {
+  /// `YYYY-MM`.
+  final String month;
+  final String accountId;
+  final double openBalance;
+  final double countedClose;
+  final int hasClose;
+  final DateTime createdAt;
+  const Snapshot(
+      {required this.month,
+      required this.accountId,
+      required this.openBalance,
+      required this.countedClose,
+      required this.hasClose,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['month'] = Variable<String>(month);
+    map['account_id'] = Variable<String>(accountId);
+    map['open_balance'] = Variable<double>(openBalance);
+    map['counted_close'] = Variable<double>(countedClose);
+    map['has_close'] = Variable<int>(hasClose);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotsCompanion(
+      month: Value(month),
+      accountId: Value(accountId),
+      openBalance: Value(openBalance),
+      countedClose: Value(countedClose),
+      hasClose: Value(hasClose),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Snapshot.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Snapshot(
+      month: serializer.fromJson<String>(json['month']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      openBalance: serializer.fromJson<double>(json['openBalance']),
+      countedClose: serializer.fromJson<double>(json['countedClose']),
+      hasClose: serializer.fromJson<int>(json['hasClose']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'month': serializer.toJson<String>(month),
+      'accountId': serializer.toJson<String>(accountId),
+      'openBalance': serializer.toJson<double>(openBalance),
+      'countedClose': serializer.toJson<double>(countedClose),
+      'hasClose': serializer.toJson<int>(hasClose),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Snapshot copyWith(
+          {String? month,
+          String? accountId,
+          double? openBalance,
+          double? countedClose,
+          int? hasClose,
+          DateTime? createdAt}) =>
+      Snapshot(
+        month: month ?? this.month,
+        accountId: accountId ?? this.accountId,
+        openBalance: openBalance ?? this.openBalance,
+        countedClose: countedClose ?? this.countedClose,
+        hasClose: hasClose ?? this.hasClose,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Snapshot copyWithCompanion(SnapshotsCompanion data) {
+    return Snapshot(
+      month: data.month.present ? data.month.value : this.month,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      openBalance:
+          data.openBalance.present ? data.openBalance.value : this.openBalance,
+      countedClose: data.countedClose.present
+          ? data.countedClose.value
+          : this.countedClose,
+      hasClose: data.hasClose.present ? data.hasClose.value : this.hasClose,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Snapshot(')
+          ..write('month: $month, ')
+          ..write('accountId: $accountId, ')
+          ..write('openBalance: $openBalance, ')
+          ..write('countedClose: $countedClose, ')
+          ..write('hasClose: $hasClose, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      month, accountId, openBalance, countedClose, hasClose, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Snapshot &&
+          other.month == this.month &&
+          other.accountId == this.accountId &&
+          other.openBalance == this.openBalance &&
+          other.countedClose == this.countedClose &&
+          other.hasClose == this.hasClose &&
+          other.createdAt == this.createdAt);
+}
+
+class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
+  final Value<String> month;
+  final Value<String> accountId;
+  final Value<double> openBalance;
+  final Value<double> countedClose;
+  final Value<int> hasClose;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SnapshotsCompanion({
+    this.month = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.openBalance = const Value.absent(),
+    this.countedClose = const Value.absent(),
+    this.hasClose = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SnapshotsCompanion.insert({
+    required String month,
+    required String accountId,
+    this.openBalance = const Value.absent(),
+    this.countedClose = const Value.absent(),
+    this.hasClose = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : month = Value(month),
+        accountId = Value(accountId);
+  static Insertable<Snapshot> custom({
+    Expression<String>? month,
+    Expression<String>? accountId,
+    Expression<double>? openBalance,
+    Expression<double>? countedClose,
+    Expression<int>? hasClose,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (month != null) 'month': month,
+      if (accountId != null) 'account_id': accountId,
+      if (openBalance != null) 'open_balance': openBalance,
+      if (countedClose != null) 'counted_close': countedClose,
+      if (hasClose != null) 'has_close': hasClose,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SnapshotsCompanion copyWith(
+      {Value<String>? month,
+      Value<String>? accountId,
+      Value<double>? openBalance,
+      Value<double>? countedClose,
+      Value<int>? hasClose,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return SnapshotsCompanion(
+      month: month ?? this.month,
+      accountId: accountId ?? this.accountId,
+      openBalance: openBalance ?? this.openBalance,
+      countedClose: countedClose ?? this.countedClose,
+      hasClose: hasClose ?? this.hasClose,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (month.present) {
+      map['month'] = Variable<String>(month.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (openBalance.present) {
+      map['open_balance'] = Variable<double>(openBalance.value);
+    }
+    if (countedClose.present) {
+      map['counted_close'] = Variable<double>(countedClose.value);
+    }
+    if (hasClose.present) {
+      map['has_close'] = Variable<int>(hasClose.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotsCompanion(')
+          ..write('month: $month, ')
+          ..write('accountId: $accountId, ')
+          ..write('openBalance: $openBalance, ')
+          ..write('countedClose: $countedClose, ')
+          ..write('hasClose: $hasClose, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+      'value', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'settings';
+  @override
+  VerificationContext validateIntegrity(Insertable<Setting> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  Setting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Setting(
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
+    );
+  }
+
+  @override
+  $SettingsTable createAlias(String alias) {
+    return $SettingsTable(attachedDatabase, alias);
+  }
+}
+
+class Setting extends DataClass implements Insertable<Setting> {
+  final String key;
+  final String value;
+  const Setting({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  SettingsCompanion toCompanion(bool nullToAbsent) {
+    return SettingsCompanion(
+      key: Value(key),
+      value: Value(value),
+    );
+  }
+
+  factory Setting.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Setting(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  Setting copyWith({String? key, String? value}) => Setting(
+        key: key ?? this.key,
+        value: value ?? this.value,
+      );
+  Setting copyWithCompanion(SettingsCompanion data) {
+    return Setting(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Setting(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Setting && other.key == this.key && other.value == this.value);
+}
+
+class SettingsCompanion extends UpdateCompanion<Setting> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const SettingsCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SettingsCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  })  : key = Value(key),
+        value = Value(value);
+  static Insertable<Setting> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SettingsCompanion copyWith(
+      {Value<String>? key, Value<String>? value, Value<int>? rowid}) {
+    return SettingsCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1817,12 +3275,24 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $DebtsTable debts = $DebtsTable(this);
+  late final $SplitsTable splits = $SplitsTable(this);
+  late final $InstrumentsTable instruments = $InstrumentsTable(this);
+  late final $SnapshotsTable snapshots = $SnapshotsTable(this);
+  late final $SettingsTable settings = $SettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [accounts, transactions, budgets, debts];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        accounts,
+        transactions,
+        budgets,
+        debts,
+        splits,
+        instruments,
+        snapshots,
+        settings
+      ];
 }
 
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
@@ -2722,6 +4192,775 @@ typedef $$DebtsTableProcessedTableManager = ProcessedTableManager<
     (Debt, BaseReferences<_$AppDatabase, $DebtsTable, Debt>),
     Debt,
     PrefetchHooks Function()>;
+typedef $$SplitsTableCreateCompanionBuilder = SplitsCompanion Function({
+  required String id,
+  required String title,
+  required double totalPaid,
+  required double myShare,
+  Value<double> received,
+  Value<double> absorbed,
+  Value<String> membersJson,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$SplitsTableUpdateCompanionBuilder = SplitsCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<double> totalPaid,
+  Value<double> myShare,
+  Value<double> received,
+  Value<double> absorbed,
+  Value<String> membersJson,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$SplitsTableFilterComposer
+    extends Composer<_$AppDatabase, $SplitsTable> {
+  $$SplitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalPaid => $composableBuilder(
+      column: $table.totalPaid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get myShare => $composableBuilder(
+      column: $table.myShare, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get received => $composableBuilder(
+      column: $table.received, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get absorbed => $composableBuilder(
+      column: $table.absorbed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get membersJson => $composableBuilder(
+      column: $table.membersJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$SplitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SplitsTable> {
+  $$SplitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalPaid => $composableBuilder(
+      column: $table.totalPaid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get myShare => $composableBuilder(
+      column: $table.myShare, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get received => $composableBuilder(
+      column: $table.received, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get absorbed => $composableBuilder(
+      column: $table.absorbed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get membersJson => $composableBuilder(
+      column: $table.membersJson, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SplitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SplitsTable> {
+  $$SplitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<double> get totalPaid =>
+      $composableBuilder(column: $table.totalPaid, builder: (column) => column);
+
+  GeneratedColumn<double> get myShare =>
+      $composableBuilder(column: $table.myShare, builder: (column) => column);
+
+  GeneratedColumn<double> get received =>
+      $composableBuilder(column: $table.received, builder: (column) => column);
+
+  GeneratedColumn<double> get absorbed =>
+      $composableBuilder(column: $table.absorbed, builder: (column) => column);
+
+  GeneratedColumn<String> get membersJson => $composableBuilder(
+      column: $table.membersJson, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$SplitsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SplitsTable,
+    Split,
+    $$SplitsTableFilterComposer,
+    $$SplitsTableOrderingComposer,
+    $$SplitsTableAnnotationComposer,
+    $$SplitsTableCreateCompanionBuilder,
+    $$SplitsTableUpdateCompanionBuilder,
+    (Split, BaseReferences<_$AppDatabase, $SplitsTable, Split>),
+    Split,
+    PrefetchHooks Function()> {
+  $$SplitsTableTableManager(_$AppDatabase db, $SplitsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SplitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SplitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SplitsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<double> totalPaid = const Value.absent(),
+            Value<double> myShare = const Value.absent(),
+            Value<double> received = const Value.absent(),
+            Value<double> absorbed = const Value.absent(),
+            Value<String> membersJson = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SplitsCompanion(
+            id: id,
+            title: title,
+            totalPaid: totalPaid,
+            myShare: myShare,
+            received: received,
+            absorbed: absorbed,
+            membersJson: membersJson,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            required double totalPaid,
+            required double myShare,
+            Value<double> received = const Value.absent(),
+            Value<double> absorbed = const Value.absent(),
+            Value<String> membersJson = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SplitsCompanion.insert(
+            id: id,
+            title: title,
+            totalPaid: totalPaid,
+            myShare: myShare,
+            received: received,
+            absorbed: absorbed,
+            membersJson: membersJson,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SplitsTable, Split>(table),
+                    BaseReferences<_$AppDatabase, $SplitsTable, Split>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SplitsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SplitsTable,
+    Split,
+    $$SplitsTableFilterComposer,
+    $$SplitsTableOrderingComposer,
+    $$SplitsTableAnnotationComposer,
+    $$SplitsTableCreateCompanionBuilder,
+    $$SplitsTableUpdateCompanionBuilder,
+    (Split, BaseReferences<_$AppDatabase, $SplitsTable, Split>),
+    Split,
+    PrefetchHooks Function()>;
+typedef $$InstrumentsTableCreateCompanionBuilder = InstrumentsCompanion
+    Function({
+  required String id,
+  required String name,
+  Value<String> kind,
+  Value<double> invested,
+  Value<double> current,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$InstrumentsTableUpdateCompanionBuilder = InstrumentsCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> kind,
+  Value<double> invested,
+  Value<double> current,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$InstrumentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get invested => $composableBuilder(
+      column: $table.invested, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get current => $composableBuilder(
+      column: $table.current, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$InstrumentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get invested => $composableBuilder(
+      column: $table.invested, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get current => $composableBuilder(
+      column: $table.current, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$InstrumentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get invested =>
+      $composableBuilder(column: $table.invested, builder: (column) => column);
+
+  GeneratedColumn<double> get current =>
+      $composableBuilder(column: $table.current, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InstrumentsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $InstrumentsTable,
+    Instrument,
+    $$InstrumentsTableFilterComposer,
+    $$InstrumentsTableOrderingComposer,
+    $$InstrumentsTableAnnotationComposer,
+    $$InstrumentsTableCreateCompanionBuilder,
+    $$InstrumentsTableUpdateCompanionBuilder,
+    (Instrument, BaseReferences<_$AppDatabase, $InstrumentsTable, Instrument>),
+    Instrument,
+    PrefetchHooks Function()> {
+  $$InstrumentsTableTableManager(_$AppDatabase db, $InstrumentsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstrumentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstrumentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InstrumentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<double> invested = const Value.absent(),
+            Value<double> current = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InstrumentsCompanion(
+            id: id,
+            name: name,
+            kind: kind,
+            invested: invested,
+            current: current,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String> kind = const Value.absent(),
+            Value<double> invested = const Value.absent(),
+            Value<double> current = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InstrumentsCompanion.insert(
+            id: id,
+            name: name,
+            kind: kind,
+            invested: invested,
+            current: current,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$InstrumentsTable, Instrument>(table),
+                    BaseReferences<_$AppDatabase, $InstrumentsTable,
+                        Instrument>(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$InstrumentsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $InstrumentsTable,
+    Instrument,
+    $$InstrumentsTableFilterComposer,
+    $$InstrumentsTableOrderingComposer,
+    $$InstrumentsTableAnnotationComposer,
+    $$InstrumentsTableCreateCompanionBuilder,
+    $$InstrumentsTableUpdateCompanionBuilder,
+    (Instrument, BaseReferences<_$AppDatabase, $InstrumentsTable, Instrument>),
+    Instrument,
+    PrefetchHooks Function()>;
+typedef $$SnapshotsTableCreateCompanionBuilder = SnapshotsCompanion Function({
+  required String month,
+  required String accountId,
+  Value<double> openBalance,
+  Value<double> countedClose,
+  Value<int> hasClose,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$SnapshotsTableUpdateCompanionBuilder = SnapshotsCompanion Function({
+  Value<String> month,
+  Value<String> accountId,
+  Value<double> openBalance,
+  Value<double> countedClose,
+  Value<int> hasClose,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$SnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get countedClose => $composableBuilder(
+      column: $table.countedClose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hasClose => $composableBuilder(
+      column: $table.hasClose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$SnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get countedClose => $composableBuilder(
+      column: $table.countedClose,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hasClose => $composableBuilder(
+      column: $table.hasClose, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => column);
+
+  GeneratedColumn<double> get countedClose => $composableBuilder(
+      column: $table.countedClose, builder: (column) => column);
+
+  GeneratedColumn<int> get hasClose =>
+      $composableBuilder(column: $table.hasClose, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$SnapshotsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SnapshotsTable,
+    Snapshot,
+    $$SnapshotsTableFilterComposer,
+    $$SnapshotsTableOrderingComposer,
+    $$SnapshotsTableAnnotationComposer,
+    $$SnapshotsTableCreateCompanionBuilder,
+    $$SnapshotsTableUpdateCompanionBuilder,
+    (Snapshot, BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>),
+    Snapshot,
+    PrefetchHooks Function()> {
+  $$SnapshotsTableTableManager(_$AppDatabase db, $SnapshotsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> month = const Value.absent(),
+            Value<String> accountId = const Value.absent(),
+            Value<double> openBalance = const Value.absent(),
+            Value<double> countedClose = const Value.absent(),
+            Value<int> hasClose = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SnapshotsCompanion(
+            month: month,
+            accountId: accountId,
+            openBalance: openBalance,
+            countedClose: countedClose,
+            hasClose: hasClose,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String month,
+            required String accountId,
+            Value<double> openBalance = const Value.absent(),
+            Value<double> countedClose = const Value.absent(),
+            Value<int> hasClose = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SnapshotsCompanion.insert(
+            month: month,
+            accountId: accountId,
+            openBalance: openBalance,
+            countedClose: countedClose,
+            hasClose: hasClose,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SnapshotsTable, Snapshot>(table),
+                    BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SnapshotsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SnapshotsTable,
+    Snapshot,
+    $$SnapshotsTableFilterComposer,
+    $$SnapshotsTableOrderingComposer,
+    $$SnapshotsTableAnnotationComposer,
+    $$SnapshotsTableCreateCompanionBuilder,
+    $$SnapshotsTableUpdateCompanionBuilder,
+    (Snapshot, BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>),
+    Snapshot,
+    PrefetchHooks Function()>;
+typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
+  required String key,
+  required String value,
+  Value<int> rowid,
+});
+typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
+  Value<String> key,
+  Value<String> value,
+  Value<int> rowid,
+});
+
+class $$SettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
+}
+
+class $$SettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SettingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SettingsTable,
+    Setting,
+    $$SettingsTableFilterComposer,
+    $$SettingsTableOrderingComposer,
+    $$SettingsTableAnnotationComposer,
+    $$SettingsTableCreateCompanionBuilder,
+    $$SettingsTableUpdateCompanionBuilder,
+    (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+    Setting,
+    PrefetchHooks Function()> {
+  $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> value = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SettingsCompanion(
+            key: key,
+            value: value,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String key,
+            required String value,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SettingsCompanion.insert(
+            key: key,
+            value: value,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SettingsTable, Setting>(table),
+                    BaseReferences<_$AppDatabase, $SettingsTable, Setting>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SettingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SettingsTable,
+    Setting,
+    $$SettingsTableFilterComposer,
+    $$SettingsTableOrderingComposer,
+    $$SettingsTableAnnotationComposer,
+    $$SettingsTableCreateCompanionBuilder,
+    $$SettingsTableUpdateCompanionBuilder,
+    (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+    Setting,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2734,4 +4973,12 @@ class $AppDatabaseManager {
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$DebtsTableTableManager get debts =>
       $$DebtsTableTableManager(_db, _db.debts);
+  $$SplitsTableTableManager get splits =>
+      $$SplitsTableTableManager(_db, _db.splits);
+  $$InstrumentsTableTableManager get instruments =>
+      $$InstrumentsTableTableManager(_db, _db.instruments);
+  $$SnapshotsTableTableManager get snapshots =>
+      $$SnapshotsTableTableManager(_db, _db.snapshots);
+  $$SettingsTableTableManager get settings =>
+      $$SettingsTableTableManager(_db, _db.settings);
 }

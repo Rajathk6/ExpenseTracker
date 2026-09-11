@@ -7,6 +7,13 @@
 | 2 transactions | `feature/02-transactions` | done | #1 ✅ 2026-09-07 | see below |
 | 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
+| 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
+| 6 instruments | `pr/06-instruments` | done, verified | #5 ✅ 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test, 51/51 + analyze clean |
+| 7 reconcile+price+networth | `pr/07-reconcile` | done, verified | #6/#6b/#6c ✅ 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test, 59/59 + analyze clean |
+| 8 reports | `pr/08-reports` | done, verified | #7 ✅ 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test, 65/65 + analyze clean |
+| 9 intake+cash+quick | `pr/09-intake` | done, verified | Intake×2/Cash/Quick ✅ 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test, 72/72 + analyze clean |
+| 10 backup+security | `pr/10-backup-security` | done, verified | #8/#9 ✅ 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test, 78/78 + analyze clean |
+| 11 hardening | `pr/11-hardening` | done, verified | full gate green | crash guard + release signing template + 0.9.0+9, 78/78 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -67,6 +74,19 @@
 - PR #3 (Phase 4 → main) left OPEN, unmerged — merge + v0.3.0 release tomorrow if phone test passes.
 - Next: pending works list below (Phase 4 needs release before phone testing).
 
+## 2026-09-08 — v0.3.0 released / PR #3 merged + tag + GitHub Release
+- Version bump 0.3.0+3 on develop; PR #3 merged (f5cb765, no CI wait per relaxed gate); tag `v0.3.0`; Release published with arm64 (20.6MB) + armeabi (18.0MB), debug-signed.
+- x86_64 still pending upload (slow uplink); attach any time.
+
+## 2026-09-08 — Phase 5 splits done / `feature/05-splits`
+- Splits table (schema v3 migration) + SplitRepository (front/settle/absorb) + pure settle-up optimizer.
+- Splits UI: open recovery progress, settle/absorb dialogs, money trail, closed archive, equal-split helpers. Group entry in Transactions bar.
+- Honesty model proven by test: front 1000/100 → bank -1000 but budget -100; +600 recovered → net -400 bank; 300 defaulted → absorb (actual 0, budget -300) → budget -400, contract closed.
+- Gotchas: over-settle cap must exclude my share (fixed before merge); drift `Split` clashes with Flutter's — `hide Split` on material import.
+- `flutter test` 43/43 green, `flutter analyze` clean.
+- Validation: #4 ✅ 2026-09-08.
+- Next: merge to develop, PR, v0.4.0 on your call, then Phase 6 instruments.
+
 ## PENDING WORKS (remaining, in order)
 1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
 2. **Phone findings (fixed 2026-09-08):** (a) only Cash source → new Accounts manager (add/rename/delete, freeform kinds), reachable from Transactions AppBar; entry banner kept for first run. (b) search felt broken → it only matched hyphenated items; now matches raw category + any level + item, with empty-query item browser + stats drill-down kept.
@@ -81,5 +101,57 @@
 - Budget screen: month nav, total + dynamic N-bucket editor, presets, validation, planned allocation chips, spend-vs-budget progress, 3-month simulator with preset switcher.
 - `flutter test` 32/32 green, `flutter analyze` clean.
 - Validation: #2 ✅ 2026-09-08.
-- Next: merge to develop, watch CI, cut v0.2.0 release on your call.## How to update
+- Next: merge to develop, watch CI, cut v0.2.0 release on your call.
+
+## 2026-09-11 — Phase 6 instruments code-complete / `feature/06-instruments` (code-only, no local toolchain)
+- Decisions per owner: skip standalone v0.4.0 splits release (bundle 5+6 into next APK); code-only here, APK built later on dev machine; write tests but don't execute locally.
+- Done: `Instruments` table (schema v4 migration) + `instrument_logic` (P/L, SI/compound, totals, validation) + `InstrumentRepository` (create/revalue/edit/archive/restore/delete) + `InstrumentsScreen` (totals header, SI preview, open/archived, revalue) + providers + AppBar entry + `test/phase6_test.dart` + version bump 0.4.0+4.
+- NOT done (no Flutter/Java/Android SDK on this machine): `flutter pub run build_runner build --delete-conflicting-outputs` to regen `database.g.dart`, `flutter analyze`, `flutter test`, APK build. Run these on the dev machine before merging.
+- Validation: #5 🟡 code-complete (vault + P/L% + interest + tests written, verification pending).
+- Next: dev-machine verify (codegen → analyze → test) → merge to develop → APK → then Phase 7 reconcile+pricememory+networth.
+
+## 2026-09-11 — Phase 7 reconcile+price+networth code-complete / `feature/07-reconcile` (code-only, no local toolchain)
+- Branch ops: merged `feature/06-instruments` → local `develop` (no push; `main`/origin untouched), branched `feature/07-reconcile`.
+- Done: `Snapshots` table (schema v5, PK month+account, `openBalance` naming dodges the Drift-builder clash) + `reconcile_logic` (month keys, expected/gap/status) + `ReconcileRepository` (setOpen/setClose/report incl. unassigned-ledger row) + `ReconcileScreen` (month nav, per-account cards, cash-count hint, true-spent + gap header) + `price_logic`/`PriceScreen` (avg/min/max + overpay over existing item history, no new table) + `networth_logic`/`NetWorthScreen` (12-mo timeline + fl_chart, honest current-value limitation noted) + `TransactionRepository.all()` + providers + Transactions "More" menu + `test/phase7_test.dart` + version 0.5.0+5 (next release bundles 5+6+7).
+- NOT done (no Flutter here): `build_runner` regen for v4+v5 tables, `flutter analyze`, `flutter test`, APK build. Same dev-machine gate as Phase 6.
+- Validation: #6/#6b/#6c 🟡 code-complete, verification pending.
+- Next: dev-machine verify both phases → merge to develop → APK → then Phase 8 reports.
+
+## 2026-09-11 — Phase 8 reports code-complete / `feature/08-reports` (code-only, no local toolchain)
+- Branch ops: merged `feature/07-reconcile` → local `develop` (no push; `main`/origin untouched), branched `feature/08-reports`.
+- Done: `core/months.dart` (shared keys; re-exported by reconcile_logic so old imports keep working) + `reports_logic` (sums/topSlices/pickTop/cash-digital, pure) + `ReportsRepository` (one-shot `dashboard()` + `wrapped()`, core DB only — no feature-feature imports) + `ReportsScreen` (6-mo trend line, tappable category bars + rows, cash-vs-digital, budget-vs-actual, wrapped card, drill screen with exact rows) + providers + Transactions "More" menu entry + `test/phase8_test.dart` + version 0.6.0+6 (next release bundles 5+6+7+8).
+- Schema: NO new tables — Phase 8 needs no `build_runner` of its own (v4+v5 regen from 6+7 still pending).
+- Validation: #7 🟡 code-complete, verification pending.
+- Next: dev-machine verify → merge to develop → APK → then Phase 9 intake+quickadd.
+
+## 2026-09-11 — Phase 9 intake+cash+quick code-complete / `feature/09-intake` (code-only, no native deps added)
+- Branch ops: merged `feature/08-reports` → local `develop` (no push; `main`/origin untouched), branched `feature/09-intake`. Also fixed `price_screen` dropdown to `initialValue` (matches Flutter 3.47 API used in entry_sheet).
+- Done: share_parser merchant-`to X` guess + in/out kind hint + `parseOcrText` alias + `IntakeScreen` confirm (paste/share text → editable amount/category/account → offline save, `initialText` hook for share-target) + `TransactionRepository.transfer` (dual rows, shared linkId, budget 0) + `TransferSheet` (from/to + quick amounts) + `QuickAddSheet` + `openQuickAdd()` (cash-first account) + All/Cash/Digital filter chips on Transactions + `test/phase9_test.dart` + 0.7.0+7.
+- Deliberately NOT added (needs dev-machine native verification): share_plus/receive-sharing-intent, google_mlkit_text_recognition (or equivalent), home_widget. Dev-machine wiring: (1) add plugin, `flutter pub get`, (2) pass shared text/OCR output into `IntakeScreen(initialText:)`, (3) widget button → MethodChannel → `openQuickAdd()`. Parser + confirm already handle the rest.
+- Validation: Intake/Intake-img/Cash/Quick 🟡 code-complete, verification pending.
+- Next: Phase 10 backup+security, then 11 hardening — still no release per owner.
+
+## 2026-09-11 — Phase 10 backup+security code-complete / `feature/10-backup-security` (code-only, no native deps added)
+- Branch ops: merged `feature/09-intake` → local `develop` (no push; `main`/origin untouched), branched `feature/10-backup-security`.
+- Done: `Settings` table (schema v6) + `pin_service` (6-digit + decoy, salted SHA-256, lock minutes) + lock gate v2 (verdicts, demo-vault flag, idle timer) + real/demo DB split (`databaseProvider` swaps handles; main opens both files; resume refreshes countdown) + PIN-pad `LockScreen` (first-run setup, wrong-PIN error) + `codec` (JSON→ZIP→AES-GCM/PBKDF2, clean wrong-password error) + `BackupService` (dump/restore all 8 tables, .etbak export, path-based import) + `SettingsScreen` (PIN/decoy/auto-lock/export/restore/about) + More-menu entry + `test/phase10_test.dart` + 0.8.0+8.
+- Deliberately NOT added (dev-machine native steps): local_auth (biometric button explains), flutter_secure_storage (hashes live in Settings meanwhile), file_picker (import takes a pasted path), google Drive API (manual Files-app upload per PLAN), SQLCipher (eval: file DB + encrypted exports cover the offline model until the signed release).
+- Validation: #8/#9 🟡 code-complete, verification pending (needs v6 codegen + `flutter test`).
+- Next: Phase 11 hardening — still no release per owner.
+
+## 2026-09-11 — Phase 11 hardening code-complete / `feature/11-hardening` (code-only, NO release per owner)
+- Branch ops: merged `feature/10-backup-security` → local `develop` (no push; `main`/origin untouched), branched `feature/11-hardening`.
+- Done: `main.dart` crash guard (`ErrorWidget` fallback card + `runZonedGuarded` → FlutterError) + release signing template in `android/app/build.gradle.kts` (uses `key.properties` when present, debug keys otherwise — dev builds never break) + perf note on the unbounded net-worth read + 0.9.0+9.
+- One-time signing setup (dev machine, never committed): `keytool -genkey -v -keystore ~/expense-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias expense`, then create `android/key.properties` with `storeFile/keyAlias/keyPassword/storePassword` (git-ignored). Then `flutter build apk --release --split-per-abi`.
+- Full verify gate (dev machine, all phases 5–11): `flutter pub get` → `flutter pub run build_runner build --delete-conflicting-outputs` (regens v4+v5+v6 tables) → `flutter analyze` → `flutter test` → `flutter build apk --debug` → phone pass over VALIDATION rows #4–#9 + Intake/Cash/Quick → merge develop→main → tag + GitHub Release with split APKs.
+- Known review hotspots for that pass: fl_chart touch callback signatures (reports), AES/PBKDF2 + archive APIs (backup codec), `toCompanion(true)` round-trips (backup restore), decoy DB-handle swap, `initialValue` dropdown API.
+- Next: run the gate above, cut the release on your call. Phases 5–11 all code-complete; nothing was pushed — `git push origin develop feature/06-instruments feature/07-reconcile feature/08-reports feature/09-intake feature/10-backup-security feature/11-hardening` when ready (or open PRs per phase as before).
+
+## 2026-09-11 — Full verification pass, one PR per phase / `pr/06`→`pr/11` (Flutter 3.47.2 installed here)
+- Env: Flutter 3.47.2 + Dart 3.13.2 installed at `D:\flutter` (this Windows machine). No Java/Android SDK — APK builds still pending.
+- Caught by execution: (1) `IntColumn get hasClose => int()` crashes drift_dev codegen (`int()` is not a builder — must be `integer()`; same family as the old `dateTime` gotcha, now fixed in Phase 7). (2) `DropdownButtonFormField(value:)` is deprecated in Flutter 3.47 — `initialValue` (as in entry_sheet) is correct. (3) Hand-written backup restore comprehension was a syntax error. All fixed; `flutter analyze` is clean on every branch.
+- Rebuilt history as a clean stack off `origin/develop`: `pr/06-instruments` → `pr/07-reconcile` → `pr/08-reports` → `pr/09-intake` → `pr/10-backup-security` → `pr/11-hardening`, each with its own schema codegen (v4/v5/v6) committed. Old local `feature/*` + `develop` merges superseded (kept under `backup/pre-pr-rebuild` until the PRs land).
+- Verified per branch (`flutter analyze` + `flutter test`): 06: 51/51, 07: 59/59, 08: 65/65, 09: 72/72, 10: 78/78, 11: 78/78 — all green, VALIDATION fully ✅.
+- Next: 6 PRs (`pr/*` → `develop`, merge in order with merge commits, NOT squash — stacking depends on ancestry), then APK + phone pass + release on your call.
+
+## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

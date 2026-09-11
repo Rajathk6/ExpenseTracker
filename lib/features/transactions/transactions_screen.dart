@@ -9,8 +9,18 @@ import 'package:intl/intl.dart';
 import '../../core/database.dart';
 import '../../core/providers.dart';
 import '../budgets/budget_screen.dart';
+import '../cash/quickadd_sheet.dart';
+import '../cash/transfer_sheet.dart';
 import '../customization/accounts_screen.dart';
+import '../instruments/instruments_screen.dart';
+import '../intake/intake_screen.dart';
 import '../neutral/debts_screen.dart';
+import '../reconcile/networth_screen.dart';
+import '../reconcile/price_screen.dart';
+import '../reconcile/reconcile_screen.dart';
+import '../reports/reports_screen.dart';
+import '../settings/settings_screen.dart';
+import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
 
@@ -29,6 +39,9 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
 
+  /// all | cash | digital spend filter.
+  String _filter = 'all';
+
   Future<void> _openEntry() async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -42,6 +55,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
+  Future<void> _openTransfer() async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const TransferSheet(),
+    );
+    if (saved ?? false) {
+      ref
+        ..invalidate(recentTransactionsProvider)
+        ..invalidate(monthSummaryProvider(_monthKey(_month)));
+    }
+  }
+
+  Future<void> _openQuickAdd() async {
+    final saved = await openQuickAdd(context);
+    if (saved) {
+      ref
+        ..invalidate(recentTransactionsProvider)
+        ..invalidate(monthSummaryProvider(_monthKey(_month)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final key = _monthKey(_month);
@@ -49,6 +84,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final recent = ref.watch(recentTransactionsProvider);
     final accounts = ref.watch(accountsProvider);
     final names = accounts.maybeWhen(data: (l) => {for (final a in l) a.id: a.name}, orElse: () => const <String, String>{});
+    final kinds = accounts.maybeWhen(data: (l) => {for (final a in l) a.id: a.kind}, orElse: () => const <String, String>{});
+
+    bool passesFilter(Transaction row) {
+      if (_filter == 'all') return true;
+      final isCash = (kinds[row.accountId] ?? 'digital').toLowerCase().contains('cash');
+      return _filter == 'cash' ? isCash : !isCash;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -73,6 +115,50 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Lending & loans',
             icon: const Icon(Icons.handshake_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DebtsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Splits',
+            icon: const Icon(Icons.group_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SplitsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Instruments',
+            icon: const Icon(Icons.show_chart),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InstrumentsScreen())),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              if (v == 'transfer') {
+                _openTransfer();
+                return;
+              }
+              if (v == 'quickadd') {
+                _openQuickAdd();
+                return;
+              }
+              final dest = switch (v) {
+                'reconcile' => const ReconcileScreen(),
+                'prices' => const PriceScreen(),
+                'networth' => const NetWorthScreen(),
+                'reports' => const ReportsScreen(),
+                'intake' => const IntakeScreen(),
+                'settings' => const SettingsScreen(),
+                _ => null,
+              };
+              if (dest != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => dest));
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'reconcile', child: Text('Reconcile')),
+              PopupMenuItem(value: 'prices', child: Text('Price memory')),
+              PopupMenuItem(value: 'networth', child: Text('Net worth')),
+              PopupMenuItem(value: 'reports', child: Text('Reports')),
+              PopupMenuItem(value: 'intake', child: Text('Intake confirm')),
+              PopupMenuItem(value: 'transfer', child: Text('Move between accounts')),
+              PopupMenuItem(value: 'quickadd', child: Text('Quick cash spend')),
+              PopupMenuItem(value: 'settings', child: Text('Settings & backup')),
+            ],
           ),
         ],
       ),
@@ -112,11 +198,41 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           Expanded(
             child: recent.when(
               data: (rows) {
-                final inMonth = rows.where((t) => t.occurredAt.year == _month.year && t.occurredAt.month == _month.month).toList();
-                if (inMonth.isEmpty) return const Center(child: Text('No entries this month — tap Add.'));
-                return ListView.builder(
-                  itemCount: inMonth.length,
-                  itemBuilder: (_, i) => _TxnTile(row: inMonth[i], accountName: names[inMonth[i].accountId]),
+                final inMonth = rows
+                    .where((t) => t.occurredAt.year == _month.year && t.occurredAt.month == _month.month)
+                    .where(passesFilter)
+                    .toList();
+                if (inMonth.isEmpty) {
+                  return Center(
+                    child: Text(_filter == 'all' ? 'No entries this month — tap Add.' : 'No $_filter entries this month.'),
+                  );
+                }
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (final f in const ['all', 'cash', 'digital'])
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: ChoiceChip(
+                                label: Text(f[0].toUpperCase() + f.substring(1)),
+                                selected: _filter == f,
+                                onSelected: (_) => setState(() => _filter = f),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: inMonth.length,
+                        itemBuilder: (_, i) => _TxnTile(row: inMonth[i], accountName: names[inMonth[i].accountId]),
+                      ),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

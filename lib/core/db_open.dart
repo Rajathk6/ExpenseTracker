@@ -11,3 +11,9 @@ Future<AppDatabase> openFileDatabase() async {
   final dir = await getApplicationDocumentsDirectory();
   return AppDatabase.file(p.join(dir.path, 'expense_tracker.sqlite'));
 }
+
+/// Separate file for the decoy-PIN demo vault. Never seeded, never synced.
+Future<AppDatabase> openDemoDatabase() async {
+  final dir = await getApplicationDocumentsDirectory();
+  return AppDatabase.file(p.join(dir.path, 'expense_demo.sqlite'));
+}

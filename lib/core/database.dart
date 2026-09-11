@@ -90,7 +90,77 @@ class Debts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts])
+/// Group-expense splits. I pay [totalPaid] now; my fair share is [myShare];
+/// the rest ([totalPaid]-[myShare]) is receivable from others.
+/// Settlements + absorb-writeoffs live in [Transactions] (linkType='split').
+/// Phase 5.
+class Splits extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  RealColumn get totalPaid => real()();
+  RealColumn get myShare => real()();
+  RealColumn get received => real().withDefault(const Constant(0))();
+  RealColumn get absorbed => real().withDefault(const Constant(0))();
+  /// JSON list of member names for display, e.g. ["Ravi","Asha"].
+  TextColumn get membersJson => text().withDefault(const Constant('[]'))();
+  TextColumn get note => text().nullable()();
+  /// 'open' or 'closed'. Auto-closed when received+absorbed covers receivable.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Instruments vault: banks/cards/statements/loans/stocks/paper-trades/plans
+/// + notes. Phase 6. Tracking-only — no auto ledger writes (keeps the
+/// dual-amount invariant untouched). `kind` is freeform text
+/// (stock/mutual/fd/loan/card/paper/plan/note/...), only suggested in UI.
+/// P/L% + interest are pure functions in instruments/instrument_logic.dart.
+class Instruments extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get kind => text().withDefault(const Constant('stock'))();
+  /// Money put in (principal / buy cost).
+  RealColumn get invested => real().withDefault(const Constant(0))();
+  /// Latest marked value (manual update — vault is offline-first).
+  RealColumn get current => real().withDefault(const Constant(0))();
+  TextColumn get note => text().nullable()();
+  /// 'open' or 'archived'. Archived rows leave totals and history intact.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Month snapshots for reconciliation. One row per (month, account):
+/// the opening balance typed at month-start plus the physically-counted
+/// close at month-end. Phase 7. `openBalance` (not `open`) avoids any
+/// clash with Drift builder names. `hasClose` distinguishes "counted 0"
+/// from "not counted yet".
+class Snapshots extends Table {
+  /// `YYYY-MM`.
+  TextColumn get month => text()();
+  TextColumn get accountId => text()();
+  RealColumn get openBalance => real().withDefault(const Constant(0))();
+  RealColumn get countedClose => real().withDefault(const Constant(0))();
+  IntColumn get hasClose => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {month, accountId};
+}
+
+/// App settings as plain key/value rows (PIN hashes, auto-lock timeout…).
+/// Phase 10. Values are opaque strings owned by feature code; the only
+/// secrets stored are salted hashes, never raw PINs. (A move to
+/// flutter_secure_storage / SQLCipher is a dev-machine step, see PROGRESS.)
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -101,13 +171,17 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(debts);
+          if (from < 3) await m.createTable(splits);
+          if (from < 4) await m.createTable(instruments);
+          if (from < 5) await m.createTable(snapshots);
+          if (from < 6) await m.createTable(settings);
         },
       );
 
@@ -204,6 +278,81 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.linkId.equals(debtId) & t.linkType.equals('debt'))
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
+
+  // --- Splits ---
+
+  Future<Split> getSplit(String id) => (select(splits)..where((s) => s.id.equals(id))).getSingle();
+
+  Future<List<Split>> openSplits() =>
+      (select(splits)
+            ..where((s) => s.status.equals('open'))
+            ..orderBy([(s) => OrderingTerm.desc(s.createdAt)]))
+          .get();
+
+  Future<List<Split>> allSplits() =>
+      (select(splits)..orderBy([(s) => OrderingTerm.desc(s.createdAt)])).get();
+
+  Future<void> insertSplit(SplitsCompanion entry) => into(splits).insert(entry);
+
+  Future<void> updateSplit(String id, SplitsCompanion entry) =>
+      (update(splits)..where((s) => s.id.equals(id))).write(entry);
+
+  /// Money trail for one split, oldest first.
+  Future<List<Transaction>> splitHistory(String splitId) =>
+      (select(transactions)
+            ..where((t) => t.linkId.equals(splitId) & t.linkType.equals('split'))
+            ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+          .get();
+
+  // --- Instruments (Phase 6, vault) ---
+
+  Future<Instrument> getInstrument(String id) =>
+      (select(instruments)..where((i) => i.id.equals(id))).getSingle();
+
+  Future<List<Instrument>> openInstruments() =>
+      (select(instruments)
+            ..where((i) => i.status.equals('open'))
+            ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+          .get();
+
+  Future<List<Instrument>> allInstruments() =>
+      (select(instruments)..orderBy([(i) => OrderingTerm.desc(i.createdAt)])).get();
+
+  Future<void> insertInstrument(InstrumentsCompanion entry) => into(instruments).insert(entry);
+
+  Future<void> updateInstrument(String id, InstrumentsCompanion entry) =>
+      (update(instruments)..where((i) => i.id.equals(id))).write(entry);
+
+  Future<int> deleteInstrument(String id) => (delete(instruments)..where((i) => i.id.equals(id))).go();
+
+  // --- Snapshots (Phase 7, reconcile) ---
+
+  Future<Snapshot?> getSnapshot(String month, String accountId) =>
+      (select(snapshots)..where((s) => s.month.equals(month) & s.accountId.equals(accountId))).getSingleOrNull();
+
+  Future<List<Snapshot>> snapshotsForMonth(String month) =>
+      (select(snapshots)..where((s) => s.month.equals(month))).get();
+
+  Future<void> upsertSnapshot(SnapshotsCompanion entry) => into(snapshots).insertOnConflictUpdate(entry);
+
+  // --- Settings (Phase 10, PIN hashes etc.) ---
+
+  Future<String?> getSetting(String key) async =>
+      (await (select(settings)..where((s) => s.key.equals(key))).getSingleOrNull())?.value;
+
+  Future<void> setSetting(String key, String value) =>
+      into(settings).insertOnConflictUpdate(SettingsCompanion(key: Value(key), value: Value(value)));
+
+  Future<int> deleteSetting(String key) => (delete(settings)..where((s) => s.key.equals(key))).go();
+
+  // --- Full-table reads for encrypted backup (Phase 10) ---
+
+  Future<List<Budget>> allBudgets() => select(budgets).get();
+
+  Future<List<Snapshot>> allSnapshots() => select(snapshots).get();
+
+  Future<List<Transaction>> allTransactions() =>
+      (select(transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();
 }
 
 /// JSON helpers for the budgets table (kept here so repositories stay thin).

@@ -5,18 +5,45 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/database.dart';
+import 'auth/lock_service.dart';
+import 'auth/pin_service.dart';
+import 'backup/backup_service.dart';
 import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
+import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
+import '../features/reconcile/networth_logic.dart';
+import '../features/reconcile/reconcile_logic.dart';
+import '../features/reconcile/reconcile_repository.dart';
+import '../features/reports/reports_repository.dart';
+import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
-final databaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override with real or memory DB'));
+/// File handles opened once in main(). Tests override [databaseProvider]
+/// with `AppDatabase.memory()` instead — never touch these two there.
+final realDatabaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override in main()'));
+final demoDatabaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError('Override in main()'));
+
+/// Security gate: the decoy PIN swaps the whole DB handle, so the demo
+/// vault is a separate file that never sees real rows.
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final decoy = ref.watch(lockProvider.select((s) => s.decoyMode));
+  if (decoy && !ref.watch(lockProvider.select((s) => s.locked))) {
+    return ref.watch(demoDatabaseProvider);
+  }
+  return ref.watch(realDatabaseProvider);
+});
+
+final pinServiceProvider = Provider((ref) => PinService(ref.watch(databaseProvider)));
+final backupServiceProvider = Provider((ref) => BackupService(ref.watch(databaseProvider)));
 
 final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(databaseProvider)));
 final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(databaseProvider)));
 final transactionRepositoryProvider = Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
 final debtRepositoryProvider = Provider((ref) => DebtRepository(ref.watch(databaseProvider)));
+final splitRepositoryProvider = Provider((ref) => SplitRepository(ref.watch(databaseProvider)));
+final instrumentRepositoryProvider = Provider((ref) => InstrumentRepository(ref.watch(databaseProvider)));
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
@@ -61,6 +88,72 @@ final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvide
 final debtHistoryProvider =
     FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
 
+// --- Splits UI ---
+
+final openSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvider).open());
+
+final allSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvider).all());
+
+final splitHistoryProvider =
+    FutureProvider.family((ref, String splitId) => ref.watch(splitRepositoryProvider).history(splitId));
+
+// --- Instruments vault (Phase 6, tracking-only) ---
+
+final openInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).open());
+
+final allInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).all());
+
+// --- Reconcile / price memory / net worth (Phase 7, read-only vs ledger) ---
+
+final reconcileRepositoryProvider = Provider((ref) => ReconcileRepository(ref.watch(databaseProvider)));
+
+final monthReportProvider =
+    FutureProvider.family<MonthReport, String>((ref, month) => ref.watch(reconcileRepositoryProvider).report(month));
+
+/// Trailing-12-month net-worth timeline ending at the current month, plus
+/// the current breakdown. Investments + debts use current manual values.
+final netWorthProvider = FutureProvider(
+  (ref) async {
+    final accounts = await ref.watch(accountRepositoryProvider).list();
+    final instruments = await ref.watch(instrumentRepositoryProvider).open();
+    final debts = await ref.watch(debtRepositoryProvider).open();
+    final txns = await ref.watch(transactionRepositoryProvider).all();
+    var openings = 0.0;
+    for (final a in accounts) {
+      openings += a.openingBalance;
+    }
+    var investCurrent = 0.0;
+    for (final i in instruments) {
+      investCurrent += i.current;
+    }
+    final debtNetValue = debtNet([
+      for (final d in debts) (direction: d.direction, principal: d.principal, paid: d.paid),
+    ]);
+    final now = DateTime.now();
+    final endKey = monthKey(DateTime(now.year, now.month));
+    final points = netWorthTimeline(
+      openings: openings,
+      moves: [for (final t in txns) (at: t.occurredAt, actual: t.actual)],
+      investCurrent: investCurrent,
+      debtNetValue: debtNetValue,
+      endKey: endKey,
+    );
+    final bankNow = points.isEmpty
+        ? openings
+        : bankAt(
+            openings: openings,
+            moves: [for (final t in txns) (at: t.occurredAt, actual: t.actual)],
+            monthEnd: DateTime(now.year, now.month + 1).subtract(const Duration(milliseconds: 1)),
+          );
+    return (
+      points: points,
+      bankNow: bankNow,
+      investNow: investCurrent,
+      debtNetValue: debtNetValue,
+    );
+  },
+);
+
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;
   while (m <= 0) {
@@ -87,3 +180,10 @@ final pastOutProvider = FutureProvider.family<List<({String key, double out})>, 
   }
   return rows;
 });
+
+// --- Reports dashboard (Phase 8, read-only) ---
+
+final reportsRepositoryProvider = Provider((ref) => ReportsRepository(ref.watch(databaseProvider)));
+
+final dashboardProvider =
+    FutureProvider.family<DashboardData, String>((ref, month) => ref.watch(reportsRepositoryProvider).dashboard(month));
