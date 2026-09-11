@@ -153,5 +153,12 @@
 - Verified per branch (`flutter analyze` + `flutter test`): 06: 51/51, 07: 59/59, 08: 65/65, 09: 72/72, 10: 78/78, 11: 78/78 — all green, VALIDATION fully ✅.
 - Next: 6 PRs (`pr/*` → `develop`, merge in order with merge commits, NOT squash — stacking depends on ancestry), then APK + phone pass + release on your call.
 
+## 2026-09-11 — Catch-up: external PR stack verified, merged, v0.9.0 released / `develop` + `main`
+- Reviewed `session-ses_f70e.md` + 7 open PRs (#4–#10). Found a clean stack from fork `Rajathk74`: pr5(Phase 6) → pr6(7) → pr7(8) → pr8(9) → pr9(10) → pr10(11), each on the previous; head branches deleted post-push, fetched via `pull/N/head`.
+- Verified the stack tip locally (this machine): `flutter test` 78/78 green, `flutter analyze` clean, version 0.9.0+9, schema v6. Dropped my redundant local Phase 6 draft (stashed, then deleted after green).
+- Merged #5→#10 into `develop` in order (merge commits), retitled #4 to Phases 5–11, merged to `main` (78d783e), tag `v0.9.0`, Release published with arm64 (21.5MB) + armeabi (19.1MB) split release APKs (aapt-verified 0.9.0, debug-signed).
+- Gate fix found by execution: protection matches BARE check-run names (`analyze`, not `ci / analyze`).
+- Next: phone-test v0.9.0; remaining ideas (x86_64 upload, release signing, re-enable CI) on your call.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
