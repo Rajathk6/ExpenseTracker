@@ -23,7 +23,7 @@ class _PriceScreenState extends ConsumerState<PriceScreen> {
   String? _item;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final items = ref.watch(allItemsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Price memory')),

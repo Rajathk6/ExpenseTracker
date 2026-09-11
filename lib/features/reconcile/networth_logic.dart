@@ -53,10 +53,12 @@ List<({String key, double value})> netWorthTimeline({
   for (var back = months - 1; back >= 0; back--) {
     final key = shiftMonthKey(endKey, -back);
     final end = monthBounds(key).end;
-    out.add((
-      key: key,
-      value: bankAt(openings: openings, moves: moves, monthEnd: end) + investCurrent + debtNetValue,
-    ));
+    out.add(
+      (
+        key: key,
+        value: bankAt(openings: openings, moves: moves, monthEnd: end) + investCurrent + debtNetValue,
+      ),
+    );
   }
   return out;
 }

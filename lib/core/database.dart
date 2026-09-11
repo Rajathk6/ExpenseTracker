@@ -143,7 +143,7 @@ class Snapshots extends Table {
   TextColumn get accountId => text()();
   RealColumn get openBalance => real().withDefault(const Constant(0))();
   RealColumn get countedClose => real().withDefault(const Constant(0))();
-  IntColumn get hasClose => int().withDefault(const Constant(0))();
+  IntColumn get hasClose => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   @override
   Set<Column> get primaryKey => {month, accountId};
