@@ -146,5 +146,12 @@
 - Known review hotspots for that pass: fl_chart touch callback signatures (reports), AES/PBKDF2 + archive APIs (backup codec), `toCompanion(true)` round-trips (backup restore), decoy DB-handle swap, `initialValue` dropdown API.
 - Next: run the gate above, cut the release on your call. Phases 5–11 all code-complete; nothing was pushed — `git push origin develop feature/06-instruments feature/07-reconcile feature/08-reports feature/09-intake feature/10-backup-security feature/11-hardening` when ready (or open PRs per phase as before).
 
+## 2026-09-11 — Full verification pass, one PR per phase / `pr/06`→`pr/11` (Flutter 3.47.2 installed here)
+- Env: Flutter 3.47.2 + Dart 3.13.2 installed at `D:\flutter` (this Windows machine). No Java/Android SDK — APK builds still pending.
+- Caught by execution: (1) `IntColumn get hasClose => int()` crashes drift_dev codegen (`int()` is not a builder — must be `integer()`; same family as the old `dateTime` gotcha, now fixed in Phase 7). (2) `DropdownButtonFormField(value:)` is deprecated in Flutter 3.47 — `initialValue` (as in entry_sheet) is correct. (3) Hand-written backup restore comprehension was a syntax error. All fixed; `flutter analyze` is clean on every branch.
+- Rebuilt history as a clean stack off `origin/develop`: `pr/06-instruments` → `pr/07-reconcile` → `pr/08-reports` → `pr/09-intake` → `pr/10-backup-security` → `pr/11-hardening`, each with its own schema codegen (v4/v5/v6) committed. Old local `feature/*` + `develop` merges superseded (kept under `backup/pre-pr-rebuild` until the PRs land).
+- Verified per branch (`flutter analyze` + `flutter test`): 06: 51/51, 07: 59/59, 08: 65/65, 09: 72/72, 10: 78/78, 11: 78/78 — all green, VALIDATION fully ✅.
+- Next: 6 PRs (`pr/*` → `develop`, merge in order with merge commits, NOT squash — stacking depends on ancestry), then APK + phone pass + release on your call.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
