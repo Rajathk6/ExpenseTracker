@@ -9,6 +9,7 @@
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
 | 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
 | 6 instruments | `feature/06-instruments` | code-complete, verify pending | #5 🟡 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test |
+| 7 reconcile+price+networth | `feature/07-reconcile` | code-complete, verify pending | #6/#6b/#6c 🟡 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -104,6 +105,13 @@
 - NOT done (no Flutter/Java/Android SDK on this machine): `flutter pub run build_runner build --delete-conflicting-outputs` to regen `database.g.dart`, `flutter analyze`, `flutter test`, APK build. Run these on the dev machine before merging.
 - Validation: #5 🟡 code-complete (vault + P/L% + interest + tests written, verification pending).
 - Next: dev-machine verify (codegen → analyze → test) → merge to develop → APK → then Phase 7 reconcile+pricememory+networth.
+
+## 2026-09-11 — Phase 7 reconcile+price+networth code-complete / `feature/07-reconcile` (code-only, no local toolchain)
+- Branch ops: merged `feature/06-instruments` → local `develop` (no push; `main`/origin untouched), branched `feature/07-reconcile`.
+- Done: `Snapshots` table (schema v5, PK month+account, `openBalance` naming dodges the Drift-builder clash) + `reconcile_logic` (month keys, expected/gap/status) + `ReconcileRepository` (setOpen/setClose/report incl. unassigned-ledger row) + `ReconcileScreen` (month nav, per-account cards, cash-count hint, true-spent + gap header) + `price_logic`/`PriceScreen` (avg/min/max + overpay over existing item history, no new table) + `networth_logic`/`NetWorthScreen` (12-mo timeline + fl_chart, honest current-value limitation noted) + `TransactionRepository.all()` + providers + Transactions "More" menu + `test/phase7_test.dart` + version 0.5.0+5 (next release bundles 5+6+7).
+- NOT done (no Flutter here): `build_runner` regen for v4+v5 tables, `flutter analyze`, `flutter test`, APK build. Same dev-machine gate as Phase 6.
+- Validation: #6/#6b/#6c 🟡 code-complete, verification pending.
+- Next: dev-machine verify both phases → merge to develop → APK → then Phase 8 reports.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

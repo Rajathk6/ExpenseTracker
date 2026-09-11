@@ -132,7 +132,24 @@ class Instruments extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments])
+/// Month snapshots for reconciliation. One row per (month, account):
+/// the opening balance typed at month-start plus the physically-counted
+/// close at month-end. Phase 7. `openBalance` (not `open`) avoids any
+/// clash with Drift builder names. `hasClose` distinguishes "counted 0"
+/// from "not counted yet".
+class Snapshots extends Table {
+  /// `YYYY-MM`.
+  TextColumn get month => text()();
+  TextColumn get accountId => text()();
+  RealColumn get openBalance => real().withDefault(const Constant(0))();
+  RealColumn get countedClose => real().withDefault(const Constant(0))();
+  IntColumn get hasClose => int().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {month, accountId};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -143,7 +160,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -152,6 +169,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) await m.createTable(debts);
           if (from < 3) await m.createTable(splits);
           if (from < 4) await m.createTable(instruments);
+          if (from < 5) await m.createTable(snapshots);
         },
       );
 
@@ -294,6 +312,16 @@ class AppDatabase extends _$AppDatabase {
       (update(instruments)..where((i) => i.id.equals(id))).write(entry);
 
   Future<int> deleteInstrument(String id) => (delete(instruments)..where((i) => i.id.equals(id))).go();
+
+  // --- Snapshots (Phase 7, reconcile) ---
+
+  Future<Snapshot?> getSnapshot(String month, String accountId) =>
+      (select(snapshots)..where((s) => s.month.equals(month) & s.accountId.equals(accountId))).getSingleOrNull();
+
+  Future<List<Snapshot>> snapshotsForMonth(String month) =>
+      (select(snapshots)..where((s) => s.month.equals(month))).get();
+
+  Future<void> upsertSnapshot(SnapshotsCompanion entry) => into(snapshots).insertOnConflictUpdate(entry);
 }
 
 /// JSON helpers for the budgets table (kept here so repositories stay thin).

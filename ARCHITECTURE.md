@@ -18,6 +18,7 @@ lib/
     splits/        // Split group + receivables + settles + absorbed flag.
     instruments/   // Accounts/cards/stocks/paper/notes + P/L% + interest pure fns.
     reconcile/     // Month open/close: bank open/close + cash count + card spend vs budget.
+                   // + price memory (stats over item history) + net-worth timeline.
     reports/       // Read-only charts + drill queries. Never writes.
     settings/      // PIN/biometric/decoy, Drive manual, about.
 ```
@@ -29,11 +30,12 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v4, Phase 6 code-complete ✅ code / ⏳ codegen+tests on dev machine)
+## Data model (Drift v5, Phase 7 code-complete ✅ code / ⏳ codegen+tests on dev machine)
 - `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
 - `debts(...)` (v2) + `splits(...)` (v3) — contracts with money trails in transactions.
 - `instruments(id, name, kind freeform, invested, current, note, status, createdAt)` (v4) — vault, tracking-only, never writes transactions. P/L% + interest in instruments/instrument_logic.dart.
-- Later: `snapshots(month, accountId, open, close)`, `prices(item, amount, date, place)`.
+- `snapshots(month, accountId, openBalance, countedClose, hasClose, createdAt)` (v5, PK = month+account) — reconcile inputs. Report reads ledger via transactionsBetween; price memory reads item history (no table); net-worth timeline derives bank/cash from openings + all actuals.
+- Later: `prices(item, amount, date, place)` only if derived history proves too slow.
 - Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.
