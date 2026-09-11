@@ -13,6 +13,7 @@
 | 8 reports | `pr/08-reports` | done, verified | #7 ✅ 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test, 65/65 + analyze clean |
 | 9 intake+cash+quick | `pr/09-intake` | done, verified | Intake×2/Cash/Quick ✅ 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test, 72/72 + analyze clean |
 | 10 backup+security | `pr/10-backup-security` | done, verified | #8/#9 ✅ 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test, 78/78 + analyze clean |
+| 11 hardening | `pr/11-hardening` | done, verified | full gate green | crash guard + release signing template + 0.9.0+9, 78/78 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -136,6 +137,21 @@
 - Deliberately NOT added (dev-machine native steps): local_auth (biometric button explains), flutter_secure_storage (hashes live in Settings meanwhile), file_picker (import takes a pasted path), google Drive API (manual Files-app upload per PLAN), SQLCipher (eval: file DB + encrypted exports cover the offline model until the signed release).
 - Validation: #8/#9 🟡 code-complete, verification pending (needs v6 codegen + `flutter test`).
 - Next: Phase 11 hardening — still no release per owner.
+
+## 2026-09-11 — Phase 11 hardening code-complete / `feature/11-hardening` (code-only, NO release per owner)
+- Branch ops: merged `feature/10-backup-security` → local `develop` (no push; `main`/origin untouched), branched `feature/11-hardening`.
+- Done: `main.dart` crash guard (`ErrorWidget` fallback card + `runZonedGuarded` → FlutterError) + release signing template in `android/app/build.gradle.kts` (uses `key.properties` when present, debug keys otherwise — dev builds never break) + perf note on the unbounded net-worth read + 0.9.0+9.
+- One-time signing setup (dev machine, never committed): `keytool -genkey -v -keystore ~/expense-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias expense`, then create `android/key.properties` with `storeFile/keyAlias/keyPassword/storePassword` (git-ignored). Then `flutter build apk --release --split-per-abi`.
+- Full verify gate (dev machine, all phases 5–11): `flutter pub get` → `flutter pub run build_runner build --delete-conflicting-outputs` (regens v4+v5+v6 tables) → `flutter analyze` → `flutter test` → `flutter build apk --debug` → phone pass over VALIDATION rows #4–#9 + Intake/Cash/Quick → merge develop→main → tag + GitHub Release with split APKs.
+- Known review hotspots for that pass: fl_chart touch callback signatures (reports), AES/PBKDF2 + archive APIs (backup codec), `toCompanion(true)` round-trips (backup restore), decoy DB-handle swap, `initialValue` dropdown API.
+- Next: run the gate above, cut the release on your call. Phases 5–11 all code-complete; nothing was pushed — `git push origin develop feature/06-instruments feature/07-reconcile feature/08-reports feature/09-intake feature/10-backup-security feature/11-hardening` when ready (or open PRs per phase as before).
+
+## 2026-09-11 — Full verification pass, one PR per phase / `pr/06`→`pr/11` (Flutter 3.47.2 installed here)
+- Env: Flutter 3.47.2 + Dart 3.13.2 installed at `D:\flutter` (this Windows machine). No Java/Android SDK — APK builds still pending.
+- Caught by execution: (1) `IntColumn get hasClose => int()` crashes drift_dev codegen (`int()` is not a builder — must be `integer()`; same family as the old `dateTime` gotcha, now fixed in Phase 7). (2) `DropdownButtonFormField(value:)` is deprecated in Flutter 3.47 — `initialValue` (as in entry_sheet) is correct. (3) Hand-written backup restore comprehension was a syntax error. All fixed; `flutter analyze` is clean on every branch.
+- Rebuilt history as a clean stack off `origin/develop`: `pr/06-instruments` → `pr/07-reconcile` → `pr/08-reports` → `pr/09-intake` → `pr/10-backup-security` → `pr/11-hardening`, each with its own schema codegen (v4/v5/v6) committed. Old local `feature/*` + `develop` merges superseded (kept under `backup/pre-pr-rebuild` until the PRs land).
+- Verified per branch (`flutter analyze` + `flutter test`): 06: 51/51, 07: 59/59, 08: 65/65, 09: 72/72, 10: 78/78, 11: 78/78 — all green, VALIDATION fully ✅.
+- Next: 6 PRs (`pr/*` → `develop`, merge in order with merge commits, NOT squash — stacking depends on ancestry), then APK + phone pass + release on your call.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

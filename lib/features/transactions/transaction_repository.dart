@@ -143,6 +143,8 @@ class TransactionRepository {
   }
 
   /// Every row, oldest first. Used by the net-worth timeline (Phase 7).
+  /// Perf note (Phase 11): fine for personal scale (thousands of rows);
+  /// if it ever feels slow, window this to the trailing N months.
   Future<List<Transaction>> all() async {
     final q = db.select(db.transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]);
     return q.get();
