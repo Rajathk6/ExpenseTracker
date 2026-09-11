@@ -8,10 +8,10 @@
 | 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
 | 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
-| 6 instruments | `feature/06-instruments` | code-complete, verify pending | #5 🟡 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test |
-| 7 reconcile+price+networth | `feature/07-reconcile` | code-complete, verify pending | #6/#6b/#6c 🟡 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test |
-| 8 reports | `feature/08-reports` | code-complete, verify pending | #7 🟡 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test (no new tables) |
-| 9 intake+cash+quick | `feature/09-intake` | code-complete, verify pending | Intake×2/Cash/Quick 🟡 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test (no new tables, no native deps) |
+| 6 instruments | `pr/06-instruments` | done, verified | #5 ✅ 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test, 51/51 + analyze clean |
+| 7 reconcile+price+networth | `pr/07-reconcile` | done, verified | #6/#6b/#6c ✅ 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test, 59/59 + analyze clean |
+| 8 reports | `pr/08-reports` | done, verified | #7 ✅ 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test, 65/65 + analyze clean |
+| 9 intake+cash+quick | `pr/09-intake` | done, verified | Intake×2/Cash/Quick ✅ 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test, 72/72 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
