@@ -187,8 +187,10 @@ class _InterestPreviewState extends State<_InterestPreview> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Interest ₹${si.toStringAsFixed(0)} · Maturity ₹${mat.toStringAsFixed(0)}',
-                style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'Interest ₹${si.toStringAsFixed(0)} · Maturity ₹${mat.toStringAsFixed(0)}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
       ),
