@@ -2729,6 +2729,358 @@ class InstrumentsCompanion extends UpdateCompanion<Instrument> {
   }
 }
 
+class $SnapshotsTable extends Snapshots
+    with TableInfo<$SnapshotsTable, Snapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<String> month = GeneratedColumn<String>(
+      'month', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _accountIdMeta =
+      const VerificationMeta('accountId');
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+      'account_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _openBalanceMeta =
+      const VerificationMeta('openBalance');
+  @override
+  late final GeneratedColumn<double> openBalance = GeneratedColumn<double>(
+      'open_balance', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _countedCloseMeta =
+      const VerificationMeta('countedClose');
+  @override
+  late final GeneratedColumn<double> countedClose = GeneratedColumn<double>(
+      'counted_close', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _hasCloseMeta =
+      const VerificationMeta('hasClose');
+  @override
+  late final GeneratedColumn<int> hasClose = GeneratedColumn<int>(
+      'has_close', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [month, accountId, openBalance, countedClose, hasClose, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshots';
+  @override
+  VerificationContext validateIntegrity(Insertable<Snapshot> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('month')) {
+      context.handle(
+          _monthMeta, month.isAcceptableOrUnknown(data['month']!, _monthMeta));
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(_accountIdMeta,
+          accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('open_balance')) {
+      context.handle(
+          _openBalanceMeta,
+          openBalance.isAcceptableOrUnknown(
+              data['open_balance']!, _openBalanceMeta));
+    }
+    if (data.containsKey('counted_close')) {
+      context.handle(
+          _countedCloseMeta,
+          countedClose.isAcceptableOrUnknown(
+              data['counted_close']!, _countedCloseMeta));
+    }
+    if (data.containsKey('has_close')) {
+      context.handle(_hasCloseMeta,
+          hasClose.isAcceptableOrUnknown(data['has_close']!, _hasCloseMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {month, accountId};
+  @override
+  Snapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Snapshot(
+      month: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}month'])!,
+      accountId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}account_id'])!,
+      openBalance: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}open_balance'])!,
+      countedClose: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}counted_close'])!,
+      hasClose: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}has_close'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $SnapshotsTable createAlias(String alias) {
+    return $SnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class Snapshot extends DataClass implements Insertable<Snapshot> {
+  /// `YYYY-MM`.
+  final String month;
+  final String accountId;
+  final double openBalance;
+  final double countedClose;
+  final int hasClose;
+  final DateTime createdAt;
+  const Snapshot(
+      {required this.month,
+      required this.accountId,
+      required this.openBalance,
+      required this.countedClose,
+      required this.hasClose,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['month'] = Variable<String>(month);
+    map['account_id'] = Variable<String>(accountId);
+    map['open_balance'] = Variable<double>(openBalance);
+    map['counted_close'] = Variable<double>(countedClose);
+    map['has_close'] = Variable<int>(hasClose);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotsCompanion(
+      month: Value(month),
+      accountId: Value(accountId),
+      openBalance: Value(openBalance),
+      countedClose: Value(countedClose),
+      hasClose: Value(hasClose),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Snapshot.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Snapshot(
+      month: serializer.fromJson<String>(json['month']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      openBalance: serializer.fromJson<double>(json['openBalance']),
+      countedClose: serializer.fromJson<double>(json['countedClose']),
+      hasClose: serializer.fromJson<int>(json['hasClose']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'month': serializer.toJson<String>(month),
+      'accountId': serializer.toJson<String>(accountId),
+      'openBalance': serializer.toJson<double>(openBalance),
+      'countedClose': serializer.toJson<double>(countedClose),
+      'hasClose': serializer.toJson<int>(hasClose),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Snapshot copyWith(
+          {String? month,
+          String? accountId,
+          double? openBalance,
+          double? countedClose,
+          int? hasClose,
+          DateTime? createdAt}) =>
+      Snapshot(
+        month: month ?? this.month,
+        accountId: accountId ?? this.accountId,
+        openBalance: openBalance ?? this.openBalance,
+        countedClose: countedClose ?? this.countedClose,
+        hasClose: hasClose ?? this.hasClose,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Snapshot copyWithCompanion(SnapshotsCompanion data) {
+    return Snapshot(
+      month: data.month.present ? data.month.value : this.month,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      openBalance:
+          data.openBalance.present ? data.openBalance.value : this.openBalance,
+      countedClose: data.countedClose.present
+          ? data.countedClose.value
+          : this.countedClose,
+      hasClose: data.hasClose.present ? data.hasClose.value : this.hasClose,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Snapshot(')
+          ..write('month: $month, ')
+          ..write('accountId: $accountId, ')
+          ..write('openBalance: $openBalance, ')
+          ..write('countedClose: $countedClose, ')
+          ..write('hasClose: $hasClose, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      month, accountId, openBalance, countedClose, hasClose, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Snapshot &&
+          other.month == this.month &&
+          other.accountId == this.accountId &&
+          other.openBalance == this.openBalance &&
+          other.countedClose == this.countedClose &&
+          other.hasClose == this.hasClose &&
+          other.createdAt == this.createdAt);
+}
+
+class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
+  final Value<String> month;
+  final Value<String> accountId;
+  final Value<double> openBalance;
+  final Value<double> countedClose;
+  final Value<int> hasClose;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SnapshotsCompanion({
+    this.month = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.openBalance = const Value.absent(),
+    this.countedClose = const Value.absent(),
+    this.hasClose = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SnapshotsCompanion.insert({
+    required String month,
+    required String accountId,
+    this.openBalance = const Value.absent(),
+    this.countedClose = const Value.absent(),
+    this.hasClose = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : month = Value(month),
+        accountId = Value(accountId);
+  static Insertable<Snapshot> custom({
+    Expression<String>? month,
+    Expression<String>? accountId,
+    Expression<double>? openBalance,
+    Expression<double>? countedClose,
+    Expression<int>? hasClose,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (month != null) 'month': month,
+      if (accountId != null) 'account_id': accountId,
+      if (openBalance != null) 'open_balance': openBalance,
+      if (countedClose != null) 'counted_close': countedClose,
+      if (hasClose != null) 'has_close': hasClose,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SnapshotsCompanion copyWith(
+      {Value<String>? month,
+      Value<String>? accountId,
+      Value<double>? openBalance,
+      Value<double>? countedClose,
+      Value<int>? hasClose,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return SnapshotsCompanion(
+      month: month ?? this.month,
+      accountId: accountId ?? this.accountId,
+      openBalance: openBalance ?? this.openBalance,
+      countedClose: countedClose ?? this.countedClose,
+      hasClose: hasClose ?? this.hasClose,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (month.present) {
+      map['month'] = Variable<String>(month.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (openBalance.present) {
+      map['open_balance'] = Variable<double>(openBalance.value);
+    }
+    if (countedClose.present) {
+      map['counted_close'] = Variable<double>(countedClose.value);
+    }
+    if (hasClose.present) {
+      map['has_close'] = Variable<int>(hasClose.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotsCompanion(')
+          ..write('month: $month, ')
+          ..write('accountId: $accountId, ')
+          ..write('openBalance: $openBalance, ')
+          ..write('countedClose: $countedClose, ')
+          ..write('hasClose: $hasClose, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2738,12 +3090,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DebtsTable debts = $DebtsTable(this);
   late final $SplitsTable splits = $SplitsTable(this);
   late final $InstrumentsTable instruments = $InstrumentsTable(this);
+  late final $SnapshotsTable snapshots = $SnapshotsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [accounts, transactions, budgets, debts, splits, instruments];
+      [accounts, transactions, budgets, debts, splits, instruments, snapshots];
 }
 
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
@@ -4103,6 +4456,191 @@ typedef $$InstrumentsTableProcessedTableManager = ProcessedTableManager<
     (Instrument, BaseReferences<_$AppDatabase, $InstrumentsTable, Instrument>),
     Instrument,
     PrefetchHooks Function()>;
+typedef $$SnapshotsTableCreateCompanionBuilder = SnapshotsCompanion Function({
+  required String month,
+  required String accountId,
+  Value<double> openBalance,
+  Value<double> countedClose,
+  Value<int> hasClose,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$SnapshotsTableUpdateCompanionBuilder = SnapshotsCompanion Function({
+  Value<String> month,
+  Value<String> accountId,
+  Value<double> openBalance,
+  Value<double> countedClose,
+  Value<int> hasClose,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$SnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get countedClose => $composableBuilder(
+      column: $table.countedClose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hasClose => $composableBuilder(
+      column: $table.hasClose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$SnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+      column: $table.accountId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get countedClose => $composableBuilder(
+      column: $table.countedClose,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hasClose => $composableBuilder(
+      column: $table.hasClose, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SnapshotsTable> {
+  $$SnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<double> get openBalance => $composableBuilder(
+      column: $table.openBalance, builder: (column) => column);
+
+  GeneratedColumn<double> get countedClose => $composableBuilder(
+      column: $table.countedClose, builder: (column) => column);
+
+  GeneratedColumn<int> get hasClose =>
+      $composableBuilder(column: $table.hasClose, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$SnapshotsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SnapshotsTable,
+    Snapshot,
+    $$SnapshotsTableFilterComposer,
+    $$SnapshotsTableOrderingComposer,
+    $$SnapshotsTableAnnotationComposer,
+    $$SnapshotsTableCreateCompanionBuilder,
+    $$SnapshotsTableUpdateCompanionBuilder,
+    (Snapshot, BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>),
+    Snapshot,
+    PrefetchHooks Function()> {
+  $$SnapshotsTableTableManager(_$AppDatabase db, $SnapshotsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> month = const Value.absent(),
+            Value<String> accountId = const Value.absent(),
+            Value<double> openBalance = const Value.absent(),
+            Value<double> countedClose = const Value.absent(),
+            Value<int> hasClose = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SnapshotsCompanion(
+            month: month,
+            accountId: accountId,
+            openBalance: openBalance,
+            countedClose: countedClose,
+            hasClose: hasClose,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String month,
+            required String accountId,
+            Value<double> openBalance = const Value.absent(),
+            Value<double> countedClose = const Value.absent(),
+            Value<int> hasClose = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SnapshotsCompanion.insert(
+            month: month,
+            accountId: accountId,
+            openBalance: openBalance,
+            countedClose: countedClose,
+            hasClose: hasClose,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SnapshotsTable, Snapshot>(table),
+                    BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>(
+                        db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SnapshotsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SnapshotsTable,
+    Snapshot,
+    $$SnapshotsTableFilterComposer,
+    $$SnapshotsTableOrderingComposer,
+    $$SnapshotsTableAnnotationComposer,
+    $$SnapshotsTableCreateCompanionBuilder,
+    $$SnapshotsTableUpdateCompanionBuilder,
+    (Snapshot, BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>),
+    Snapshot,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4119,4 +4657,6 @@ class $AppDatabaseManager {
       $$SplitsTableTableManager(_db, _db.splits);
   $$InstrumentsTableTableManager get instruments =>
       $$InstrumentsTableTableManager(_db, _db.instruments);
+  $$SnapshotsTableTableManager get snapshots =>
+      $$SnapshotsTableTableManager(_db, _db.snapshots);
 }

@@ -9,9 +9,9 @@
 | 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ✅ 2026-09-08 / `feature/04-neutral` (debts UI + auto-settle, 38 tests) |
 | 4 | Split | Pay 1000/10: budget=-100, receivable=900; settle 100 reconciles to bank; unpaid flagged absorbed | ✅ 2026-09-08 / `feature/05-splits` (splits UI + absorb + optimizer, 43 tests) |
 | 5 | Instruments | Bank/card/stock/paper/notes save; P/L% = (cur-inv)/inv*100 correct; interest calc correct | ✅ 2026-09-11 / `pr/06-instruments` (vault + P/L% + SI preview, 51/51 green, analyze clean) |
-| 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | ☐ TODO |
-| 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | ☐ TODO |
-| 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | ☐ TODO |
+| 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | ✅ 2026-09-11 / `pr/07-reconcile` (snapshots v5 + report + UI, 59/59 green, analyze clean) |
+| 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | ✅ 2026-09-11 / `pr/07-reconcile` (pure logic + screen over history, 59/59 green) |
+| 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | ✅ 2026-09-11 / `pr/07-reconcile` (12-mo timeline + fl_chart, 59/59 green) |
 | 7 | Reports | Graphs per module, tap drills to txn list | ☐ TODO |
 | Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | ☐ TODO |
 | Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | ☐ TODO |

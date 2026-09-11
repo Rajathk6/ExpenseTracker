@@ -12,6 +12,9 @@ import '../budgets/budget_screen.dart';
 import '../customization/accounts_screen.dart';
 import '../instruments/instruments_screen.dart';
 import '../neutral/debts_screen.dart';
+import '../reconcile/networth_screen.dart';
+import '../reconcile/price_screen.dart';
+import '../reconcile/reconcile_screen.dart';
 import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
@@ -85,6 +88,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Instruments',
             icon: const Icon(Icons.show_chart),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InstrumentsScreen())),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              final dest = switch (v) {
+                'reconcile' => const ReconcileScreen(),
+                'prices' => const PriceScreen(),
+                'networth' => const NetWorthScreen(),
+                _ => null,
+              };
+              if (dest != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => dest));
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'reconcile', child: Text('Reconcile')),
+              PopupMenuItem(value: 'prices', child: Text('Price memory')),
+              PopupMenuItem(value: 'networth', child: Text('Net worth')),
+            ],
           ),
         ],
       ),

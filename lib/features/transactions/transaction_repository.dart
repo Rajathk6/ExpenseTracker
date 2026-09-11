@@ -99,4 +99,10 @@ class TransactionRepository {
       ..limit(limit);
     return q.get();
   }
+
+  /// Every row, oldest first. Used by the net-worth timeline (Phase 7).
+  Future<List<Transaction>> all() async {
+    final q = db.select(db.transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]);
+    return q.get();
+  }
 }

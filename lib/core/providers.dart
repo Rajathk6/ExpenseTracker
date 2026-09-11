@@ -10,6 +10,9 @@ import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
 import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
+import '../features/reconcile/networth_logic.dart';
+import '../features/reconcile/reconcile_logic.dart';
+import '../features/reconcile/reconcile_repository.dart';
 import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
 
@@ -79,6 +82,57 @@ final splitHistoryProvider =
 final openInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).open());
 
 final allInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).all());
+
+// --- Reconcile / price memory / net worth (Phase 7, read-only vs ledger) ---
+
+final reconcileRepositoryProvider = Provider((ref) => ReconcileRepository(ref.watch(databaseProvider)));
+
+final monthReportProvider =
+    FutureProvider.family<MonthReport, String>((ref, month) => ref.watch(reconcileRepositoryProvider).report(month));
+
+/// Trailing-12-month net-worth timeline ending at the current month, plus
+/// the current breakdown. Investments + debts use current manual values.
+final netWorthProvider = FutureProvider(
+  (ref) async {
+    final accounts = await ref.watch(accountRepositoryProvider).list();
+    final instruments = await ref.watch(instrumentRepositoryProvider).open();
+    final debts = await ref.watch(debtRepositoryProvider).open();
+    final txns = await ref.watch(transactionRepositoryProvider).all();
+    var openings = 0.0;
+    for (final a in accounts) {
+      openings += a.openingBalance;
+    }
+    var investCurrent = 0.0;
+    for (final i in instruments) {
+      investCurrent += i.current;
+    }
+    final debtNetValue = debtNet([
+      for (final d in debts) (direction: d.direction, principal: d.principal, paid: d.paid),
+    ]);
+    final now = DateTime.now();
+    final endKey = monthKey(DateTime(now.year, now.month));
+    final points = netWorthTimeline(
+      openings: openings,
+      moves: [for (final t in txns) (at: t.occurredAt, actual: t.actual)],
+      investCurrent: investCurrent,
+      debtNetValue: debtNetValue,
+      endKey: endKey,
+    );
+    final bankNow = points.isEmpty
+        ? openings
+        : bankAt(
+            openings: openings,
+            moves: [for (final t in txns) (at: t.occurredAt, actual: t.actual)],
+            monthEnd: DateTime(now.year, now.month + 1).subtract(const Duration(milliseconds: 1)),
+          );
+    return (
+      points: points,
+      bankNow: bankNow,
+      investNow: investCurrent,
+      debtNetValue: debtNetValue,
+    );
+  },
+);
 
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;
