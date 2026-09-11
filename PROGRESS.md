@@ -8,7 +8,7 @@
 | 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
 | 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
-| 6 instruments | `feature/06-instruments` | code-complete, verify pending | #5 🟡 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test |
+| 6 instruments | `pr/06-instruments` | done, verified | #5 ✅ 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test, 51/51 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
