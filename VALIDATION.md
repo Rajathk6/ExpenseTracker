@@ -8,16 +8,16 @@
 | 2 | Budget+Sim | Monthly total set; ins/outs vs budget correct; N buckets editable; simulator previews ratio on last 3 months | ✅ 2026-09-08 / `feature/03-budgets` (editor + simulator + spend progress, 32 tests) |
 | 3 | Neutral+Aging | Lend 5000 May, repaid June: both months' budgets unaffected; partials sum to full; auto-settled+archived; aging days + nudge date shown | ✅ 2026-09-08 / `feature/04-neutral` (debts UI + auto-settle, 38 tests) |
 | 4 | Split | Pay 1000/10: budget=-100, receivable=900; settle 100 reconciles to bank; unpaid flagged absorbed | ✅ 2026-09-08 / `feature/05-splits` (splits UI + absorb + optimizer, 43 tests) |
-| 5 | Instruments | Bank/card/stock/paper/notes save; P/L% = (cur-inv)/inv*100 correct; interest calc correct | 🟡 code-complete 2026-09-11 / `feature/06-instruments` (vault + P/L% + SI preview + phase6_test written; `build_runner` + `flutter test` pending on dev machine) |
-| 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (snapshots v5 + report + UI; `build_runner` + `flutter test` pending) |
-| 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (pure logic + screen over history; verification pending) |
-| 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (12-mo timeline + fl_chart; verification pending) |
-| 7 | Reports | Graphs per module, tap drills to txn list | 🟡 code-complete 2026-09-11 / `feature/08-reports` (trend + category bars + cash/digital + budget + wrapped, all drill to rows; `flutter test` pending) |
-| Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | 🟡 code-complete 2026-09-11 / `feature/09-intake` (parser + confirm screen; OS share-target wiring pending dev machine) |
-| Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | 🟡 code-complete 2026-09-11 / `feature/09-intake` (OCR text parses via same extractor; on-device OCR plugin pending dev machine) |
-| Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | 🟡 code-complete 2026-09-11 / `feature/09-intake` (dual-row transfer + filter chips; verification pending) |
-| Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | 🟡 code-complete 2026-09-11 / `feature/09-intake` (sheet + entry point; home-widget native wiring pending dev machine) |
-| 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | 🟡 code-complete 2026-09-11 / `feature/10-backup-security` (encrypted ZIP codec + service + UI; Drive manual step; `build_runner` + `flutter test` pending) |
-| 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | 🟡 code-complete 2026-09-11 / `feature/10-backup-security` (PIN pad + decoy vault + auto-lock; biometric plugin + SQLCipher pending dev machine) |
+| 5 | Instruments | Bank/card/stock/paper/notes save; P/L% = (cur-inv)/inv*100 correct; interest calc correct | ✅ 2026-09-11 / `pr/06-instruments` (vault + P/L% + SI preview, 51/51 green, analyze clean) |
+| 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | ✅ 2026-09-11 / `pr/07-reconcile` (snapshots v5 + report + UI, 59/59 green, analyze clean) |
+| 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | ✅ 2026-09-11 / `pr/07-reconcile` (pure logic + screen over history, 59/59 green) |
+| 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | ✅ 2026-09-11 / `pr/07-reconcile` (12-mo timeline + fl_chart, 59/59 green) |
+| 7 | Reports | Graphs per module, tap drills to txn list | ✅ 2026-09-11 / `pr/08-reports` (trend + category bars + cash/digital + budget + wrapped, all drill to rows, 65/65 green, analyze clean) |
+| Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | ✅ 2026-09-11 / `pr/09-intake` (parser + confirm screen, 72/72 green, analyze clean; OS share-target wiring pending) |
+| Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | ✅ 2026-09-11 / `pr/09-intake` (OCR text parses via same extractor, 72/72 green; on-device OCR plugin pending) |
+| Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | ✅ 2026-09-11 / `pr/09-intake` (dual-row transfer + filter chips, 72/72 green) |
+| Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | ✅ 2026-09-11 / `pr/09-intake` (sheet + entry point, 72/72 green; home-widget native wiring pending) |
+| 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | ✅ 2026-09-11 / `pr/10-backup-security` (encrypted ZIP codec + service + UI, 78/78 green, analyze clean; Drive manual step) |
+| 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | ✅ 2026-09-11 / `pr/10-backup-security` (PIN pad + decoy vault + auto-lock, 78/78 green; biometric plugin + SQLCipher pending) |
 
 Mark `✅ date/branch` when green. Merge rule: row green + `flutter test` green.
