@@ -13,10 +13,10 @@
 | 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (pure logic + screen over history; verification pending) |
 | 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (12-mo timeline + fl_chart; verification pending) |
 | 7 | Reports | Graphs per module, tap drills to txn list | 🟡 code-complete 2026-09-11 / `feature/08-reports` (trend + category bars + cash/digital + budget + wrapped, all drill to rows; `flutter test` pending) |
-| Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | ☐ TODO |
-| Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | ☐ TODO |
-| Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | ☐ TODO |
-| Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | ☐ TODO |
+| Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | 🟡 code-complete 2026-09-11 / `feature/09-intake` (parser + confirm screen; OS share-target wiring pending dev machine) |
+| Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | 🟡 code-complete 2026-09-11 / `feature/09-intake` (OCR text parses via same extractor; on-device OCR plugin pending dev machine) |
+| Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | 🟡 code-complete 2026-09-11 / `feature/09-intake` (dual-row transfer + filter chips; verification pending) |
+| Quick | Quick-add | Home widget → 2-tap cash spend opens confirm sheet | 🟡 code-complete 2026-09-11 / `feature/09-intake` (sheet + entry point; home-widget native wiring pending dev machine) |
 | 8 | Backup | Export → delete → import restores 100%; Drive file works; wrong password fails cleanly | ☐ TODO |
 | 9 | Security | No PIN/biometric = no data; decoy PIN opens clean demo; auto-lock; encrypted backup | ☐ TODO |
 

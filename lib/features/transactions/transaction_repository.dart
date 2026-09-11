@@ -100,6 +100,48 @@ class TransactionRepository {
     return q.get();
   }
 
+  /// Self-transfer between own accounts (e.g. ATM Bank→Cash). Writes TWO
+  /// rows sharing one linkId: out of [fromId], into [toId]. Both carry
+  /// budgetImpact 0, so months never inflate. Phase 9.
+  Future<(Transaction, Transaction)> transfer({
+    required String fromId,
+    required String toId,
+    required double amount,
+    DateTime? at,
+    String? note,
+  }) async {
+    if (fromId == toId) throw ArgumentError('Pick two different accounts');
+    if (amount <= 0) throw ArgumentError('Amount must be above zero');
+    final from = await db.getAccount(fromId);
+    final to = await db.getAccount(toId);
+    final when = at ?? DateTime.now();
+    final linkId = const Uuid().v4();
+    final label = 'transfer ${from.name} to ${to.name}'.toLowerCase();
+    final out = await add(
+      kind: 'transfer',
+      actual: -amount,
+      budgetImpact: 0,
+      dateTime: when,
+      categoryRaw: label,
+      note: note,
+      accountId: fromId,
+      linkId: linkId,
+      linkType: 'transfer',
+    );
+    final inn = await add(
+      kind: 'transfer',
+      actual: amount,
+      budgetImpact: 0,
+      dateTime: when,
+      categoryRaw: label,
+      note: note,
+      accountId: toId,
+      linkId: linkId,
+      linkType: 'transfer',
+    );
+    return (out, inn);
+  }
+
   /// Every row, oldest first. Used by the net-worth timeline (Phase 7).
   Future<List<Transaction>> all() async {
     final q = db.select(db.transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]);

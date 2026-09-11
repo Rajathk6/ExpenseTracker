@@ -10,6 +10,8 @@ lib/
     auth/ lock_service.dart  // PIN verify (hashed) + biometric + decoy PIN + auto-lock timer.
     backup/ codec.dart       // Encrypted ZIP export/import (JSON+sqlite). No network.
     intake/ share_parser.dart// Offline regex extractors for shared text/OCR output. Pure, tested.
+                   // Intake confirm screen: mandatory human checkpoint, never auto-saves.
+    cash/          // Self-transfers (dual budget-neutral rows) + 2-tap quick-add sheet.
   features/
     transactions/  // In/out CRUD UI + provider. Writes via core/database only.
     customization/ // Buckets/sources/dests lookup tables + settings. All dropdowns read from here.
