@@ -28,10 +28,10 @@ void main() {
   group('encrypted backup codec (pure)', () {
     Map<String, dynamic> sample() => {
           'accounts': [
-            {'id': 'a1', 'name': 'Cash', 'kind': 'cash'}
+            {'id': 'a1', 'name': 'Cash', 'kind': 'cash'},
           ],
           'transactions': [
-            {'id': 't1', 'kind': 'out', 'actual': -300.0}
+            {'id': 't1', 'kind': 'out', 'actual': -300.0},
           ],
         };
 

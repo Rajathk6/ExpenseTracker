@@ -27,6 +27,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final password = TextEditingController();
     String? error;
     final ok = await showDialog<bool>(
@@ -54,9 +55,7 @@ class SettingsScreen extends ConsumerWidget {
                 try {
                   final path = await ref.read(backupServiceProvider).exportToFile(password.text);
                   if (ctx.mounted) Navigator.of(ctx).pop(true);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved: $path — upload it to Drive with Files.')));
-                  }
+                  messenger.showSnackBar(SnackBar(content: Text('Saved: $path — upload it to Drive with Files.')));
                 } on Object catch (e) {
                   setDialog(() => error = e.toString());
                 }
@@ -71,6 +70,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final path = TextEditingController();
     final password = TextEditingController();
     String? error;
@@ -109,15 +109,16 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-    if (counts != null && context.mounted) {
+    if (counts != null) {
       await _refreshAll(ref);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Restored ${counts['transactions'] ?? 0} entries, ${counts['accounts'] ?? 0} accounts.')),
       );
     }
   }
 
   Future<void> _decoy(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final pin = TextEditingController();
     String? error;
     final done = await showDialog<bool>(
@@ -151,30 +152,36 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-    if ((done ?? false) && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Decoy PIN set — it opens the demo vault.')));
+    if (done ?? false) {
+      messenger.showSnackBar(const SnackBar(content: Text('Decoy PIN set — it opens the demo vault.')));
     }
   }
 
   Future<void> _autoLock(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final current = await ref.read(pinServiceProvider).lockMinutes();
+    if (!context.mounted) return;
     int picked = current;
     final done = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
           title: const Text('Auto-lock'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final m in const [0, 1, 5, 15])
-                RadioListTile<int>(
-                  title: Text(m == 0 ? 'Never (manual)' : '$m min idle'),
-                  value: m,
-                  groupValue: picked,
-                  onChanged: (v) => setDialog(() => picked = v ?? picked),
-                ),
-            ],
+          content: RadioGroup<int>(
+            groupValue: picked,
+            onChanged: (int? v) => setDialog(() => picked = v ?? picked),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final m in const [0, 1, 5, 15])
+                  Row(
+                    children: [
+                      Radio<int>(value: m),
+                      Text(m == 0 ? 'Never (manual)' : '$m min idle'),
+                    ],
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
@@ -190,8 +197,8 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-    if ((done ?? false) && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Auto-lock updated.')));
+    if (done ?? false) {
+      messenger.showSnackBar(const SnackBar(content: Text('Auto-lock updated.')));
     }
   }
 

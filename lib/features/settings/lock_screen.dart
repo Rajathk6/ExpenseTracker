@@ -154,7 +154,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 /// PIN create/change sheet, reused by first-run and Settings.
 class PinSetupScreen extends ConsumerStatefulWidget {
   final bool firstRun;
-  const PinSetupScreen({this.firstRun = false});
+  const PinSetupScreen({super.key, this.firstRun = false});
 
   @override
   ConsumerState<PinSetupScreen> createState() => PinSetupScreenState();

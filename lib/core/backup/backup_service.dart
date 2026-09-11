@@ -34,8 +34,9 @@ class BackupService {
 
   /// Restores every table. Returns per-table row counts.
   Future<Map<String, int>> restoreTables(Map<String, dynamic> tables) async {
-    List<Map<String, dynamic>> rows(String name) =>
-        [(for (final m in (tables[name] as List? ?? [])) (m as Map).cast<String, dynamic>())];
+    List<Map<String, dynamic>> rows(String name) => [
+      for (final m in (tables[name] as List? ?? const [])) (m as Map).cast<String, dynamic>(),
+    ];
 
     for (final m in rows('accounts')) {
       await db.into(db.accounts).insertOnConflictUpdate(Account.fromJson(m).toCompanion(true));
