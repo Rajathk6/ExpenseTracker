@@ -8,7 +8,9 @@ lib/
     ledger.dart              // Dual-amount math: actual vs budgetImpact. Pure functions, tested.
     category_parser.dart     // Freeform parser: space=level, '-'=item. Pure function, tested.
     auth/ lock_service.dart  // PIN verify (hashed) + biometric + decoy PIN + auto-lock timer.
+                             // pin_service.dart owns hashes/storage; the gate swaps real/demo DB handles.
     backup/ codec.dart       // Encrypted ZIP export/import (JSON+sqlite). No network.
+                             // backup_service.dart dumps/restores all tables; Drive stays manual.
     intake/ share_parser.dart// Offline regex extractors for shared text/OCR output. Pure, tested.
                    // Intake confirm screen: mandatory human checkpoint, never auto-saves.
     cash/          // Self-transfers (dual budget-neutral rows) + 2-tap quick-add sheet.
@@ -35,7 +37,7 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v5, Phase 7 code-complete ✅ code / ⏳ codegen+tests on dev machine)
+## Data model (Drift v6, Phase 10 code-complete ✅ code / ⏳ codegen+tests on dev machine)
 - `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.

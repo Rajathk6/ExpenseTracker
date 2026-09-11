@@ -19,6 +19,7 @@ import '../reconcile/networth_screen.dart';
 import '../reconcile/price_screen.dart';
 import '../reconcile/reconcile_screen.dart';
 import '../reports/reports_screen.dart';
+import '../settings/settings_screen.dart';
 import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
@@ -143,6 +144,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 'networth' => const NetWorthScreen(),
                 'reports' => const ReportsScreen(),
                 'intake' => const IntakeScreen(),
+                'settings' => const SettingsScreen(),
                 _ => null,
               };
               if (dest != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => dest));
@@ -155,6 +157,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               PopupMenuItem(value: 'intake', child: Text('Intake confirm')),
               PopupMenuItem(value: 'transfer', child: Text('Move between accounts')),
               PopupMenuItem(value: 'quickadd', child: Text('Quick cash spend')),
+              PopupMenuItem(value: 'settings', child: Text('Settings & backup')),
             ],
           ),
         ],
