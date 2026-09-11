@@ -10,6 +10,7 @@
 | 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
 | 6 instruments | `feature/06-instruments` | code-complete, verify pending | #5 🟡 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test |
 | 7 reconcile+price+networth | `feature/07-reconcile` | code-complete, verify pending | #6/#6b/#6c 🟡 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test |
+| 8 reports | `feature/08-reports` | code-complete, verify pending | #7 🟡 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test (no new tables) |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -112,6 +113,13 @@
 - NOT done (no Flutter here): `build_runner` regen for v4+v5 tables, `flutter analyze`, `flutter test`, APK build. Same dev-machine gate as Phase 6.
 - Validation: #6/#6b/#6c 🟡 code-complete, verification pending.
 - Next: dev-machine verify both phases → merge to develop → APK → then Phase 8 reports.
+
+## 2026-09-11 — Phase 8 reports code-complete / `feature/08-reports` (code-only, no local toolchain)
+- Branch ops: merged `feature/07-reconcile` → local `develop` (no push; `main`/origin untouched), branched `feature/08-reports`.
+- Done: `core/months.dart` (shared keys; re-exported by reconcile_logic so old imports keep working) + `reports_logic` (sums/topSlices/pickTop/cash-digital, pure) + `ReportsRepository` (one-shot `dashboard()` + `wrapped()`, core DB only — no feature-feature imports) + `ReportsScreen` (6-mo trend line, tappable category bars + rows, cash-vs-digital, budget-vs-actual, wrapped card, drill screen with exact rows) + providers + Transactions "More" menu entry + `test/phase8_test.dart` + version 0.6.0+6 (next release bundles 5+6+7+8).
+- Schema: NO new tables — Phase 8 needs no `build_runner` of its own (v4+v5 regen from 6+7 still pending).
+- Validation: #7 🟡 code-complete, verification pending.
+- Next: dev-machine verify → merge to develop → APK → then Phase 9 intake+quickadd.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

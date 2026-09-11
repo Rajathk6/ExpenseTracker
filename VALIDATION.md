@@ -12,7 +12,7 @@
 | 6 | Reconcile | Start bank+cash+card+budget vs end: true spent + missing shown; cash physical count path works | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (snapshots v5 + report + UI; `build_runner` + `flutter test` pending) |
 | 6b | PriceMemory | Same item twice at different prices → avg/min/max + overpay flag | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (pure logic + screen over history; verification pending) |
 | 6c | NetWorth | Month-end (banks+cash+investments−debts) graph renders | 🟡 code-complete 2026-09-11 / `feature/07-reconcile` (12-mo timeline + fl_chart; verification pending) |
-| 7 | Reports | Graphs per module, tap drills to txn list | ☐ TODO |
+| 7 | Reports | Graphs per module, tap drills to txn list | 🟡 code-complete 2026-09-11 / `feature/08-reports` (trend + category bars + cash/digital + budget + wrapped, all drill to rows; `flutter test` pending) |
 | Intake | Share intake | Share text `Paid Rs.450 to Swiggy` → app in sheet → 450 prefilled, editable, source/category pickable, saves offline | ☐ TODO |
 | Intake-img | OCR intake | Share payment screenshot → amount extracted offline → confirm screen | ☐ TODO |
 | Cash | Cash | Open 2000, spend 300 → expected 1700; ATM Bank→Cash no budget hit; Cash-vs-Digital filter | ☐ TODO |
