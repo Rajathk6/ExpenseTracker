@@ -11,6 +11,7 @@
 | 6 instruments | `pr/06-instruments` | done, verified | #5 ✅ 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test, 51/51 + analyze clean |
 | 7 reconcile+price+networth | `pr/07-reconcile` | done, verified | #6/#6b/#6c ✅ 2026-09-11 | Snapshots table (v5) + report + price + networth + phase7_test, 59/59 + analyze clean |
 | 8 reports | `pr/08-reports` | done, verified | #7 ✅ 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test, 65/65 + analyze clean |
+| 9 intake+cash+quick | `pr/09-intake` | done, verified | Intake×2/Cash/Quick ✅ 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test, 72/72 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -120,6 +121,13 @@
 - Schema: NO new tables — Phase 8 needs no `build_runner` of its own (v4+v5 regen from 6+7 still pending).
 - Validation: #7 🟡 code-complete, verification pending.
 - Next: dev-machine verify → merge to develop → APK → then Phase 9 intake+quickadd.
+
+## 2026-09-11 — Phase 9 intake+cash+quick code-complete / `feature/09-intake` (code-only, no native deps added)
+- Branch ops: merged `feature/08-reports` → local `develop` (no push; `main`/origin untouched), branched `feature/09-intake`. Also fixed `price_screen` dropdown to `initialValue` (matches Flutter 3.47 API used in entry_sheet).
+- Done: share_parser merchant-`to X` guess + in/out kind hint + `parseOcrText` alias + `IntakeScreen` confirm (paste/share text → editable amount/category/account → offline save, `initialText` hook for share-target) + `TransactionRepository.transfer` (dual rows, shared linkId, budget 0) + `TransferSheet` (from/to + quick amounts) + `QuickAddSheet` + `openQuickAdd()` (cash-first account) + All/Cash/Digital filter chips on Transactions + `test/phase9_test.dart` + 0.7.0+7.
+- Deliberately NOT added (needs dev-machine native verification): share_plus/receive-sharing-intent, google_mlkit_text_recognition (or equivalent), home_widget. Dev-machine wiring: (1) add plugin, `flutter pub get`, (2) pass shared text/OCR output into `IntakeScreen(initialText:)`, (3) widget button → MethodChannel → `openQuickAdd()`. Parser + confirm already handle the rest.
+- Validation: Intake/Intake-img/Cash/Quick 🟡 code-complete, verification pending.
+- Next: Phase 10 backup+security, then 11 hardening — still no release per owner.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
