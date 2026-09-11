@@ -5,7 +5,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/database.dart';
 import '../../core/providers.dart';
 
 const _quickTransferAmounts = [100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0];

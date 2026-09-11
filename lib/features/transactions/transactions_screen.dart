@@ -201,7 +201,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     .toList();
                 if (inMonth.isEmpty) {
                   return Center(
-                    child: Text(_filter == 'all' ? 'No entries this month — tap Add.' : 'No ${_filter} entries this month.'),
+                    child: Text(_filter == 'all' ? 'No entries this month — tap Add.' : 'No $_filter entries this month.'),
                   );
                 }
                 return Column(
