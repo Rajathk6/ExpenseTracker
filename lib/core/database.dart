@@ -111,7 +111,28 @@ class Splits extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits])
+/// Instruments vault: banks/cards/statements/loans/stocks/paper-trades/plans
+/// + notes. Phase 6. Tracking-only — no auto ledger writes (keeps the
+/// dual-amount invariant untouched). `kind` is freeform text
+/// (stock/mutual/fd/loan/card/paper/plan/note/...), only suggested in UI.
+/// P/L% + interest are pure functions in instruments/instrument_logic.dart.
+class Instruments extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get kind => text().withDefault(const Constant('stock'))();
+  /// Money put in (principal / buy cost).
+  RealColumn get invested => real().withDefault(const Constant(0))();
+  /// Latest marked value (manual update — vault is offline-first).
+  RealColumn get current => real().withDefault(const Constant(0))();
+  TextColumn get note => text().nullable()();
+  /// 'open' or 'archived'. Archived rows leave totals and history intact.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -122,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -130,6 +151,7 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(debts);
           if (from < 3) await m.createTable(splits);
+          if (from < 4) await m.createTable(instruments);
         },
       );
 
@@ -251,6 +273,27 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.linkId.equals(splitId) & t.linkType.equals('split'))
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
+
+  // --- Instruments (Phase 6, vault) ---
+
+  Future<Instrument> getInstrument(String id) =>
+      (select(instruments)..where((i) => i.id.equals(id))).getSingle();
+
+  Future<List<Instrument>> openInstruments() =>
+      (select(instruments)
+            ..where((i) => i.status.equals('open'))
+            ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+          .get();
+
+  Future<List<Instrument>> allInstruments() =>
+      (select(instruments)..orderBy([(i) => OrderingTerm.desc(i.createdAt)])).get();
+
+  Future<void> insertInstrument(InstrumentsCompanion entry) => into(instruments).insert(entry);
+
+  Future<void> updateInstrument(String id, InstrumentsCompanion entry) =>
+      (update(instruments)..where((i) => i.id.equals(id))).write(entry);
+
+  Future<int> deleteInstrument(String id) => (delete(instruments)..where((i) => i.id.equals(id))).go();
 }
 
 /// JSON helpers for the budgets table (kept here so repositories stay thin).

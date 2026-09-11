@@ -29,9 +29,11 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v1, Phase 1 implemented ✅)
+## Data model (Drift v4, Phase 6 code-complete ✅ code / ⏳ codegen+tests on dev machine)
 - `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
-- Later: `debts(...)`, `splits(...) + settlements(...)`, `snapshots(month, accountId, open, close)`, `prices(item, amount, date, place)`.
+- `debts(...)` (v2) + `splits(...)` (v3) — contracts with money trails in transactions.
+- `instruments(id, name, kind freeform, invested, current, note, status, createdAt)` (v4) — vault, tracking-only, never writes transactions. P/L% + interest in instruments/instrument_logic.dart.
+- Later: `snapshots(month, accountId, open, close)`, `prices(item, amount, date, place)`.
 - Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.

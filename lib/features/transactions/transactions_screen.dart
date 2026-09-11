@@ -10,6 +10,7 @@ import '../../core/database.dart';
 import '../../core/providers.dart';
 import '../budgets/budget_screen.dart';
 import '../customization/accounts_screen.dart';
+import '../instruments/instruments_screen.dart';
 import '../neutral/debts_screen.dart';
 import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
@@ -79,6 +80,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Splits',
             icon: const Icon(Icons.group_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SplitsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Instruments',
+            icon: const Icon(Icons.show_chart),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InstrumentsScreen())),
           ),
         ],
       ),
