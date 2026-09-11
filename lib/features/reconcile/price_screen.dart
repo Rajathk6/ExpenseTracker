@@ -42,7 +42,7 @@ class _PriceScreenState extends ConsumerState<PriceScreen> {
               }
               final sel = _item != null && list.contains(_item) ? _item : null;
               return DropdownButtonFormField<String>(
-                value: sel,
+                initialValue: sel,
                 hint: const Text('Pick an item'),
                 items: [for (final i in list) DropdownMenuItem(value: i, child: Text(i))],
                 onChanged: (v) => setState(() => _item = v),
