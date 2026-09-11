@@ -13,6 +13,7 @@
 | 8 reports | `feature/08-reports` | code-complete, verify pending | #7 🟡 2026-09-11 | reports_logic + repo + dashboard + drill + phase8_test (no new tables) |
 | 9 intake+cash+quick | `feature/09-intake` | code-complete, verify pending | Intake×2/Cash/Quick 🟡 2026-09-11 | parser+confirm+transfer+filter+quickadd + phase9_test (no new tables, no native deps) |
 | 10 backup+security | `feature/10-backup-security` | code-complete, verify pending | #8/#9 🟡 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test |
+| 11 hardening | `feature/11-hardening` | code-complete, verify pending | full gate pending | crash guard + release signing template + 0.9.0+9 (no release per owner) |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -136,6 +137,14 @@
 - Deliberately NOT added (dev-machine native steps): local_auth (biometric button explains), flutter_secure_storage (hashes live in Settings meanwhile), file_picker (import takes a pasted path), google Drive API (manual Files-app upload per PLAN), SQLCipher (eval: file DB + encrypted exports cover the offline model until the signed release).
 - Validation: #8/#9 🟡 code-complete, verification pending (needs v6 codegen + `flutter test`).
 - Next: Phase 11 hardening — still no release per owner.
+
+## 2026-09-11 — Phase 11 hardening code-complete / `feature/11-hardening` (code-only, NO release per owner)
+- Branch ops: merged `feature/10-backup-security` → local `develop` (no push; `main`/origin untouched), branched `feature/11-hardening`.
+- Done: `main.dart` crash guard (`ErrorWidget` fallback card + `runZonedGuarded` → FlutterError) + release signing template in `android/app/build.gradle.kts` (uses `key.properties` when present, debug keys otherwise — dev builds never break) + perf note on the unbounded net-worth read + 0.9.0+9.
+- One-time signing setup (dev machine, never committed): `keytool -genkey -v -keystore ~/expense-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias expense`, then create `android/key.properties` with `storeFile/keyAlias/keyPassword/storePassword` (git-ignored). Then `flutter build apk --release --split-per-abi`.
+- Full verify gate (dev machine, all phases 5–11): `flutter pub get` → `flutter pub run build_runner build --delete-conflicting-outputs` (regens v4+v5+v6 tables) → `flutter analyze` → `flutter test` → `flutter build apk --debug` → phone pass over VALIDATION rows #4–#9 + Intake/Cash/Quick → merge develop→main → tag + GitHub Release with split APKs.
+- Known review hotspots for that pass: fl_chart touch callback signatures (reports), AES/PBKDF2 + archive APIs (backup codec), `toCompanion(true)` round-trips (backup restore), decoy DB-handle swap, `initialValue` dropdown API.
+- Next: run the gate above, cut the release on your call. Phases 5–11 all code-complete; nothing was pushed — `git push origin develop feature/06-instruments feature/07-reconcile feature/08-reports feature/09-intake feature/10-backup-security feature/11-hardening` when ready (or open PRs per phase as before).
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
