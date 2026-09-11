@@ -2312,6 +2312,423 @@ class SplitsCompanion extends UpdateCompanion<Split> {
   }
 }
 
+class $InstrumentsTable extends Instruments
+    with TableInfo<$InstrumentsTable, Instrument> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstrumentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('stock'));
+  static const VerificationMeta _investedMeta =
+      const VerificationMeta('invested');
+  @override
+  late final GeneratedColumn<double> invested = GeneratedColumn<double>(
+      'invested', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _currentMeta =
+      const VerificationMeta('current');
+  @override
+  late final GeneratedColumn<double> current = GeneratedColumn<double>(
+      'current', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('open'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, kind, invested, current, note, status, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'instruments';
+  @override
+  VerificationContext validateIntegrity(Insertable<Instrument> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    }
+    if (data.containsKey('invested')) {
+      context.handle(_investedMeta,
+          invested.isAcceptableOrUnknown(data['invested']!, _investedMeta));
+    }
+    if (data.containsKey('current')) {
+      context.handle(_currentMeta,
+          current.isAcceptableOrUnknown(data['current']!, _currentMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Instrument map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Instrument(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      invested: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}invested'])!,
+      current: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}current'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $InstrumentsTable createAlias(String alias) {
+    return $InstrumentsTable(attachedDatabase, alias);
+  }
+}
+
+class Instrument extends DataClass implements Insertable<Instrument> {
+  final String id;
+  final String name;
+  final String kind;
+
+  /// Money put in (principal / buy cost).
+  final double invested;
+
+  /// Latest marked value (manual update — vault is offline-first).
+  final double current;
+  final String? note;
+
+  /// 'open' or 'archived'. Archived rows leave totals and history intact.
+  final String status;
+  final DateTime createdAt;
+  const Instrument(
+      {required this.id,
+      required this.name,
+      required this.kind,
+      required this.invested,
+      required this.current,
+      this.note,
+      required this.status,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['kind'] = Variable<String>(kind);
+    map['invested'] = Variable<double>(invested);
+    map['current'] = Variable<double>(current);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InstrumentsCompanion toCompanion(bool nullToAbsent) {
+    return InstrumentsCompanion(
+      id: Value(id),
+      name: Value(name),
+      kind: Value(kind),
+      invested: Value(invested),
+      current: Value(current),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Instrument.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Instrument(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: serializer.fromJson<String>(json['kind']),
+      invested: serializer.fromJson<double>(json['invested']),
+      current: serializer.fromJson<double>(json['current']),
+      note: serializer.fromJson<String?>(json['note']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(kind),
+      'invested': serializer.toJson<double>(invested),
+      'current': serializer.toJson<double>(current),
+      'note': serializer.toJson<String?>(note),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Instrument copyWith(
+          {String? id,
+          String? name,
+          String? kind,
+          double? invested,
+          double? current,
+          Value<String?> note = const Value.absent(),
+          String? status,
+          DateTime? createdAt}) =>
+      Instrument(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        kind: kind ?? this.kind,
+        invested: invested ?? this.invested,
+        current: current ?? this.current,
+        note: note.present ? note.value : this.note,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  Instrument copyWithCompanion(InstrumentsCompanion data) {
+    return Instrument(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      invested: data.invested.present ? data.invested.value : this.invested,
+      current: data.current.present ? data.current.value : this.current,
+      note: data.note.present ? data.note.value : this.note,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Instrument(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('invested: $invested, ')
+          ..write('current: $current, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, kind, invested, current, note, status, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Instrument &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.invested == this.invested &&
+          other.current == this.current &&
+          other.note == this.note &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class InstrumentsCompanion extends UpdateCompanion<Instrument> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> kind;
+  final Value<double> invested;
+  final Value<double> current;
+  final Value<String?> note;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const InstrumentsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.invested = const Value.absent(),
+    this.current = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstrumentsCompanion.insert({
+    required String id,
+    required String name,
+    this.kind = const Value.absent(),
+    this.invested = const Value.absent(),
+    this.current = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name);
+  static Insertable<Instrument> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<double>? invested,
+    Expression<double>? current,
+    Expression<String>? note,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (invested != null) 'invested': invested,
+      if (current != null) 'current': current,
+      if (note != null) 'note': note,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstrumentsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? kind,
+      Value<double>? invested,
+      Value<double>? current,
+      Value<String?>? note,
+      Value<String>? status,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return InstrumentsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      invested: invested ?? this.invested,
+      current: current ?? this.current,
+      note: note ?? this.note,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (invested.present) {
+      map['invested'] = Variable<double>(invested.value);
+    }
+    if (current.present) {
+      map['current'] = Variable<double>(current.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstrumentsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('invested: $invested, ')
+          ..write('current: $current, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2320,12 +2737,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $DebtsTable debts = $DebtsTable(this);
   late final $SplitsTable splits = $SplitsTable(this);
+  late final $InstrumentsTable instruments = $InstrumentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [accounts, transactions, budgets, debts, splits];
+      [accounts, transactions, budgets, debts, splits, instruments];
 }
 
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
@@ -3469,6 +3887,222 @@ typedef $$SplitsTableProcessedTableManager = ProcessedTableManager<
     (Split, BaseReferences<_$AppDatabase, $SplitsTable, Split>),
     Split,
     PrefetchHooks Function()>;
+typedef $$InstrumentsTableCreateCompanionBuilder = InstrumentsCompanion
+    Function({
+  required String id,
+  required String name,
+  Value<String> kind,
+  Value<double> invested,
+  Value<double> current,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$InstrumentsTableUpdateCompanionBuilder = InstrumentsCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> kind,
+  Value<double> invested,
+  Value<double> current,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$InstrumentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get invested => $composableBuilder(
+      column: $table.invested, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get current => $composableBuilder(
+      column: $table.current, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$InstrumentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get invested => $composableBuilder(
+      column: $table.invested, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get current => $composableBuilder(
+      column: $table.current, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$InstrumentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstrumentsTable> {
+  $$InstrumentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get invested =>
+      $composableBuilder(column: $table.invested, builder: (column) => column);
+
+  GeneratedColumn<double> get current =>
+      $composableBuilder(column: $table.current, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InstrumentsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $InstrumentsTable,
+    Instrument,
+    $$InstrumentsTableFilterComposer,
+    $$InstrumentsTableOrderingComposer,
+    $$InstrumentsTableAnnotationComposer,
+    $$InstrumentsTableCreateCompanionBuilder,
+    $$InstrumentsTableUpdateCompanionBuilder,
+    (Instrument, BaseReferences<_$AppDatabase, $InstrumentsTable, Instrument>),
+    Instrument,
+    PrefetchHooks Function()> {
+  $$InstrumentsTableTableManager(_$AppDatabase db, $InstrumentsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstrumentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstrumentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InstrumentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<double> invested = const Value.absent(),
+            Value<double> current = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InstrumentsCompanion(
+            id: id,
+            name: name,
+            kind: kind,
+            invested: invested,
+            current: current,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String> kind = const Value.absent(),
+            Value<double> invested = const Value.absent(),
+            Value<double> current = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InstrumentsCompanion.insert(
+            id: id,
+            name: name,
+            kind: kind,
+            invested: invested,
+            current: current,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$InstrumentsTable, Instrument>(table),
+                    BaseReferences<_$AppDatabase, $InstrumentsTable,
+                        Instrument>(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$InstrumentsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $InstrumentsTable,
+    Instrument,
+    $$InstrumentsTableFilterComposer,
+    $$InstrumentsTableOrderingComposer,
+    $$InstrumentsTableAnnotationComposer,
+    $$InstrumentsTableCreateCompanionBuilder,
+    $$InstrumentsTableUpdateCompanionBuilder,
+    (Instrument, BaseReferences<_$AppDatabase, $InstrumentsTable, Instrument>),
+    Instrument,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3483,4 +4117,6 @@ class $AppDatabaseManager {
       $$DebtsTableTableManager(_db, _db.debts);
   $$SplitsTableTableManager get splits =>
       $$SplitsTableTableManager(_db, _db.splits);
+  $$InstrumentsTableTableManager get instruments =>
+      $$InstrumentsTableTableManager(_db, _db.instruments);
 }

@@ -8,6 +8,7 @@ import '../core/database.dart';
 import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
+import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
 import '../features/splits/split_repository.dart';
 import '../features/transactions/transaction_repository.dart';
@@ -19,6 +20,7 @@ final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(da
 final transactionRepositoryProvider = Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
 final debtRepositoryProvider = Provider((ref) => DebtRepository(ref.watch(databaseProvider)));
 final splitRepositoryProvider = Provider((ref) => SplitRepository(ref.watch(databaseProvider)));
+final instrumentRepositoryProvider = Provider((ref) => InstrumentRepository(ref.watch(databaseProvider)));
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
@@ -71,6 +73,12 @@ final allSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvi
 
 final splitHistoryProvider =
     FutureProvider.family((ref, String splitId) => ref.watch(splitRepositoryProvider).history(splitId));
+
+// --- Instruments vault (Phase 6, tracking-only) ---
+
+final openInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).open());
+
+final allInstrumentsProvider = FutureProvider((ref) => ref.watch(instrumentRepositoryProvider).all());
 
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;

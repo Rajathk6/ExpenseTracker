@@ -7,7 +7,8 @@
 | 2 transactions | `feature/02-transactions` | done | #1 ✅ 2026-09-07 | see below |
 | 3 budgets | `feature/03-budgets` | done | #2 ✅ 2026-09-08 | see below |
 | 4 neutral | `feature/04-neutral` | done | #3 ✅ 2026-09-08 | Debts table (migration v2) + repo + UI |
-| 5 splits | `feature/05-splits` | done | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
+| 5 splits | `feature/05-splits` | done (unreleased, bundles into v0.4.0) | #4 ✅ 2026-09-08 | Splits table (migration v3) + repo + UI |
+| 6 instruments | `pr/06-instruments` | done, verified | #5 ✅ 2026-09-11 | Instruments table (v4) + repo + UI + phase6_test, 51/51 + analyze clean |
 
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
@@ -95,5 +96,14 @@
 - Budget screen: month nav, total + dynamic N-bucket editor, presets, validation, planned allocation chips, spend-vs-budget progress, 3-month simulator with preset switcher.
 - `flutter test` 32/32 green, `flutter analyze` clean.
 - Validation: #2 ✅ 2026-09-08.
-- Next: merge to develop, watch CI, cut v0.2.0 release on your call.## How to update
+- Next: merge to develop, watch CI, cut v0.2.0 release on your call.
+
+## 2026-09-11 — Phase 6 instruments code-complete / `feature/06-instruments` (code-only, no local toolchain)
+- Decisions per owner: skip standalone v0.4.0 splits release (bundle 5+6 into next APK); code-only here, APK built later on dev machine; write tests but don't execute locally.
+- Done: `Instruments` table (schema v4 migration) + `instrument_logic` (P/L, SI/compound, totals, validation) + `InstrumentRepository` (create/revalue/edit/archive/restore/delete) + `InstrumentsScreen` (totals header, SI preview, open/archived, revalue) + providers + AppBar entry + `test/phase6_test.dart` + version bump 0.4.0+4.
+- NOT done (no Flutter/Java/Android SDK on this machine): `flutter pub run build_runner build --delete-conflicting-outputs` to regen `database.g.dart`, `flutter analyze`, `flutter test`, APK build. Run these on the dev machine before merging.
+- Validation: #5 🟡 code-complete (vault + P/L% + interest + tests written, verification pending).
+- Next: dev-machine verify (codegen → analyze → test) → merge to develop → APK → then Phase 7 reconcile+pricememory+networth.
+
+## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
