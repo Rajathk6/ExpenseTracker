@@ -1,7 +1,7 @@
-/// Net-worth timeline screen: month-end (banks + cash + investments −
-/// debts) graph plus the current breakdown. Reads everything, writes
-/// nothing. Investments + debts use current manual values (no per-month
-/// history yet — noted on screen).
+/// Net-worth timeline screen: month-end (banks + cash + investments,
+/// gains included in current values) graph plus the current breakdown.
+/// Borrowings, future settlements and lent receivables are NOT wealth and
+/// stay out. Reads everything, writes nothing.
 library;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -86,10 +86,12 @@ class NetWorthScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text('Banks + cash ₹${n.bankNow.toStringAsFixed(0)}'),
                       Text('Investments ₹${n.investNow.toStringAsFixed(0)}'),
-                      Text('Debts net ${n.debtNetValue >= 0 ? '+' : ''}₹${n.debtNetValue.toStringAsFixed(0)} (lent +, borrowed −)'),
+                      Text(
+                        'Gains ${n.investGains >= 0 ? '+' : ''}₹${n.investGains.toStringAsFixed(0)} (inside investments)',
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        'Investments + debts use current values — per-month history lands in a later phase.',
+                        'Borrowings, settlements due and money lent out are not counted — only what is actually yours.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

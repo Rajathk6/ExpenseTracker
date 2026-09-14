@@ -48,6 +48,9 @@ class Transactions extends Table {
   TextColumn get level2 => text().nullable()();
   /// Exact item token incl. hyphen part, e.g. `gobi-65`. Null when none.
   TextColumn get item => text().nullable()();
+  /// Budget bucket this entry belongs to (need/want/invest or custom).
+  /// Freeform text, null = unassigned. UX-feedback batch.
+  TextColumn get bucket => text().nullable()();
   TextColumn get note => text().nullable()();
   /// Owning account id. Plain text, no DB-level FK (keeps drift codegen
   /// robust across analyzer versions; repositories own the discipline).
@@ -149,6 +152,20 @@ class Snapshots extends Table {
   Set<Column> get primaryKey => {month, accountId};
 }
 
+/// Optional month-open form: everything the month-start prompt asks for.
+/// All nullables — every field optional, editable later. UX-feedback batch.
+class MonthOpen extends Table {
+  /// `YYYY-MM`.
+  TextColumn get month => text()();
+  RealColumn get budgetIn => real().nullable()();
+  RealColumn get budgetOut => real().nullable()();
+  RealColumn get bankBalance => real().nullable()();
+  RealColumn get cashBalance => real().nullable()();
+  RealColumn get cardLimit => real().nullable()();
+  @override
+  Set<Column> get primaryKey => {month};
+}
+
 /// App settings as plain key/value rows (PIN hashes, auto-lock timeout…).
 /// Phase 10. Values are opaque strings owned by feature code; the only
 /// secrets stored are salted hashes, never raw PINs. (A move to
@@ -160,7 +177,7 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots, Settings])
+@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots, Settings, MonthOpen])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -171,7 +188,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -182,6 +199,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) await m.createTable(instruments);
           if (from < 5) await m.createTable(snapshots);
           if (from < 6) await m.createTable(settings);
+          if (from < 7) {
+            await m.addColumn(transactions, transactions.bucket);
+            await m.createTable(monthOpen);
+          }
         },
       );
 
@@ -200,6 +221,14 @@ class AppDatabase extends _$AppDatabase {
   // --- Transactions ---
 
   Future<void> insertTransaction(TransactionsCompanion entry) => into(transactions).insert(entry);
+
+  Future<Transaction> transactionById(String id) =>
+      (select(transactions)..where((t) => t.id.equals(id))).getSingle();
+
+  Future<void> updateTransaction(String id, TransactionsCompanion entry) =>
+      (update(transactions)..where((t) => t.id.equals(id))).write(entry);
+
+  Future<int> deleteTransaction(String id) => (delete(transactions)..where((t) => t.id.equals(id))).go();
 
   Future<List<Transaction>> transactionsBetween(DateTime from, DateTime to) =>
       (select(transactions)
@@ -253,6 +282,21 @@ class AppDatabase extends _$AppDatabase {
       (select(budgets)..where((b) => b.month.equals(month))).getSingleOrNull();
 
   Future<void> upsertBudget(BudgetsCompanion entry) => into(budgets).insertOnConflictUpdate(entry);
+
+  /// Latest budget at or before [month] (carry-forward source), null if none.
+  Future<Budget?> latestBudgetAtOrBefore(String month) => (select(budgets)
+        ..where((b) => b.month.isSmallerOrEqualValue(month))
+        ..orderBy([(b) => OrderingTerm.desc(b.month)])
+        ..limit(1))
+      .getSingleOrNull();
+
+  // --- Month open ---
+
+  Future<MonthOpenData?> getMonthOpen(String month) =>
+      (select(monthOpen)..where((m) => m.month.equals(month))).getSingleOrNull();
+
+  Future<void> upsertMonthOpen(MonthOpenCompanion entry) =>
+      into(monthOpen).insertOnConflictUpdate(entry);
 
   // --- Debts ---
 

@@ -1,5 +1,6 @@
-/// Debts home: open contracts with payoff progress + aging badges,
-/// settled history, add/pay flows. Money moves with budgetImpact 0 always.
+/// Debts home: three separate sections — Lent, Borrowed, Settlements.
+/// Settlements is the payoff trail, not a contract list. Money moves with
+/// budgetImpact 0 always; the front sheet and net worth exclude all of it.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,61 +19,126 @@ class DebtsScreen extends ConsumerWidget {
   void _refresh(WidgetRef ref) {
     ref
       ..invalidate(openDebtsProvider)
-      ..invalidate(allDebtsProvider);
+      ..invalidate(allDebtsProvider)
+      ..invalidate(debtSettlementsProvider);
   }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Lending & loans'),
+          bottom: const TabBar(tabs: [
+            Tab(text: 'Lent'),
+            Tab(text: 'Borrowed'),
+            Tab(text: 'Settlements'),
+          ],),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            final done = await showDialog<bool>(
+              context: context,
+              builder: (_) => const _DebtDialog(),
+            );
+            if (done ?? false) _refresh(ref);
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Add'),
+        ),
+        body: TabBarView(
+          children: [
+            _DirectionList(direction: 'lent', onChanged: () => _refresh(ref)),
+            _DirectionList(direction: 'borrowed', onChanged: () => _refresh(ref)),
+            _SettlementsList(onChanged: () => _refresh(ref)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One direction tab: open contracts first, settled archive below.
+class _DirectionList extends ConsumerWidget {
+  final String direction;
+  final VoidCallback onChanged;
+  const _DirectionList({required this.direction, required this.onChanged});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final open = ref.watch(openDebtsProvider);
     final all = ref.watch(allDebtsProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Lending & loans')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final done = await showDialog<bool>(
-            context: context,
-            builder: (_) => const _DebtDialog(),
-          );
-          if (done ?? false) _refresh(ref);
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          Text('Open', style: Theme.of(context).textTheme.titleSmall),
-          open.when(
-            data: (list) {
-              if (list.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('Nothing open.'));
-              return Column(children: [for (final d in list) _DebtCard(debt: d, onChanged: () => _refresh(ref))]);
-            },
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Could not load: $e'),
+    final title = direction == 'lent' ? 'Lent out' : 'Borrowed';
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Text('Open — $title', style: Theme.of(context).textTheme.titleSmall),
+        open.when(
+          data: (list) {
+            final mine = list.where((d) => d.direction == direction).toList();
+            if (mine.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('Nothing open.'));
+            return Column(children: [for (final d in mine) _DebtCard(debt: d, onChanged: onChanged)]);
+          },
+          loading: () => const LinearProgressIndicator(),
+          error: (e, _) => Text('Could not load: $e'),
+        ),
+        const SizedBox(height: 8),
+        Text('Settled', style: Theme.of(context).textTheme.titleSmall),
+        all.when(
+          data: (list) {
+            final done = list.where((d) => d.direction == direction && d.status != 'open').toList();
+            if (done.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('No settled contracts.'));
+            return Column(
+              children: [
+                for (final d in done)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+                    title: Text(d.counterparty),
+                    trailing: Text('₹${d.principal.toStringAsFixed(0)}'),
+                  ),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (e, _) => Text('Could not load: $e'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Every payoff ever recorded, newest first — across all contracts.
+class _SettlementsList extends ConsumerWidget {
+  final VoidCallback onChanged;
+  const _SettlementsList({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(debtSettlementsProvider);
+    return rows.when(
+      data: (list) {
+        if (list.isEmpty) {
+          return const Center(child: Text('No settlements yet — payoffs land here.'));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: list.length,
+          itemBuilder: (_, i) => ListTile(
+            dense: true,
+            leading: Icon(
+              list[i].actual >= 0 ? Icons.arrow_downward : Icons.arrow_upward,
+              color: list[i].actual >= 0 ? Colors.green : Colors.red,
+            ),
+            title: Text(list[i].categoryRaw),
+            subtitle: Text(_dayFmt.format(list[i].occurredAt)),
+            trailing: Text('₹${list[i].actual.toStringAsFixed(0)}'),
           ),
-          const SizedBox(height: 8),
-          Text('Settled', style: Theme.of(context).textTheme.titleSmall),
-          all.when(
-            data: (list) {
-              final done = list.where((d) => d.status != 'open').toList();
-              if (done.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('No settled contracts.'));
-              return Column(
-                children: [
-                  for (final d in done)
-                    ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.check_circle_outline, color: Colors.green),
-                      title: Text('${d.direction == 'lent' ? 'Lent to' : 'Borrowed from'} ${d.counterparty}'),
-                      trailing: Text('₹${d.principal.toStringAsFixed(0)}'),
-                    ),
-                ],
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => Text('Could not load: $e'),
-          ),
-        ],
-      ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Could not load: $e')),
     );
   }
 }

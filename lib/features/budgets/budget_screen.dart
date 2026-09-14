@@ -1,6 +1,6 @@
 /// Monthly budget screen: total + N fully-custom buckets, planned
-/// allocation, actual-spend progress, and a simulator that replays any
-/// split against the last 3 months of real spending.
+/// allocation, actual-spend progress per bucket. A saved split carries
+/// forward to future months until changed.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/providers.dart';
 import 'bucket_math.dart';
-import 'simulator.dart';
 
 final _monthFmt = DateFormat('MMMM yyyy');
 
@@ -28,9 +27,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final key = _monthKey(_month);
-    final saved = ref.watch(budgetProvider(key));
+    final saved = ref.watch(effectiveBudgetProvider(key));
     final summary = ref.watch(monthSummaryProvider(key));
-    final past = ref.watch(pastOutProvider(key));
+    final spent = ref.watch(bucketSpendProvider(key));
     return Scaffold(
       appBar: AppBar(title: const Text('Budgets')),
       body: ListView(
@@ -62,19 +61,45 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               monthKey: key,
               initialTotal: b?.total,
               initialBuckets: b?.buckets,
+              carriedFrom: (b != null && b.sourceMonth != key) ? b.sourceMonth : null,
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('Could not load budget: $e'),
           ),
           const SizedBox(height: 8),
-          Text('Simulator — last 3 months', style: Theme.of(context).textTheme.titleSmall),
-          past.when(
-            data: (rows) => _Simulator(
-              past: rows,
-              onSimulate: (buckets) => simulate(buckets, [for (final r in rows) r.out]),
-            ),
+          Text('Spent per bucket', style: Theme.of(context).textTheme.titleSmall),
+          spent.when(
+            data: (m) {
+              final rows = m.entries.where((e) => e.key.isNotEmpty).toList()
+                ..sort((a, b) => a.value.abs().compareTo(b.value.abs()));
+              final unassigned = m[''] ?? 0;
+              if (rows.isEmpty && unassigned == 0) {
+                return const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text('Nothing tagged yet — pick a bucket when you add entries.'),
+                );
+              }
+              return Card(
+                child: Column(
+                  children: [
+                    for (final e in rows.reversed)
+                      ListTile(
+                        dense: true,
+                        title: Text(e.key),
+                        trailing: Text('₹${e.value.abs().toStringAsFixed(0)}'),
+                      ),
+                    if (unassigned != 0)
+                      ListTile(
+                        dense: true,
+                        title: const Text('Untagged'),
+                        trailing: Text('₹${unassigned.abs().toStringAsFixed(0)}'),
+                      ),
+                  ],
+                ),
+              );
+            },
             loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('History unavailable: $e'),
+            error: (e, _) => Text('Breakdown unavailable: $e'),
           ),
         ],
       ),
@@ -90,7 +115,7 @@ class _SpendProgress extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final saved = ref.watch(budgetProvider(monthKey)).maybeWhen(data: (b) => b, orElse: () => null);
+    final saved = ref.watch(effectiveBudgetProvider(monthKey)).maybeWhen(data: (b) => b, orElse: () => null);
     final plan = saved?.total ?? 0;
     final ratio = plan <= 0 ? 0.0 : (spent / plan).clamp(0.0, 1.0);
     return Card(
@@ -126,7 +151,10 @@ class _BudgetForm extends ConsumerStatefulWidget {
   final String monthKey;
   final double? initialTotal;
   final List<Bucket>? initialBuckets;
-  const _BudgetForm({super.key, required this.monthKey, required this.initialTotal, required this.initialBuckets});
+  /// Set when the form was prefilled from an earlier month: the split holds
+  /// until explicitly saved here.
+  final String? carriedFrom;
+  const _BudgetForm({super.key, required this.monthKey, required this.initialTotal, required this.initialBuckets, required this.carriedFrom});
 
   @override
   ConsumerState<_BudgetForm> createState() => _BudgetFormState();
@@ -209,6 +237,14 @@ class _BudgetFormState extends ConsumerState<_BudgetForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Plan for ${widget.monthKey}', style: Theme.of(context).textTheme.titleSmall),
+            if (widget.carriedFrom != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Carried forward from ${widget.carriedFrom} — saving stores it explicitly for this month.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             const SizedBox(height: 8),
             TextField(
               controller: _total,
@@ -288,57 +324,6 @@ class _BudgetFormState extends ConsumerState<_BudgetForm> {
             ],
             const SizedBox(height: 8),
             FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save budget')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Simulator extends StatefulWidget {
-  final List<({String key, double out})> past;
-  final Map<String, ({List<double> perMonth, double avg})> Function(List<Bucket>) onSimulate;
-  const _Simulator({required this.past, required this.onSimulate});
-
-  @override
-  State<_Simulator> createState() => _SimulatorState();
-}
-
-class _SimulatorState extends State<_Simulator> {
-  String _preset = '30/40/30';
-
-  @override
-  Widget build(BuildContext context) {
-    final buckets = bucketPresets[_preset]!;
-    final sim = widget.onSimulate(buckets);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('Try split: '),
-                DropdownButton<String>(
-                  value: _preset,
-                  items: [for (final k in bucketPresets.keys) DropdownMenuItem(value: k, child: Text(k))],
-                  onChanged: (k) => setState(() => _preset = k ?? _preset),
-                ),
-              ],
-            ),
-            Text(
-              'Past spend: ${[for (final r in widget.past) '${r.key}: ₹${r.out.toStringAsFixed(0)}'].join(' · ')}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 6),
-            for (final e in sim.entries)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  '${e.key}: ${[for (final v in e.value.perMonth) '₹${v.toStringAsFixed(0)}'].join(' · ')}  (avg ₹${e.value.avg.toStringAsFixed(0)})',
-                ),
-              ),
           ],
         ),
       ),

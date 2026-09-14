@@ -1,6 +1,6 @@
-/// Instruments vault home: open holdings with manual P/L%, archived history,
-/// add/edit/revalue flows, and a simple-interest preview calculator.
-/// Tracking-only — nothing here writes ledger transactions.
+/// Instruments vault home: open holdings with manual P/L%, archived history
+/// and add/edit/revalue flows. Tracking-only — nothing here writes ledger
+/// transactions.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,8 +11,21 @@ import '../../core/providers.dart';
 import 'instrument_logic.dart';
 import 'instrument_repository.dart';
 
-class InstrumentsScreen extends ConsumerWidget {
+class InstrumentsScreen extends ConsumerStatefulWidget {
   const InstrumentsScreen({super.key});
+
+  @override
+  ConsumerState<InstrumentsScreen> createState() => _InstrumentsScreenState();
+}
+
+class _InstrumentsScreenState extends ConsumerState<InstrumentsScreen> {
+  final _q = TextEditingController();
+
+  @override
+  void dispose() {
+    _q.dispose();
+    super.dispose();
+  }
 
   void _refresh(WidgetRef ref) {
     ref
@@ -21,7 +34,7 @@ class InstrumentsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final open = ref.watch(openInstrumentsProvider);
     final all = ref.watch(allInstrumentsProvider);
     return Scaffold(
@@ -40,6 +53,16 @@ class InstrumentsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          TextField(
+            controller: _q,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Search name, kind or note',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
           open.when(
             data: (list) => _TotalsCard(
               holdings: [for (final i in list) (invested: i.invested, current: i.current)],
@@ -48,18 +71,19 @@ class InstrumentsScreen extends ConsumerWidget {
             error: (e, _) => Text('Totals unavailable: $e'),
           ),
           const SizedBox(height: 8),
-          const _InterestPreview(),
-          const SizedBox(height: 8),
           Text('Open', style: Theme.of(context).textTheme.titleSmall),
           open.when(
             data: (list) {
-              if (list.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Text('Nothing tracked — tap Add for your first stock / FD / loan / note.'),
+              final hits = _matches(list, _q.text);
+              if (hits.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(list.isEmpty
+                      ? 'Nothing tracked — tap Add for your first stock / FD / loan / note.'
+                      : 'No matches for "${_q.text.trim()}".',),
                 );
               }
-              return Column(children: [for (final i in list) _InstrumentCard(item: i, onChanged: () => _refresh(ref))]);
+              return Column(children: [for (final i in hits) _InstrumentCard(item: i, onChanged: () => _refresh(ref))]);
             },
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Could not load: $e'),
@@ -69,10 +93,11 @@ class InstrumentsScreen extends ConsumerWidget {
           all.when(
             data: (list) {
               final done = list.where((i) => i.status != 'open').toList();
-              if (done.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('No archived entries.'));
+              final hits = _matches(done, _q.text);
+              if (hits.isEmpty) return const Padding(padding: EdgeInsets.all(8), child: Text('No archived entries.'));
               return Column(
                 children: [
-                  for (final i in done)
+                  for (final i in hits)
                     ListTile(
                       dense: true,
                       leading: const Icon(Icons.archive_outlined),
@@ -95,6 +120,17 @@ class InstrumentsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static List<Instrument> _matches(List<Instrument> list, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list
+        .where((i) =>
+            i.name.toLowerCase().contains(q) ||
+            i.kind.toLowerCase().contains(q) ||
+            (i.note ?? '').toLowerCase().contains(q),)
+        .toList();
   }
 }
 
@@ -137,63 +173,6 @@ class _Stat extends StatelessWidget {
         Text(value, style: Theme.of(context).textTheme.titleSmall),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
-    );
-  }
-}
-
-/// Offline interest preview: principal × rate × years. Writes nothing.
-class _InterestPreview extends StatefulWidget {
-  const _InterestPreview();
-
-  @override
-  State<_InterestPreview> createState() => _InterestPreviewState();
-}
-
-class _InterestPreviewState extends State<_InterestPreview> {
-  final _p = TextEditingController(text: '10000');
-  final _r = TextEditingController(text: '7');
-  final _t = TextEditingController(text: '1');
-
-  @override
-  void dispose() {
-    _p.dispose();
-    _r.dispose();
-    _t.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = double.tryParse(_p.text.trim()) ?? 0;
-    final r = double.tryParse(_r.text.trim()) ?? 0;
-    final t = double.tryParse(_t.text.trim()) ?? 0;
-    final si = simpleInterest(principal: p, annualRatePct: r, years: t);
-    final mat = maturitySimple(principal: p, annualRatePct: r, years: t);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Interest preview (simple)', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: TextField(controller: _p, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Principal ₹', border: OutlineInputBorder()), onChanged: (_) => setState(() {}))),
-                const SizedBox(width: 8),
-                Expanded(child: TextField(controller: _r, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rate %/yr', border: OutlineInputBorder()), onChanged: (_) => setState(() {}))),
-                const SizedBox(width: 8),
-                Expanded(child: TextField(controller: _t, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Years', border: OutlineInputBorder()), onChanged: (_) => setState(() {}))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Interest ₹${si.toStringAsFixed(0)} · Maturity ₹${mat.toStringAsFixed(0)}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

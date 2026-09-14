@@ -41,6 +41,24 @@ class BudgetRepository {
     );
   }
 
+  /// Effective budget for [month]: the month's own row, else the most recent
+  /// earlier row (carry-forward — a saved split holds until changed).
+  /// Returns the source month too, so UI can say "carried from 2026-07".
+  Future<({String sourceMonth, double total, List<Bucket> buckets})?> getEffective(String month) async {
+    checkMonth(month);
+    final own = await get(month);
+    if (own != null) return (sourceMonth: month, total: own.total, buckets: own.buckets);
+    final row = await db.latestBudgetAtOrBefore(month);
+    if (row == null) return null;
+    // latestBudgetAtOrBefore(month) with no exact row returns a strictly
+    // earlier month here.
+    return (
+      sourceMonth: row.month,
+      total: row.total,
+      buckets: [for (final m in decodeBuckets(row.bucketsJson)) Bucket.fromJson(m)],
+    );
+  }
+
   /// Planned amount per bucket for a saved month.
   Future<Map<String, double>> allocation(String month) async {
     final b = await get(month);

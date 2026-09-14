@@ -160,5 +160,18 @@
 - Gate fix found by execution: protection matches BARE check-run names (`analyze`, not `ci / analyze`).
 - Next: phone-test v0.9.0; remaining ideas (x86_64 upload, release signing, re-enable CI) on your call.
 
+## 2026-09-11 — UX feedback batch (17 owner points) / `feature/ux-feedback-batch`
+- Debts split into Lent / Borrowed / Settlements tabs; neutral money excluded from front-sheet sums (`excludeNeutral`) and net worth.
+- Filter chips hoisted (always visible + Show-all reset); summary now In / Out(budget) / Net; entries count removed.
+- Lock screen restyled as bottom sheet; Forgot PIN via security Q&A (salted hash, optional at setup, no backdoor).
+- Tap any unlinked entry → full edit in the Add form (+ delete); linked rows redirect to their contract screen; repo guards both.
+- Category chips removed from entry; suggestions appear only while searching.
+- Month-start opener (budget in/out, bank, cash, card limit — all optional, editable later) with `month_open` table (schema v7) + `transactions.bucket`.
+- Account dropdown reseeds once outside build (no per-keystroke rebuilds).
+- Per-entry bucket picker (month budget buckets, else need/want/invest); budget carries forward until changed (`getEffective`); per-bucket spend card; simulator removed.
+- Splits: custom N-people divisor with live share; main list shows live outstanding in whole rupees; vault got search; interest preview removed; date-only valuations kept.
+- Net worth = banks + cash + investments (+gains inside current); borrowings/settlements/receivables excluded.
+- Tests: 9 new in `ux_feedback_test.dart`; full suite 87/87 green, analyze clean.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
