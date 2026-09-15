@@ -173,5 +173,12 @@
 - Net worth = banks + cash + investments (+gains inside current); borrowings/settlements/receivables excluded.
 - Tests: 9 new in `ux_feedback_test.dart`; full suite 87/87 green, analyze clean.
 
+## 2026-09-15 — v0.10.0 released / PR #11 merged + tag + GitHub Release
+- Verified locally (this machine, Flutter 3.47.2): `flutter analyze` clean, `flutter test` 87/87 green, version 0.10.0+10, schema v7.
+- Version bump `chore(release): 0.10.0+10` committed to `develop` (380a3e8), pushed; PR #11 (develop→main) merged (986bc9f), tag `v0.10.0` on the merge commit.
+- Release published with arm64 (21.7MB) + armeabi (19.2MB) split release APKs (aapt-verified 0.10.0, dev.rajath.expense_tracker, SDK 36, debug-signed). x86_64 built locally (23.2MB, emulator-only) but not attached, per pattern.
+- Release-process note: `gh release create` uploads on slow uplink need ~10min+ per 20MB asset — create the draft first, then `gh release upload` one APK per command with a long timeout, then `gh release edit --draft=false`.
+- Next: phone-test v0.10.0; remaining ideas (release signing, re-enable CI required checks) on your call.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
