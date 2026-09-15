@@ -12,12 +12,20 @@ class TransactionRepository {
   final AppDatabase db;
   const TransactionRepository(this.db);
 
+  /// Lend/borrow rows and every debt-linked row (incl. payoffs) are neutral:
+  /// tracked for honesty, excluded from front-sheet and net-worth math.
+  static bool isNeutral(Transaction r) => _isNeutral(r);
+
+  static bool _isNeutral(Transaction r) =>
+      r.kind == 'lend' || r.kind == 'borrow' || r.linkType == 'debt';
+
   Future<Transaction> add({
     required String kind,
     required double actual,
     required double budgetImpact,
     required DateTime dateTime,
     required String categoryRaw,
+    String? bucket,
     String? note,
     String? accountId,
     String? linkId,
@@ -27,6 +35,7 @@ class TransactionRepository {
     if (categoryRaw.trim().isEmpty) throw ArgumentError('category cannot be empty');
     final parsed = parseCategory(categoryRaw);
     final id = const Uuid().v4();
+    final cleanBucket = bucket?.trim();
     await db.insertTransaction(
       TransactionsCompanion(
         id: Value(id),
@@ -39,6 +48,7 @@ class TransactionRepository {
         level1: Value(parsed.levels.length > 1 ? parsed.levels[1] : null),
         level2: Value(parsed.levels.length > 2 ? parsed.levels.sublist(2).join(' ') : null),
         item: Value(parsed.item),
+        bucket: Value(cleanBucket == null || cleanBucket.isEmpty ? null : cleanBucket),
         note: Value(note),
         accountId: Value(accountId),
         linkId: Value(linkId),
@@ -46,6 +56,56 @@ class TransactionRepository {
       ),
     );
     return (db.select(db.transactions)..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  /// Full edit of an unlinked entry (re-parses the category).
+  /// Linked rows (debts/splits/transfers) must be edited from their own
+  /// screens so contract math stays consistent — enforced here too.
+  Future<Transaction> update({
+    required String id,
+    required String kind,
+    required double actual,
+    required double budgetImpact,
+    required DateTime dateTime,
+    required String categoryRaw,
+    String? bucket,
+    String? note,
+    String? accountId,
+  }) async {
+    final existing = await db.transactionById(id);
+    if (existing.linkType != null) {
+      throw StateError('Linked entry — edit it from its Lending / Splits screen');
+    }
+    if (kind.trim().isEmpty) throw ArgumentError('kind cannot be empty');
+    if (categoryRaw.trim().isEmpty) throw ArgumentError('category cannot be empty');
+    final parsed = parseCategory(categoryRaw);
+    final cleanBucket = bucket?.trim();
+    await db.updateTransaction(
+      id,
+      TransactionsCompanion(
+        kind: Value(kind.trim().toLowerCase()),
+        actual: Value(actual),
+        budgetImpact: Value(budgetImpact),
+        occurredAt: Value(dateTime),
+        categoryRaw: Value(categoryRaw.trim()),
+        level0: Value(parsed.levels.isNotEmpty ? parsed.levels[0] : null),
+        level1: Value(parsed.levels.length > 1 ? parsed.levels[1] : null),
+        level2: Value(parsed.levels.length > 2 ? parsed.levels.sublist(2).join(' ') : null),
+        item: Value(parsed.item),
+        bucket: Value(cleanBucket == null || cleanBucket.isEmpty ? null : cleanBucket),
+        note: Value(note),
+        accountId: Value(accountId),
+      ),
+    );
+    return db.transactionById(id);
+  }
+
+  Future<void> remove(String id) async {
+    final existing = await db.transactionById(id);
+    if (existing.linkType != null) {
+      throw StateError('Linked entry — manage it from its Lending / Splits screen');
+    }
+    await db.deleteTransaction(id);
   }
 
   Future<List<Transaction>> forItem(String item, {DateTime? from, DateTime? to}) async {
@@ -72,13 +132,19 @@ class TransactionRepository {
 
   /// Month (or any range) totals. Positive `inflow`, negative `outflow` sums
   /// for both statement (actual) and planning (budgetImpact) truths.
+  /// With [excludeNeutral], lend/borrow rows and every debt-linked row stay
+  /// out — the front sheet and net worth never inflate on borrowed money.
   Future<({double inActual, double outActual, double inBudget, double outBudget, int count})> sumsBetween(
     DateTime from,
-    DateTime to,
-  ) async {
+    DateTime to, {
+    bool excludeNeutral = false,
+  }) async {
     final rows = await db.transactionsBetween(from, to);
     var inActual = 0.0, outActual = 0.0, inBudget = 0.0, outBudget = 0.0;
+    var count = 0;
     for (final r in rows) {
+      if (excludeNeutral && _isNeutral(r)) continue;
+      count++;
       if (r.actual >= 0) {
         inActual += r.actual;
       } else {
@@ -90,7 +156,20 @@ class TransactionRepository {
         outBudget += r.budgetImpact;
       }
     }
-    return (inActual: inActual, outActual: outActual, inBudget: inBudget, outBudget: outBudget, count: rows.length);
+    return (inActual: inActual, outActual: outActual, inBudget: inBudget, outBudget: outBudget, count: count);
+  }
+
+  /// Spend (negative budgetImpact) grouped by bucket label for a range.
+  /// Unassigned rows group under ''.
+  Future<Map<String, double>> bucketSpend(DateTime from, DateTime to) async {
+    final rows = await db.transactionsBetween(from, to);
+    final out = <String, double>{};
+    for (final r in rows) {
+      if (r.budgetImpact >= 0) continue;
+      final key = (r.bucket ?? '').trim();
+      out[key] = (out[key] ?? 0) + r.budgetImpact;
+    }
+    return out;
   }
 
   Future<List<Transaction>> recent({int limit = 200}) async {

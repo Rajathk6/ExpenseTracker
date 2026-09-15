@@ -49,10 +49,46 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       builder: (_) => const EntrySheet(),
     );
     if (saved ?? false) {
-      ref
-        ..invalidate(recentTransactionsProvider)
-        ..invalidate(monthSummaryProvider(_monthKey(_month)));
+      _refreshMonth();
     }
+  }
+
+  void _refreshMonth() {
+    final key = _monthKey(_month);
+    ref
+      ..invalidate(recentTransactionsProvider)
+      ..invalidate(monthSummaryProvider(key))
+      ..invalidate(bucketSpendProvider(key))
+      ..invalidate(monthOpenProvider(key));
+  }
+
+  /// Tap an entry → full edit, same form as Add. Linked rows (debts /
+  /// splits / transfers) explain themselves and point at their own screen.
+  Future<void> _openEdit(Transaction row) async {
+    if (row.linkType != null) {
+      final where = switch (row.linkType) {
+        'debt' => 'Lending & loans',
+        'split' => 'Splits',
+        'transfer' => 'Move between accounts',
+        _ => 'its own screen',
+      };
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(row.categoryRaw),
+          content: Text('This entry belongs to a $where record — edit it there so the books stay consistent.'),
+          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
+        ),
+      );
+      return;
+    }
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => EntrySheet(existing: row),
+    );
+    if (saved ?? false) _refreshMonth();
   }
 
   Future<void> _openTransfer() async {
@@ -177,9 +213,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           summary.when(
             data: (s) => _SummaryCard(
               inflow: s.inActual,
-              outflow: s.outActual,
-              budgetOut: s.outBudget,
-              count: s.count,
+              outflow: s.outBudget,
             ),
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Summary unavailable: $e'),
@@ -195,6 +229,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
           ),
+          _MonthSetupCard(monthKey: key),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final f in const ['all', 'cash', 'digital'])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ChoiceChip(
+                      label: Text(f[0].toUpperCase() + f.substring(1)),
+                      selected: _filter == f,
+                      onSelected: (_) => setState(() => _filter = f),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
             child: recent.when(
               data: (rows) {
@@ -204,35 +256,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     .toList();
                 if (inMonth.isEmpty) {
                   return Center(
-                    child: Text(_filter == 'all' ? 'No entries this month — tap Add.' : 'No $_filter entries this month.'),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_filter == 'all'
+                            ? 'No entries this month — tap Add.'
+                            : 'No $_filter entries this month.',),
+                        if (_filter != 'all')
+                          TextButton(
+                            onPressed: () => setState(() => _filter = 'all'),
+                            child: const Text('Show all'),
+                          ),
+                      ],
+                    ),
                   );
                 }
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (final f in const ['all', 'cash', 'digital'])
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: ChoiceChip(
-                                label: Text(f[0].toUpperCase() + f.substring(1)),
-                                selected: _filter == f,
-                                onSelected: (_) => setState(() => _filter = f),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: inMonth.length,
-                        itemBuilder: (_, i) => _TxnTile(row: inMonth[i], accountName: names[inMonth[i].accountId]),
-                      ),
-                    ),
-                  ],
+                return ListView.builder(
+                  itemCount: inMonth.length,
+                  itemBuilder: (_, i) => _TxnTile(
+                    row: inMonth[i],
+                    accountName: names[inMonth[i].accountId],
+                    onTap: () => _openEdit(inMonth[i]),
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -267,9 +312,7 @@ class _MonthBar extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   final double inflow;
   final double outflow;
-  final double budgetOut;
-  final int count;
-  const _SummaryCard({required this.inflow, required this.outflow, required this.budgetOut, required this.count});
+  const _SummaryCard({required this.inflow, required this.outflow});
 
   @override
   Widget build(BuildContext context) {
@@ -282,10 +325,8 @@ class _SummaryCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _Stat('In', '₹${inflow.toStringAsFixed(0)}'),
-            _Stat('Out (bank)', '₹${outflow.abs().toStringAsFixed(0)}'),
-            _Stat('Out (budget)', '₹${budgetOut.abs().toStringAsFixed(0)}'),
+            _Stat('Out', '₹${outflow.abs().toStringAsFixed(0)}'),
             _Stat('Net', '₹${net.toStringAsFixed(0)}'),
-            _Stat('Entries', '$count'),
           ],
         ),
       ),
@@ -326,31 +367,230 @@ class _NoAccountBanner extends StatelessWidget {
   }
 }
 
-class _TxnTile extends StatelessWidget {
-  final Transaction row;
-  final String? accountName;
-  const _TxnTile({required this.row, required this.accountName});
+/// Month-start opener (#8): when the viewed month has no entries and no
+/// saved opener, ask for the optional month-start details. Editable later
+/// from the same card (compact form once saved).
+class _MonthSetupCard extends ConsumerWidget {
+  final String monthKey;
+  const _MonthSetupCard({required this.monthKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final open = ref.watch(monthOpenProvider(monthKey));
+    final recent = ref.watch(recentTransactionsProvider);
+    return open.when(
+      data: (saved) {
+        final monthRows = recent.maybeWhen(
+          data: (rows) => rows.where((t) {
+            final k = '${t.occurredAt.year}-${t.occurredAt.month.toString().padLeft(2, '0')}';
+            return k == monthKey;
+          }).length,
+          orElse: () => 1,
+        );
+        if (saved != null || monthRows > 0) {
+          if (saved == null) return const SizedBox.shrink();
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: ListTile(
+              dense: true,
+              leading: const Icon(Icons.calendar_month_outlined),
+              title: Text(_describe(saved)),
+              trailing: TextButton(
+                onPressed: () async {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => _MonthOpenDialog(monthKey: monthKey, existing: saved),
+                  );
+                  ref.invalidate(monthOpenProvider(monthKey));
+                },
+                child: const Text('Edit'),
+              ),
+            ),
+          );
+        }
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: ListTile(
+            leading: const Icon(Icons.calendar_month_outlined),
+            title: const Text('New month — set it up? (all optional)'),
+            subtitle: const Text('Budget, bank + cash balances, card limit. Skippable, editable later.'),
+            trailing: FilledButton.tonal(
+              onPressed: () async {
+                await showDialog<void>(
+                  context: context,
+                  builder: (_) => _MonthOpenDialog(monthKey: monthKey, existing: null),
+                );
+                ref.invalidate(monthOpenProvider(monthKey));
+              },
+              child: const Text('Set up'),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (o, s) => const SizedBox.shrink(),
+    );
+  }
+
+  static String _describe(MonthOpenData m) {
+    final parts = <String>[];
+    if (m.budgetOut != null) parts.add('budget ₹${m.budgetOut!.toStringAsFixed(0)}');
+    if (m.bankBalance != null) parts.add('bank ₹${m.bankBalance!.toStringAsFixed(0)}');
+    if (m.cashBalance != null) parts.add('cash ₹${m.cashBalance!.toStringAsFixed(0)}');
+    if (m.cardLimit != null) parts.add('card limit ₹${m.cardLimit!.toStringAsFixed(0)}');
+    if (m.budgetIn != null) parts.add('in ₹${m.budgetIn!.toStringAsFixed(0)}');
+    return parts.isEmpty ? 'Month opener saved (all blank)' : 'Month start · ${parts.join(' · ')}';
+  }
+}
+
+class _MonthOpenDialog extends ConsumerStatefulWidget {
+  final String monthKey;
+  final MonthOpenData? existing;
+  const _MonthOpenDialog({required this.monthKey, required this.existing});
+
+  @override
+  ConsumerState<_MonthOpenDialog> createState() => _MonthOpenDialogState();
+}
+
+class _MonthOpenDialogState extends ConsumerState<_MonthOpenDialog> {
+  late final TextEditingController _in;
+  late final TextEditingController _out;
+  late final TextEditingController _bank;
+  late final TextEditingController _cash;
+  late final TextEditingController _limit;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    String fmt(double? v) => v == null ? '' : v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2);
+    _in = TextEditingController(text: fmt(e?.budgetIn));
+    _out = TextEditingController(text: fmt(e?.budgetOut));
+    _bank = TextEditingController(text: fmt(e?.bankBalance));
+    _cash = TextEditingController(text: fmt(e?.cashBalance));
+    _limit = TextEditingController(text: fmt(e?.cardLimit));
+  }
+
+  @override
+  void dispose() {
+    _in.dispose();
+    _out.dispose();
+    _bank.dispose();
+    _cash.dispose();
+    _limit.dispose();
+    super.dispose();
+  }
+
+  double? _num(TextEditingController c) {
+    final t = c.text.trim();
+    if (t.isEmpty) return null;
+    return double.tryParse(t);
+  }
 
   @override
   Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Month start — ${widget.monthKey}'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('All optional. Fill what you know; change anytime.'),
+            const SizedBox(height: 8),
+            TextField(controller: _out, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Out budget ₹ (optional)', border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(controller: _in, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'In budget ₹ (optional)', border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(controller: _bank, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Bank balance ₹ (optional)', border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(controller: _cash, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Cash in hand ₹ (optional)', border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(controller: _limit, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Credit card limit ₹ (optional)', border: OutlineInputBorder())),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Skip')),
+        FilledButton(
+          onPressed: () async {
+            for (final c in [_in, _out, _bank, _cash, _limit]) {
+              if (c.text.trim().isNotEmpty && double.tryParse(c.text.trim()) == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Numbers only — or leave blank')));
+                return;
+              }
+            }
+            await ref.read(monthOpenRepositoryProvider).save(
+                  month: widget.monthKey,
+                  budgetIn: _num(_in),
+                  budgetOut: _num(_out),
+                  bankBalance: _num(_bank),
+                  cashBalance: _num(_cash),
+                  cardLimit: _num(_limit),
+                );
+            if (context.mounted) Navigator.of(context).pop();
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TxnTile extends ConsumerWidget {
+  final Transaction row;
+  final String? accountName;
+  final VoidCallback? onTap;
+  const _TxnTile({required this.row, required this.accountName, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Split rows show the live outstanding (paid → shrinks → my share),
+    // whole rupees, so the main list tells the truth as friends pay back.
+    if (row.kind == 'split' && row.linkId != null) {
+      final live = ref.watch(splitOutstandingProvider(row.linkId!));
+      return live.when(
+        data: (left) => ListTile(
+          onTap: onTap,
+          leading: const Icon(Icons.group_outlined, color: Colors.red),
+          title: Text(row.categoryRaw),
+          subtitle: Text(
+            '${_dayFmt.format(row.occurredAt)}${accountName != null ? ' · $accountName' : ''} · ₹$left to come back',
+          ),
+          trailing: Text(
+            '₹${row.actual.round()}',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+          ),
+        ),
+        loading: () => _plainTile(context),
+        error: (o, s) => _plainTile(context),
+      );
+    }
+    return _plainTile(context);
+  }
+
+  Widget _plainTile(BuildContext context) {
     final isOut = row.actual < 0;
     return ListTile(
+      onTap: onTap,
       leading: Icon(
         isOut ? Icons.arrow_upward : Icons.arrow_downward,
         color: isOut ? Colors.red : Colors.green,
       ),
       title: Text(row.categoryRaw),
-      subtitle: Text('${_dayFmt.format(row.occurredAt)}${accountName != null ? ' · $accountName' : ''}'),
+      subtitle: Text(
+        '${_dayFmt.format(row.occurredAt)}${accountName != null ? ' · $accountName' : ''}'
+        '${row.bucket != null && row.bucket!.isNotEmpty ? ' · ${row.bucket}' : ''}',
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '₹${row.actual.toStringAsFixed(0)}',
+            '₹${row.actual.round()}',
             style: TextStyle(fontWeight: FontWeight.bold, color: isOut ? Colors.red : Colors.green),
           ),
           if (row.budgetImpact != row.actual)
-            Text('budget ₹${row.budgetImpact.toStringAsFixed(0)}', style: Theme.of(context).textTheme.bodySmall),
+            Text('budget ₹${row.budgetImpact.round()}', style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );

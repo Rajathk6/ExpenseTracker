@@ -1,12 +1,12 @@
 /// Pure net-worth math over plain records. No DB — testable.
 ///
-/// Definition: netWorth = bankCash + investments − debtLiabilities +
-/// lentReceivables, i.e. (openings + all ledger actuals) + instruments
-/// current + lentRemaining − borrowedRemaining.
+/// Definition (owner rule): netWorth = bankCash + investments (current
+/// values, so gains ride along). Borrowings, future settlements and lent
+/// receivables are NOT wealth and stay out entirely.
 ///
-/// Honest limitation (documented in UI): investments and debts are current
-/// manual values with no per-month history, so the timeline varies only
-/// with bank/cash ledger movement. Per-month snapshots land in Phase 10.
+/// Honest limitation (documented in UI): investments use current manual
+/// values with no per-month history, so the timeline varies only with
+/// bank/cash ledger movement. Per-month snapshots land in Phase 10.
 library;
 
 import 'reconcile_logic.dart';
@@ -29,9 +29,9 @@ double debtNet(List<DebtState> debts) {
   return net;
 }
 
-/// Bank/cash position at [monthEnd] (inclusive): openings plus every ledger
-/// actual up to that instant. All neutral/split/settle moves are actuals,
-/// so they reconcile here by construction.
+/// Bank/cash position at [monthEnd] (inclusive): openings plus every
+/// non-neutral ledger actual up to that instant. Callers must filter out
+/// neutral money (lend/borrow/debt payoffs) before passing moves in.
 double bankAt({required double openings, required List<MoneyMove> moves, required DateTime monthEnd}) {
   var v = openings;
   for (final m in moves) {

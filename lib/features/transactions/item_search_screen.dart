@@ -34,6 +34,8 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
     final items = ref.watch(allItemsProvider);
     final q = _q.text.trim();
     final results = ref.watch(searchProvider(q));
+    // Past categories matching the query — shown ONLY while searching.
+    final sugg = ref.watch(searchSuggestionsProvider(q));
     return Scaffold(
       appBar: AppBar(title: const Text('Search')),
       body: Column(
@@ -51,6 +53,30 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
               ),
             ),
           ),
+          if (q.isNotEmpty)
+            sugg.maybeWhen(
+              data: (options) {
+                if (options.isEmpty) return const SizedBox.shrink();
+                return SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    children: [
+                      for (final o in options.take(8))
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ActionChip(
+                            label: Text(o),
+                            onPressed: () => setState(() => _q.text = o),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
           if (q.isEmpty)
             Expanded(
               child: items.when(

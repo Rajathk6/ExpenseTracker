@@ -407,6 +407,11 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<String> item = GeneratedColumn<String>(
       'item', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _bucketMeta = const VerificationMeta('bucket');
+  @override
+  late final GeneratedColumn<String> bucket = GeneratedColumn<String>(
+      'bucket', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -449,6 +454,7 @@ class $TransactionsTable extends Transactions
         level1,
         level2,
         item,
+        bucket,
         note,
         accountId,
         linkId,
@@ -522,6 +528,10 @@ class $TransactionsTable extends Transactions
       context.handle(
           _itemMeta, item.isAcceptableOrUnknown(data['item']!, _itemMeta));
     }
+    if (data.containsKey('bucket')) {
+      context.handle(_bucketMeta,
+          bucket.isAcceptableOrUnknown(data['bucket']!, _bucketMeta));
+    }
     if (data.containsKey('note')) {
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
@@ -571,6 +581,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.string, data['${effectivePrefix}level2']),
       item: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}item']),
+      bucket: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bucket']),
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
       accountId: attachedDatabase.typeMapping
@@ -611,6 +623,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
 
   /// Exact item token incl. hyphen part, e.g. `gobi-65`. Null when none.
   final String? item;
+
+  /// Budget bucket this entry belongs to (need/want/invest or custom).
+  /// Freeform text, null = unassigned. UX-feedback batch.
+  final String? bucket;
   final String? note;
 
   /// Owning account id. Plain text, no DB-level FK (keeps drift codegen
@@ -630,6 +646,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       this.level1,
       this.level2,
       this.item,
+      this.bucket,
       this.note,
       this.accountId,
       this.linkId,
@@ -655,6 +672,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || item != null) {
       map['item'] = Variable<String>(item);
+    }
+    if (!nullToAbsent || bucket != null) {
+      map['bucket'] = Variable<String>(bucket);
     }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -687,6 +707,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       level2:
           level2 == null && nullToAbsent ? const Value.absent() : Value(level2),
       item: item == null && nullToAbsent ? const Value.absent() : Value(item),
+      bucket:
+          bucket == null && nullToAbsent ? const Value.absent() : Value(bucket),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       accountId: accountId == null && nullToAbsent
           ? const Value.absent()
@@ -714,6 +736,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       level1: serializer.fromJson<String?>(json['level1']),
       level2: serializer.fromJson<String?>(json['level2']),
       item: serializer.fromJson<String?>(json['item']),
+      bucket: serializer.fromJson<String?>(json['bucket']),
       note: serializer.fromJson<String?>(json['note']),
       accountId: serializer.fromJson<String?>(json['accountId']),
       linkId: serializer.fromJson<String?>(json['linkId']),
@@ -735,6 +758,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'level1': serializer.toJson<String?>(level1),
       'level2': serializer.toJson<String?>(level2),
       'item': serializer.toJson<String?>(item),
+      'bucket': serializer.toJson<String?>(bucket),
       'note': serializer.toJson<String?>(note),
       'accountId': serializer.toJson<String?>(accountId),
       'linkId': serializer.toJson<String?>(linkId),
@@ -754,6 +778,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           Value<String?> level1 = const Value.absent(),
           Value<String?> level2 = const Value.absent(),
           Value<String?> item = const Value.absent(),
+          Value<String?> bucket = const Value.absent(),
           Value<String?> note = const Value.absent(),
           Value<String?> accountId = const Value.absent(),
           Value<String?> linkId = const Value.absent(),
@@ -770,6 +795,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         level1: level1.present ? level1.value : this.level1,
         level2: level2.present ? level2.value : this.level2,
         item: item.present ? item.value : this.item,
+        bucket: bucket.present ? bucket.value : this.bucket,
         note: note.present ? note.value : this.note,
         accountId: accountId.present ? accountId.value : this.accountId,
         linkId: linkId.present ? linkId.value : this.linkId,
@@ -792,6 +818,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       level1: data.level1.present ? data.level1.value : this.level1,
       level2: data.level2.present ? data.level2.value : this.level2,
       item: data.item.present ? data.item.value : this.item,
+      bucket: data.bucket.present ? data.bucket.value : this.bucket,
       note: data.note.present ? data.note.value : this.note,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       linkId: data.linkId.present ? data.linkId.value : this.linkId,
@@ -813,6 +840,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('level1: $level1, ')
           ..write('level2: $level2, ')
           ..write('item: $item, ')
+          ..write('bucket: $bucket, ')
           ..write('note: $note, ')
           ..write('accountId: $accountId, ')
           ..write('linkId: $linkId, ')
@@ -834,6 +862,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       level1,
       level2,
       item,
+      bucket,
       note,
       accountId,
       linkId,
@@ -853,6 +882,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.level1 == this.level1 &&
           other.level2 == this.level2 &&
           other.item == this.item &&
+          other.bucket == this.bucket &&
           other.note == this.note &&
           other.accountId == this.accountId &&
           other.linkId == this.linkId &&
@@ -871,6 +901,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> level1;
   final Value<String?> level2;
   final Value<String?> item;
+  final Value<String?> bucket;
   final Value<String?> note;
   final Value<String?> accountId;
   final Value<String?> linkId;
@@ -888,6 +919,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.level1 = const Value.absent(),
     this.level2 = const Value.absent(),
     this.item = const Value.absent(),
+    this.bucket = const Value.absent(),
     this.note = const Value.absent(),
     this.accountId = const Value.absent(),
     this.linkId = const Value.absent(),
@@ -906,6 +938,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.level1 = const Value.absent(),
     this.level2 = const Value.absent(),
     this.item = const Value.absent(),
+    this.bucket = const Value.absent(),
     this.note = const Value.absent(),
     this.accountId = const Value.absent(),
     this.linkId = const Value.absent(),
@@ -929,6 +962,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? level1,
     Expression<String>? level2,
     Expression<String>? item,
+    Expression<String>? bucket,
     Expression<String>? note,
     Expression<String>? accountId,
     Expression<String>? linkId,
@@ -947,6 +981,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (level1 != null) 'level1': level1,
       if (level2 != null) 'level2': level2,
       if (item != null) 'item': item,
+      if (bucket != null) 'bucket': bucket,
       if (note != null) 'note': note,
       if (accountId != null) 'account_id': accountId,
       if (linkId != null) 'link_id': linkId,
@@ -967,6 +1002,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String?>? level1,
       Value<String?>? level2,
       Value<String?>? item,
+      Value<String?>? bucket,
       Value<String?>? note,
       Value<String?>? accountId,
       Value<String?>? linkId,
@@ -984,6 +1020,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       level1: level1 ?? this.level1,
       level2: level2 ?? this.level2,
       item: item ?? this.item,
+      bucket: bucket ?? this.bucket,
       note: note ?? this.note,
       accountId: accountId ?? this.accountId,
       linkId: linkId ?? this.linkId,
@@ -1026,6 +1063,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (item.present) {
       map['item'] = Variable<String>(item.value);
     }
+    if (bucket.present) {
+      map['bucket'] = Variable<String>(bucket.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -1060,6 +1100,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('level1: $level1, ')
           ..write('level2: $level2, ')
           ..write('item: $item, ')
+          ..write('bucket: $bucket, ')
           ..write('note: $note, ')
           ..write('accountId: $accountId, ')
           ..write('linkId: $linkId, ')
@@ -3268,6 +3309,366 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   }
 }
 
+class $MonthOpenTable extends MonthOpen
+    with TableInfo<$MonthOpenTable, MonthOpenData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MonthOpenTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<String> month = GeneratedColumn<String>(
+      'month', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _budgetInMeta =
+      const VerificationMeta('budgetIn');
+  @override
+  late final GeneratedColumn<double> budgetIn = GeneratedColumn<double>(
+      'budget_in', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _budgetOutMeta =
+      const VerificationMeta('budgetOut');
+  @override
+  late final GeneratedColumn<double> budgetOut = GeneratedColumn<double>(
+      'budget_out', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _bankBalanceMeta =
+      const VerificationMeta('bankBalance');
+  @override
+  late final GeneratedColumn<double> bankBalance = GeneratedColumn<double>(
+      'bank_balance', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _cashBalanceMeta =
+      const VerificationMeta('cashBalance');
+  @override
+  late final GeneratedColumn<double> cashBalance = GeneratedColumn<double>(
+      'cash_balance', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _cardLimitMeta =
+      const VerificationMeta('cardLimit');
+  @override
+  late final GeneratedColumn<double> cardLimit = GeneratedColumn<double>(
+      'card_limit', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [month, budgetIn, budgetOut, bankBalance, cashBalance, cardLimit];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'month_open';
+  @override
+  VerificationContext validateIntegrity(Insertable<MonthOpenData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('month')) {
+      context.handle(
+          _monthMeta, month.isAcceptableOrUnknown(data['month']!, _monthMeta));
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('budget_in')) {
+      context.handle(_budgetInMeta,
+          budgetIn.isAcceptableOrUnknown(data['budget_in']!, _budgetInMeta));
+    }
+    if (data.containsKey('budget_out')) {
+      context.handle(_budgetOutMeta,
+          budgetOut.isAcceptableOrUnknown(data['budget_out']!, _budgetOutMeta));
+    }
+    if (data.containsKey('bank_balance')) {
+      context.handle(
+          _bankBalanceMeta,
+          bankBalance.isAcceptableOrUnknown(
+              data['bank_balance']!, _bankBalanceMeta));
+    }
+    if (data.containsKey('cash_balance')) {
+      context.handle(
+          _cashBalanceMeta,
+          cashBalance.isAcceptableOrUnknown(
+              data['cash_balance']!, _cashBalanceMeta));
+    }
+    if (data.containsKey('card_limit')) {
+      context.handle(_cardLimitMeta,
+          cardLimit.isAcceptableOrUnknown(data['card_limit']!, _cardLimitMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {month};
+  @override
+  MonthOpenData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MonthOpenData(
+      month: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}month'])!,
+      budgetIn: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}budget_in']),
+      budgetOut: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}budget_out']),
+      bankBalance: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bank_balance']),
+      cashBalance: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cash_balance']),
+      cardLimit: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}card_limit']),
+    );
+  }
+
+  @override
+  $MonthOpenTable createAlias(String alias) {
+    return $MonthOpenTable(attachedDatabase, alias);
+  }
+}
+
+class MonthOpenData extends DataClass implements Insertable<MonthOpenData> {
+  /// `YYYY-MM`.
+  final String month;
+  final double? budgetIn;
+  final double? budgetOut;
+  final double? bankBalance;
+  final double? cashBalance;
+  final double? cardLimit;
+  const MonthOpenData(
+      {required this.month,
+      this.budgetIn,
+      this.budgetOut,
+      this.bankBalance,
+      this.cashBalance,
+      this.cardLimit});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['month'] = Variable<String>(month);
+    if (!nullToAbsent || budgetIn != null) {
+      map['budget_in'] = Variable<double>(budgetIn);
+    }
+    if (!nullToAbsent || budgetOut != null) {
+      map['budget_out'] = Variable<double>(budgetOut);
+    }
+    if (!nullToAbsent || bankBalance != null) {
+      map['bank_balance'] = Variable<double>(bankBalance);
+    }
+    if (!nullToAbsent || cashBalance != null) {
+      map['cash_balance'] = Variable<double>(cashBalance);
+    }
+    if (!nullToAbsent || cardLimit != null) {
+      map['card_limit'] = Variable<double>(cardLimit);
+    }
+    return map;
+  }
+
+  MonthOpenCompanion toCompanion(bool nullToAbsent) {
+    return MonthOpenCompanion(
+      month: Value(month),
+      budgetIn: budgetIn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(budgetIn),
+      budgetOut: budgetOut == null && nullToAbsent
+          ? const Value.absent()
+          : Value(budgetOut),
+      bankBalance: bankBalance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankBalance),
+      cashBalance: cashBalance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cashBalance),
+      cardLimit: cardLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cardLimit),
+    );
+  }
+
+  factory MonthOpenData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MonthOpenData(
+      month: serializer.fromJson<String>(json['month']),
+      budgetIn: serializer.fromJson<double?>(json['budgetIn']),
+      budgetOut: serializer.fromJson<double?>(json['budgetOut']),
+      bankBalance: serializer.fromJson<double?>(json['bankBalance']),
+      cashBalance: serializer.fromJson<double?>(json['cashBalance']),
+      cardLimit: serializer.fromJson<double?>(json['cardLimit']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'month': serializer.toJson<String>(month),
+      'budgetIn': serializer.toJson<double?>(budgetIn),
+      'budgetOut': serializer.toJson<double?>(budgetOut),
+      'bankBalance': serializer.toJson<double?>(bankBalance),
+      'cashBalance': serializer.toJson<double?>(cashBalance),
+      'cardLimit': serializer.toJson<double?>(cardLimit),
+    };
+  }
+
+  MonthOpenData copyWith(
+          {String? month,
+          Value<double?> budgetIn = const Value.absent(),
+          Value<double?> budgetOut = const Value.absent(),
+          Value<double?> bankBalance = const Value.absent(),
+          Value<double?> cashBalance = const Value.absent(),
+          Value<double?> cardLimit = const Value.absent()}) =>
+      MonthOpenData(
+        month: month ?? this.month,
+        budgetIn: budgetIn.present ? budgetIn.value : this.budgetIn,
+        budgetOut: budgetOut.present ? budgetOut.value : this.budgetOut,
+        bankBalance: bankBalance.present ? bankBalance.value : this.bankBalance,
+        cashBalance: cashBalance.present ? cashBalance.value : this.cashBalance,
+        cardLimit: cardLimit.present ? cardLimit.value : this.cardLimit,
+      );
+  MonthOpenData copyWithCompanion(MonthOpenCompanion data) {
+    return MonthOpenData(
+      month: data.month.present ? data.month.value : this.month,
+      budgetIn: data.budgetIn.present ? data.budgetIn.value : this.budgetIn,
+      budgetOut: data.budgetOut.present ? data.budgetOut.value : this.budgetOut,
+      bankBalance:
+          data.bankBalance.present ? data.bankBalance.value : this.bankBalance,
+      cashBalance:
+          data.cashBalance.present ? data.cashBalance.value : this.cashBalance,
+      cardLimit: data.cardLimit.present ? data.cardLimit.value : this.cardLimit,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthOpenData(')
+          ..write('month: $month, ')
+          ..write('budgetIn: $budgetIn, ')
+          ..write('budgetOut: $budgetOut, ')
+          ..write('bankBalance: $bankBalance, ')
+          ..write('cashBalance: $cashBalance, ')
+          ..write('cardLimit: $cardLimit')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      month, budgetIn, budgetOut, bankBalance, cashBalance, cardLimit);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MonthOpenData &&
+          other.month == this.month &&
+          other.budgetIn == this.budgetIn &&
+          other.budgetOut == this.budgetOut &&
+          other.bankBalance == this.bankBalance &&
+          other.cashBalance == this.cashBalance &&
+          other.cardLimit == this.cardLimit);
+}
+
+class MonthOpenCompanion extends UpdateCompanion<MonthOpenData> {
+  final Value<String> month;
+  final Value<double?> budgetIn;
+  final Value<double?> budgetOut;
+  final Value<double?> bankBalance;
+  final Value<double?> cashBalance;
+  final Value<double?> cardLimit;
+  final Value<int> rowid;
+  const MonthOpenCompanion({
+    this.month = const Value.absent(),
+    this.budgetIn = const Value.absent(),
+    this.budgetOut = const Value.absent(),
+    this.bankBalance = const Value.absent(),
+    this.cashBalance = const Value.absent(),
+    this.cardLimit = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MonthOpenCompanion.insert({
+    required String month,
+    this.budgetIn = const Value.absent(),
+    this.budgetOut = const Value.absent(),
+    this.bankBalance = const Value.absent(),
+    this.cashBalance = const Value.absent(),
+    this.cardLimit = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : month = Value(month);
+  static Insertable<MonthOpenData> custom({
+    Expression<String>? month,
+    Expression<double>? budgetIn,
+    Expression<double>? budgetOut,
+    Expression<double>? bankBalance,
+    Expression<double>? cashBalance,
+    Expression<double>? cardLimit,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (month != null) 'month': month,
+      if (budgetIn != null) 'budget_in': budgetIn,
+      if (budgetOut != null) 'budget_out': budgetOut,
+      if (bankBalance != null) 'bank_balance': bankBalance,
+      if (cashBalance != null) 'cash_balance': cashBalance,
+      if (cardLimit != null) 'card_limit': cardLimit,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MonthOpenCompanion copyWith(
+      {Value<String>? month,
+      Value<double?>? budgetIn,
+      Value<double?>? budgetOut,
+      Value<double?>? bankBalance,
+      Value<double?>? cashBalance,
+      Value<double?>? cardLimit,
+      Value<int>? rowid}) {
+    return MonthOpenCompanion(
+      month: month ?? this.month,
+      budgetIn: budgetIn ?? this.budgetIn,
+      budgetOut: budgetOut ?? this.budgetOut,
+      bankBalance: bankBalance ?? this.bankBalance,
+      cashBalance: cashBalance ?? this.cashBalance,
+      cardLimit: cardLimit ?? this.cardLimit,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (month.present) {
+      map['month'] = Variable<String>(month.value);
+    }
+    if (budgetIn.present) {
+      map['budget_in'] = Variable<double>(budgetIn.value);
+    }
+    if (budgetOut.present) {
+      map['budget_out'] = Variable<double>(budgetOut.value);
+    }
+    if (bankBalance.present) {
+      map['bank_balance'] = Variable<double>(bankBalance.value);
+    }
+    if (cashBalance.present) {
+      map['cash_balance'] = Variable<double>(cashBalance.value);
+    }
+    if (cardLimit.present) {
+      map['card_limit'] = Variable<double>(cardLimit.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthOpenCompanion(')
+          ..write('month: $month, ')
+          ..write('budgetIn: $budgetIn, ')
+          ..write('budgetOut: $budgetOut, ')
+          ..write('bankBalance: $bankBalance, ')
+          ..write('cashBalance: $cashBalance, ')
+          ..write('cardLimit: $cardLimit, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3279,6 +3680,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InstrumentsTable instruments = $InstrumentsTable(this);
   late final $SnapshotsTable snapshots = $SnapshotsTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $MonthOpenTable monthOpen = $MonthOpenTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3291,7 +3693,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         splits,
         instruments,
         snapshots,
-        settings
+        settings,
+        monthOpen
       ];
 }
 
@@ -3493,6 +3896,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String?> level1,
   Value<String?> level2,
   Value<String?> item,
+  Value<String?> bucket,
   Value<String?> note,
   Value<String?> accountId,
   Value<String?> linkId,
@@ -3512,6 +3916,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String?> level1,
   Value<String?> level2,
   Value<String?> item,
+  Value<String?> bucket,
   Value<String?> note,
   Value<String?> accountId,
   Value<String?> linkId,
@@ -3558,6 +3963,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get item => $composableBuilder(
       column: $table.item, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -3615,6 +4023,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get item => $composableBuilder(
       column: $table.item, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
 
@@ -3670,6 +4081,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get item =>
       $composableBuilder(column: $table.item, builder: (column) => column);
 
+  GeneratedColumn<String> get bucket =>
+      $composableBuilder(column: $table.bucket, builder: (column) => column);
+
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
@@ -3722,6 +4136,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> level1 = const Value.absent(),
             Value<String?> level2 = const Value.absent(),
             Value<String?> item = const Value.absent(),
+            Value<String?> bucket = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> accountId = const Value.absent(),
             Value<String?> linkId = const Value.absent(),
@@ -3740,6 +4155,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             level1: level1,
             level2: level2,
             item: item,
+            bucket: bucket,
             note: note,
             accountId: accountId,
             linkId: linkId,
@@ -3758,6 +4174,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> level1 = const Value.absent(),
             Value<String?> level2 = const Value.absent(),
             Value<String?> item = const Value.absent(),
+            Value<String?> bucket = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> accountId = const Value.absent(),
             Value<String?> linkId = const Value.absent(),
@@ -3776,6 +4193,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             level1: level1,
             level2: level2,
             item: item,
+            bucket: bucket,
             note: note,
             accountId: accountId,
             linkId: linkId,
@@ -4961,6 +5379,196 @@ typedef $$SettingsTableProcessedTableManager = ProcessedTableManager<
     (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
     Setting,
     PrefetchHooks Function()>;
+typedef $$MonthOpenTableCreateCompanionBuilder = MonthOpenCompanion Function({
+  required String month,
+  Value<double?> budgetIn,
+  Value<double?> budgetOut,
+  Value<double?> bankBalance,
+  Value<double?> cashBalance,
+  Value<double?> cardLimit,
+  Value<int> rowid,
+});
+typedef $$MonthOpenTableUpdateCompanionBuilder = MonthOpenCompanion Function({
+  Value<String> month,
+  Value<double?> budgetIn,
+  Value<double?> budgetOut,
+  Value<double?> bankBalance,
+  Value<double?> cashBalance,
+  Value<double?> cardLimit,
+  Value<int> rowid,
+});
+
+class $$MonthOpenTableFilterComposer
+    extends Composer<_$AppDatabase, $MonthOpenTable> {
+  $$MonthOpenTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get budgetIn => $composableBuilder(
+      column: $table.budgetIn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get budgetOut => $composableBuilder(
+      column: $table.budgetOut, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get bankBalance => $composableBuilder(
+      column: $table.bankBalance, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get cashBalance => $composableBuilder(
+      column: $table.cashBalance, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get cardLimit => $composableBuilder(
+      column: $table.cardLimit, builder: (column) => ColumnFilters(column));
+}
+
+class $$MonthOpenTableOrderingComposer
+    extends Composer<_$AppDatabase, $MonthOpenTable> {
+  $$MonthOpenTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get month => $composableBuilder(
+      column: $table.month, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get budgetIn => $composableBuilder(
+      column: $table.budgetIn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get budgetOut => $composableBuilder(
+      column: $table.budgetOut, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get bankBalance => $composableBuilder(
+      column: $table.bankBalance, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get cashBalance => $composableBuilder(
+      column: $table.cashBalance, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get cardLimit => $composableBuilder(
+      column: $table.cardLimit, builder: (column) => ColumnOrderings(column));
+}
+
+class $$MonthOpenTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MonthOpenTable> {
+  $$MonthOpenTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<double> get budgetIn =>
+      $composableBuilder(column: $table.budgetIn, builder: (column) => column);
+
+  GeneratedColumn<double> get budgetOut =>
+      $composableBuilder(column: $table.budgetOut, builder: (column) => column);
+
+  GeneratedColumn<double> get bankBalance => $composableBuilder(
+      column: $table.bankBalance, builder: (column) => column);
+
+  GeneratedColumn<double> get cashBalance => $composableBuilder(
+      column: $table.cashBalance, builder: (column) => column);
+
+  GeneratedColumn<double> get cardLimit =>
+      $composableBuilder(column: $table.cardLimit, builder: (column) => column);
+}
+
+class $$MonthOpenTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $MonthOpenTable,
+    MonthOpenData,
+    $$MonthOpenTableFilterComposer,
+    $$MonthOpenTableOrderingComposer,
+    $$MonthOpenTableAnnotationComposer,
+    $$MonthOpenTableCreateCompanionBuilder,
+    $$MonthOpenTableUpdateCompanionBuilder,
+    (
+      MonthOpenData,
+      BaseReferences<_$AppDatabase, $MonthOpenTable, MonthOpenData>
+    ),
+    MonthOpenData,
+    PrefetchHooks Function()> {
+  $$MonthOpenTableTableManager(_$AppDatabase db, $MonthOpenTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MonthOpenTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MonthOpenTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MonthOpenTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> month = const Value.absent(),
+            Value<double?> budgetIn = const Value.absent(),
+            Value<double?> budgetOut = const Value.absent(),
+            Value<double?> bankBalance = const Value.absent(),
+            Value<double?> cashBalance = const Value.absent(),
+            Value<double?> cardLimit = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              MonthOpenCompanion(
+            month: month,
+            budgetIn: budgetIn,
+            budgetOut: budgetOut,
+            bankBalance: bankBalance,
+            cashBalance: cashBalance,
+            cardLimit: cardLimit,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String month,
+            Value<double?> budgetIn = const Value.absent(),
+            Value<double?> budgetOut = const Value.absent(),
+            Value<double?> bankBalance = const Value.absent(),
+            Value<double?> cashBalance = const Value.absent(),
+            Value<double?> cardLimit = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              MonthOpenCompanion.insert(
+            month: month,
+            budgetIn: budgetIn,
+            budgetOut: budgetOut,
+            bankBalance: bankBalance,
+            cashBalance: cashBalance,
+            cardLimit: cardLimit,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$MonthOpenTable, MonthOpenData>(table),
+                    BaseReferences<_$AppDatabase, $MonthOpenTable,
+                        MonthOpenData>(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$MonthOpenTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $MonthOpenTable,
+    MonthOpenData,
+    $$MonthOpenTableFilterComposer,
+    $$MonthOpenTableOrderingComposer,
+    $$MonthOpenTableAnnotationComposer,
+    $$MonthOpenTableCreateCompanionBuilder,
+    $$MonthOpenTableUpdateCompanionBuilder,
+    (
+      MonthOpenData,
+      BaseReferences<_$AppDatabase, $MonthOpenTable, MonthOpenData>
+    ),
+    MonthOpenData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4981,4 +5589,6 @@ class $AppDatabaseManager {
       $$SnapshotsTableTableManager(_db, _db.snapshots);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$MonthOpenTableTableManager get monthOpen =>
+      $$MonthOpenTableTableManager(_db, _db.monthOpen);
 }

@@ -177,6 +177,7 @@ class _SplitDialogState extends ConsumerState<_SplitDialog> {
   final _total = TextEditingController();
   final _mine = TextEditingController();
   final _members = TextEditingController();
+  final _people = TextEditingController();
   String? _accountId;
   String? _error;
   bool _saving = false;
@@ -187,13 +188,17 @@ class _SplitDialogState extends ConsumerState<_SplitDialog> {
     _total.dispose();
     _mine.dispose();
     _members.dispose();
+    _people.dispose();
     super.dispose();
   }
 
-  void _splitEqually(int n) {
+  void _splitByCount(int n) {
     final total = double.tryParse(_total.text.trim());
     if (total == null || total <= 0 || n < 1) return;
-    setState(() => _mine.text = (total / n).toStringAsFixed(2));
+    setState(() {
+      _people.text = '$n';
+      _mine.text = '${(total / n).round()}';
+    });
   }
 
   Future<void> _save(List<Account> accounts) async {
@@ -259,9 +264,35 @@ class _SplitDialogState extends ConsumerState<_SplitDialog> {
             ),
             Row(
               children: [
-                const Text('Split equally: '),
-                for (final n in [2, 3, 4, 5, 10])
-                  TextButton(onPressed: () => _splitEqually(n), child: Text('/$n')),
+                Expanded(
+                  child: TextField(
+                    controller: _people,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Split between N people',
+                      hintText: 'e.g. 10',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (v) {
+                      final n = int.tryParse(v.trim());
+                      if (n != null) _splitByCount(n);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Builder(
+                    builder: (ctx) {
+                      final total = double.tryParse(_total.text.trim());
+                      final n = int.tryParse(_people.text.trim());
+                      final share = (total != null && n != null && n > 0) ? (total / n).round() : null;
+                      return Text(
+                        share == null ? 'My share: —' : 'My share: ₹$share',
+                        style: Theme.of(ctx).textTheme.bodyMedium,
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
             TextField(

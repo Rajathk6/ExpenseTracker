@@ -16,6 +16,9 @@ const _pinSaltKey = 'pin.salt';
 const _decoyKey = 'decoy.hash';
 const _decoySaltKey = 'decoy.salt';
 const _lockMinutesKey = 'lock.minutes';
+const _recoveryQKey = 'recovery.question';
+const _recoveryAHashKey = 'recovery.answer.hash';
+const _recoveryASaltKey = 'recovery.answer.salt';
 
 String? validatePinFormat(String pin) {
   if (!RegExp(r'^\d{6}$').hasMatch(pin)) return 'PIN must be exactly 6 digits';
@@ -82,6 +85,37 @@ class PinService {
   Future<void> clearDecoy() async {
     await db.deleteSetting(_decoyKey);
     await db.deleteSetting(_decoySaltKey);
+  }
+
+  /// Recovery Q&A for "forgot PIN". The answer is salted+hashed like a PIN;
+  /// matching is case-insensitive on trimmed text. Optional — without it,
+  /// forgot-PIN cannot reset (by design: offline vault, no backdoor).
+  Future<bool> get hasRecovery async =>
+      (await db.getSetting(_recoveryQKey)) != null && (await db.getSetting(_recoveryAHashKey)) != null;
+
+  Future<String?> get recoveryQuestion async => db.getSetting(_recoveryQKey);
+
+  Future<void> setRecovery({required String question, required String answer}) async {
+    if (question.trim().isEmpty) throw ArgumentError('Pick a security question');
+    if (answer.trim().isEmpty) throw ArgumentError('Answer cannot be empty');
+    final salt = newSalt();
+    await db.setSetting(_recoveryQKey, question.trim());
+    await db.setSetting(_recoveryASaltKey, salt);
+    await db.setSetting(_recoveryAHashKey, await hashPin(answer.trim().toLowerCase(), salt));
+  }
+
+  /// True when [answer] matches (case-insensitive). Never reveals anything.
+  Future<bool> verifyRecoveryAnswer(String answer) async {
+    final want = await db.getSetting(_recoveryAHashKey);
+    if (want == null) return false;
+    final salt = await db.getSetting(_recoveryASaltKey) ?? '';
+    return (await hashPin(answer.trim().toLowerCase(), salt)) == want;
+  }
+
+  /// Resets the real PIN after a correct recovery answer. Decoy untouched.
+  Future<void> resetPinWithAnswer({required String answer, required String newPin}) async {
+    if (!await verifyRecoveryAnswer(answer)) throw StateError('Wrong answer');
+    await setPin(newPin);
   }
 
   Future<int> lockMinutes() async {
