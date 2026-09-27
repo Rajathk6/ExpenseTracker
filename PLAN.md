@@ -14,10 +14,10 @@ All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Dri
 8. Reports: per-module graphs + drill to txn list.
 9. **Price memory:** per-item price history (avg/min/max, overpay alert vs average).
 10. **Net-worth timeline:** `(banks + cash + investments) − debts` per month-end, one graph.
-11. Intake: Android share-target + iOS Share Extension, offline regex + on-device OCR, always confirm-screen before save. Manual entry never blocked.
+11. Intake: Android share-target ✅ (own manifest filter; **no iOS Share Extension — there is no `ios/` project**), offline regex + on-device OCR ✅, always confirm-screen before save ✅. Manual entry never blocked.
 12. Cash wallets: opening count, quick buttons, physical-count reconciliation, Cash-vs-Digital filter.
 13. Security: 6-digit PIN (hashed) + biometric (fingerprint/face) + auto-lock + **decoy PIN** (second PIN opens clean demo vault). SQLCipher later phase.
-14. **Home-screen quick add:** widget/quick-tile → 2-tap cash spend (amount + category), opens confirm sheet.
+14. **Home-screen quick add:** ✅ `QuickAddWidget` tile (month spend + tap → 2-tap cash spend sheet, confirm before save).
 
 ## Core invariant (do not break)
 ```text
@@ -53,7 +53,9 @@ Rules: never start N+1 with N red. One failure must not block manual entry.
 - Install: download `app-debug.apk` from the CI run (or build locally with
   `flutter build apk --debug`; needs Java 17 + Android SDK 36, see PROGRESS
   2026-09-07 env notes). Debug-signed = fine for personal distribution.
-- Release signing + Play/artifacts land with Phase 10/11.
+- Release signing: the keystore exists (see PROGRESS 2026-09-27); re-signing an
+  already-installed app is impossible, so the first signed release is the
+  install base. Play/artifacts are not used — personal GitHub Releases.
 - Dependency policy: native plugins stay on versions that build against
   Flutter's pinned compileSdk (36) with zero Gradle hacks. Phase 9/10-only
   native deps (share/file/auth/OCR/widget/Drive) were trimmed 2026-09-07
