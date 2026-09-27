@@ -1,11 +1,13 @@
 /// Intake confirm screen: the mandatory human checkpoint between shared
-/// text (or OCR output) and the ledger. Nothing here auto-saves.
+/// text (or an OCR'd screenshot) and the ledger. Nothing here auto-saves.
 ///
-/// Native share-target / OCR plugins feed [initialText] on the dev machine
-/// (wiring steps in PROGRESS); until then paste any payment SMS, UPI
-/// message or OCR dump into the box. Manual entry is never blocked.
+/// Both entry points feed the same box: an Android share (or the app being
+/// launched by one) lands in [initialText] / [initialImages], and the
+/// "Read a screenshot" button picks an image from the device. Manual entry is
+/// never blocked.
 library;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,11 +17,22 @@ import '../../core/ledger.dart';
 import '../../core/providers.dart';
 import '../transactions/category_field.dart';
 import '../transactions/entry_logic.dart';
+import 'ocr_reader.dart';
 
 class IntakeScreen extends ConsumerStatefulWidget {
-  /// Pre-filled by the OS share sheet on the dev-machine build. Null = manual.
+  /// Pre-filled by the Android share sheet. Null = manual.
   final String? initialText;
-  const IntakeScreen({super.key, this.initialText});
+  /// Screenshots shared from another app, already copied into our cache.
+  final List<String> initialImages;
+  /// Overridable so tests never touch ML Kit.
+  final TextReader reader;
+
+  const IntakeScreen({
+    super.key,
+    this.initialText,
+    this.initialImages = const [],
+    this.reader = const RecogniseText(),
+  });
 
   @override
   ConsumerState<IntakeScreen> createState() => _IntakeScreenState();
@@ -33,6 +46,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
   String? _accountId;
   String? _error;
   bool _saving = false;
+  bool _reading = false;
   SharedPayment? _parsed;
 
   @override
@@ -42,6 +56,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
     _amount = TextEditingController();
     _category = TextEditingController();
     if ((widget.initialText ?? '').isNotEmpty) _reparse(initial: true);
+    if (widget.initialImages.isNotEmpty) _readImages(widget.initialImages);
   }
 
   @override
@@ -65,6 +80,69 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
         _category.text = p.merchant!.toLowerCase();
       }
     });
+  }
+
+  /// On-device OCR. The recognised text lands in the same box a shared SMS
+  /// uses, so one parser and one confirm screen cover both.
+  Future<void> _readImages(List<String> paths) async {
+    final readable = paths.where(isReadableImage).toList();
+    if (readable.isEmpty) {
+      _setError('That screenshot could not be opened. Paste the text instead.');
+      return;
+    }
+    setState(() {
+      _reading = true;
+      _error = null;
+    });
+    final buffer = StringBuffer();
+    var failed = 0;
+    for (final path in readable) {
+      try {
+        final text = await widget.reader.read(path);
+        if (text.trim().isEmpty) {
+          failed++;
+        } else {
+          if (buffer.isNotEmpty) buffer.writeln();
+          buffer.write(text.trim());
+        }
+      } on Object {
+        failed++;
+      }
+    }
+    if (!mounted) return;
+    if (buffer.isEmpty) {
+      setState(() {
+        _reading = false;
+        _error = 'No text found in the screenshot — paste the message instead.';
+      });
+      return;
+    }
+    setState(() {
+      _reading = false;
+      if (failed > 0) _error = 'Read ${buffer.toString().split('\n').length} line(s); $failed screenshot(s) unreadable.';
+    });
+    _raw.text = buffer.toString();
+    _reparse();
+  }
+
+  void _setError(String message) {
+    if (mounted) setState(() => _error = message);
+  }
+
+  /// Pick a screenshot from the device (no share sheet needed).
+  Future<void> _pickImage() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.image,
+        dialogTitle: 'Choose a payment screenshot',
+      );
+      final path = file?.path;
+      if (path == null || path.isEmpty) return;
+      await _readImages([path]);
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not open the file browser: $e')));
+    }
   }
 
   Future<void> _save(List<Account> accounts) async {
@@ -116,7 +194,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          const Text('Paste a payment SMS / UPI message / OCR dump. Nothing saves until you tap Confirm.'),
+          const Text('Paste a payment SMS / UPI message, or read a screenshot. Nothing saves until you tap Confirm.'),
           const SizedBox(height: 8),
           TextField(
             controller: _raw,
@@ -127,6 +205,14 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => _reparse(),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _reading ? null : _pickImage,
+            icon: _reading
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.image_search),
+            label: Text(_reading ? 'Reading screenshot…' : 'Read a screenshot (on-device OCR)'),
           ),
           const SizedBox(height: 8),
           if (_parsed != null && _raw.text.trim().isNotEmpty)

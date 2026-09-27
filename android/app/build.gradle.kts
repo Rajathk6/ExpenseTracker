@@ -60,6 +60,9 @@ android {
                 // No key.properties yet: debug keys so `flutter run --release` works.
                 signingConfigs.getByName("debug")
             }
+            // -dontwarn rules for the OCR plugin's unused script options; see
+            // proguard-rules.pro for why they are needed.
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

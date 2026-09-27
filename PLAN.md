@@ -5,7 +5,7 @@ All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Dri
 
 ## Approved scope (incl. latest additions)
 1. In/Out with date/time/category picker.
-2. Monthly budgets: set total, N fully-custom buckets (presets: 30/40/30, 50/30/20, custom). **Budget simulator** to preview a ratio on last-3-months data before committing.
+2. Monthly budgets: set total, N fully-custom buckets (presets: 30/40/30, 50/30/20, custom). **Budget simulator** to preview a ratio on last-3-months data before committing — *engine + tests shipped; owner removed the preview UI in the 2026-09-14 UX batch, the pure `simulate()` stays tested*.
 3. Freeform categories: `space` = new level, `-` = item continuation. `food junk gobi-65` → levels `[food, junk]`, item `gobi-65`. Search any token across month/year.
 4. Neutral ledger (lend/borrow): excluded from budget, partials validated vs principal, auto-settle + archive. **Aging + local nudge** (days-since, progress bar, reminder date, per-friend note).
 5. Splits: pay 1000/10 → `actual=-1000, budget=-100, receivable=900`. Manual settles reconcile to bank. Unpaid-at-month-end flagged `absorbed`.
@@ -14,10 +14,10 @@ All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Dri
 8. Reports: per-module graphs + drill to txn list.
 9. **Price memory:** per-item price history (avg/min/max, overpay alert vs average).
 10. **Net-worth timeline:** `(banks + cash + investments) − debts` per month-end, one graph.
-11. Intake: Android share-target + iOS Share Extension, offline regex + on-device OCR, always confirm-screen before save. Manual entry never blocked.
+11. Intake: Android share-target ✅ (own manifest filter; **no iOS Share Extension — there is no `ios/` project**), offline regex + on-device OCR ✅, always confirm-screen before save ✅. Manual entry never blocked.
 12. Cash wallets: opening count, quick buttons, physical-count reconciliation, Cash-vs-Digital filter.
 13. Security: 6-digit PIN (hashed) + biometric (fingerprint/face) + auto-lock + **decoy PIN** (second PIN opens clean demo vault). SQLCipher later phase.
-14. **Home-screen quick add:** widget/quick-tile → 2-tap cash spend (amount + category), opens confirm sheet.
+14. **Home-screen quick add:** ✅ `QuickAddWidget` tile (month spend + tap → 2-tap cash spend sheet, confirm before save).
 
 ## Core invariant (do not break)
 ```text
@@ -29,7 +29,7 @@ Split 1000/10 (mine 100): actual = -1000, budgetImpact = -100, receivable = 900
 ```
 
 ## Phases (each = one branch, one VALIDATION row, one PROGRESS entry)
-- **0 foundation** (`feature/00-foundation`, this branch): git, docs, pubspec, folder skeleton, lock shell stub, category parser pure function + test. ← WE ARE HERE
+- **0 foundation** (`feature/00-foundation`): git, docs, pubspec, folder skeleton, lock shell stub, category parser pure function + test. ✅
 - **1 customization core** (`feature/01-custom-core`): lookup tables (buckets/sources/categories), Drift schema v1, settings defaults.
 - **2 transactions+categories** (`feature/02-transactions`): in/out CRUD, datetime picker, category suggest + search aggregates.
 - **3 budgets+simulator** (`feature/03-budgets`): monthly CRUD, N-bucket engine, simulator on history.
@@ -53,7 +53,9 @@ Rules: never start N+1 with N red. One failure must not block manual entry.
 - Install: download `app-debug.apk` from the CI run (or build locally with
   `flutter build apk --debug`; needs Java 17 + Android SDK 36, see PROGRESS
   2026-09-07 env notes). Debug-signed = fine for personal distribution.
-- Release signing + Play/artifacts land with Phase 10/11.
+- Release signing: the keystore exists (see PROGRESS 2026-09-27); re-signing an
+  already-installed app is impossible, so the first signed release is the
+  install base. Play/artifacts are not used — personal GitHub Releases.
 - Dependency policy: native plugins stay on versions that build against
   Flutter's pinned compileSdk (36) with zero Gradle hacks. Phase 9/10-only
   native deps (share/file/auth/OCR/widget/Drive) were trimmed 2026-09-07
