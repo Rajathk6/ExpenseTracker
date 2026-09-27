@@ -1,6 +1,7 @@
 /// Quick-add sheet: 2-tap cash spend (amount chip + category), confirm, done.
-/// The home-screen widget / quick tile opens this sheet on the dev-machine
-/// build (native wiring in PROGRESS); the sheet itself is fully offline.
+/// Opened from the in-app button and from the home-screen tile, which arrives
+/// as `homewidget://quickadd?action=quickadd` (see home_tile.dart). Fully
+/// offline — the tile needs no background service.
 library;
 
 import 'package:flutter/material.dart';
@@ -139,8 +140,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 }
 
-/// Opens the quick-add confirm sheet. The home widget / quick tile calls
-/// this after the native wiring lands (see PROGRESS Phase 9 notes).
+/// Opens the quick-add confirm sheet. The home-screen tile calls this when
+/// `homewidget://quickadd?action=quickadd` launches or reaches the app.
 Future<bool> openQuickAdd(BuildContext context) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,

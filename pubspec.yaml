@@ -30,8 +30,8 @@ dependencies:
   fl_chart: ^0.68.0
   intl: ^0.19.0
   uuid: ^4.4.0
-  # Share intake (Android ACTION_SEND) and the home-screen quick-add tile are
-  # added at their wiring step; pure-Dart share_parser + ZIP stay either way.
+  # Home-screen quick-add tile (2-tap cash spend).
+  home_widget: ^0.10.0
 
 dev_dependencies:
   flutter_test:

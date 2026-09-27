@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:expense_tracker/core/database.dart';
 import 'package:expense_tracker/core/intake/share_parser.dart';
+import 'package:expense_tracker/features/intake/share_target.dart';
 import 'package:expense_tracker/features/customization/account_repository.dart';
 import 'package:expense_tracker/features/transactions/transaction_repository.dart';
 
@@ -32,6 +33,21 @@ void main() {
       final s = parseSharedText('   ');
       expect(s.amount, isNull);
       expect(s.merchant, isNull);
+    });
+  });
+
+  group('share target payload (pure)', () {
+    test('a shared SMS hands its text to the confirm sheet', () {
+      expect(shareTextFrom('Paid Rs.450 to Swiggy'), 'Paid Rs.450 to Swiggy');
+      expect(shareTextFrom('  Paid Rs.450 to Swiggy \n'), 'Paid Rs.450 to Swiggy');
+    });
+
+    test('a blank or non-text share never opens a half-empty sheet', () {
+      expect(shareTextFrom('   '), isNull);
+      expect(shareTextFrom(''), isNull);
+      expect(shareTextFrom(null), isNull);
+      expect(shareTextFrom(42), isNull);
+      expect(shareTextFrom('/storage/emulated/0/IMG_0042.jpg'), '/storage/emulated/0/IMG_0042.jpg');
     });
   });
 
