@@ -37,7 +37,6 @@ dependencies:
   # on the pinned compileSdk 36 with jvmTarget 11; recognition is offline
   # (Latin script model bundled in the APK).
   google_mlkit_text_recognition: ^0.17.1
-  google_mlkit_text_recognition: ^0.17.1
 
 dev_dependencies:
   flutter_test:
