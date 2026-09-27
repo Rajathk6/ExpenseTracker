@@ -11,7 +11,7 @@ import 'package:expense_tracker/features/transactions/item_search_screen.dart';
 import 'package:expense_tracker/features/transactions/transaction_repository.dart';
 
 void main() {
-  Transaction _row(DateTime at, double actual) => Transaction(
+  Transaction rowAt(DateTime at, double actual) => Transaction(
         id: '$at$actual',
         kind: 'out',
         actual: actual,
@@ -176,10 +176,10 @@ void main() {
   group('item search roll-ups (sum/count per month and per year)', () {
     test('counts and totals per period, plus the average', () async {
       final rows = [
-        _row(DateTime(2025, 4, 2), -60),
-        _row(DateTime(2025, 4, 20), -70),
-        _row(DateTime(2025, 11, 3), -50),
-        _row(DateTime(2026, 2, 9), -100),
+        rowAt(DateTime(2025, 4, 2), -60),
+        rowAt(DateTime(2025, 4, 20), -70),
+        rowAt(DateTime(2025, 11, 3), -50),
+        rowAt(DateTime(2026, 2, 9), -100),
       ];
       final byMonth = rollUpByPeriod(rows, DateFormat('MMM yyyy'));
       expect(byMonth['Apr 2025']!.times, 2);

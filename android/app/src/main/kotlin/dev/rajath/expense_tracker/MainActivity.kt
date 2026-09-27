@@ -1,5 +1,6 @@
 package dev.rajath.expense_tracker
 
-import io.flutter.embedding.android.FlutterActivity
+// local_auth needs a FragmentActivity to show the system biometric prompt.
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity : FlutterFragmentActivity()

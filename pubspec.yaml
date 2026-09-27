@@ -18,18 +18,20 @@ dependencies:
   sqlite3: ^3.0.0
   path_provider: ^2.1.2
   path: ^1.9.0
-  # Security plugins (local_auth, secure_storage) are Phase 10 — re-added then.
-  # Pure-Dart crypto stays for future PIN hashing.
+  # Security: PIN/recovery hashes go to the OS keychain, biometrics to the
+  # system prompt (MainActivity is a FlutterFragmentActivity for local_auth).
   cryptography: ^2.7.0
-  # Backup / share intake / OCR / widgets are Phase 9-10 (native deps re-added
-  # then at then-current versions — pure-Dart share_parser + ZIP stay).
+  local_auth: ^3.0.2
+  flutter_secure_storage: ^11.2.0
+  # Encrypted .etbak export/import (archive = pure Dart, the picker is native).
   archive: ^3.6.1
+  file_picker: ^13.1.0
   # Charts / UI
   fl_chart: ^0.68.0
   intl: ^0.19.0
   uuid: ^4.4.0
-  # OCR for payment screenshots (Phase 9; re-added then)
-  # Home widget / quick add (Phase 9; re-added then)
+  # Share intake (Android ACTION_SEND) and the home-screen quick-add tile are
+  # added at their wiring step; pure-Dart share_parser + ZIP stay either way.
 
 dev_dependencies:
   flutter_test:

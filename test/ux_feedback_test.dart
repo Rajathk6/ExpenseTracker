@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:expense_tracker/core/auth/pin_service.dart';
+import 'package:expense_tracker/core/auth/secret_store.dart';
 import 'package:expense_tracker/core/database.dart';
 import 'package:expense_tracker/features/budgets/bucket_math.dart';
 import 'package:expense_tracker/features/budgets/budget_repository.dart';
@@ -186,7 +187,7 @@ void main() {
 
     setUp(() {
       db = AppDatabase.memory();
-      pin = PinService(db);
+      pin = PinService(db, secrets: MemorySecretStore());
     });
 
     tearDown(() => db.close());

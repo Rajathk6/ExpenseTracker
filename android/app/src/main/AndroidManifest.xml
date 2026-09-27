@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fingerprint / face unlock (Settings → Biometric unlock). The PIN is
+         always available, so the app is usable on devices without hardware. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <application
-        android:label="expense_tracker"
+        android:label="Expense Tracker"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

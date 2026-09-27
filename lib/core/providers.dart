@@ -5,6 +5,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/database.dart';
+import 'auth/biometric_service.dart';
 import 'auth/lock_service.dart';
 import 'auth/pin_service.dart';
 import 'backup/backup_service.dart';
@@ -37,7 +38,14 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return ref.watch(realDatabaseProvider);
 });
 
-final pinServiceProvider = Provider((ref) => PinService(ref.watch(databaseProvider)));
+final pinServiceProvider = Provider((ref) {
+  // The vault decides the keychain namespace, so the real and demo vaults can
+  // each own a `pin.hash` (see KeychainSecretStore).
+  final state = ref.watch(lockProvider);
+  final decoy = state.decoyMode && !state.locked;
+  return PinService(ref.watch(databaseProvider), vault: decoy ? 'demo' : 'real');
+});
+final biometricServiceProvider = Provider((ref) => BiometricService());
 final backupServiceProvider = Provider((ref) => BackupService(ref.watch(databaseProvider)));
 
 final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(databaseProvider)));
