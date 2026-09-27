@@ -27,18 +27,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Android share target: a payment SMS / UPI message shared from
-                 any app opens the intake confirm sheet. The sheet is the
-                 human checkpoint — a share never writes to the ledger. -->
+            <!-- Android share target: a payment SMS / UPI message or a
+                 screenshot shared from any app opens the intake confirm sheet.
+                 The sheet is the human checkpoint — a share never writes to
+                 the ledger. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
+                <data android:mimeType="image/*"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
+                <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
         <!-- Home-screen quick-add tile (home_widget). -->

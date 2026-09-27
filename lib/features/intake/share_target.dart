@@ -1,10 +1,12 @@
-/// Android share target: a payment SMS / UPI message shared from any app
-/// lands here, is parsed offline and opens the confirm sheet — the same
-/// checkpoint manual entry uses. Nothing is ever saved without a tap.
+/// Android share target: a payment SMS / UPI message, or a screenshot, shared
+/// from any app lands here. Text is parsed offline; a screenshot is read
+/// on-device (ML Kit, see ocr_reader.dart) and goes through the same parser.
+/// Either way the intake confirm sheet opens — nothing is ever saved without a
+/// tap.
 ///
 /// The manifest registers `ACTION_SEND` / `ACTION_SEND_MULTIPLE` for
-/// `text/plain`; MainActivity hands the payload over these two channels.
-/// Images get their own manifest filter when the OCR plugin lands.
+/// `text/plain` and `image/*`; MainActivity hands the payload over these two
+/// channels.
 library;
 
 import 'dart:async';
@@ -16,12 +18,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/lock_service.dart' show lockProvider;
 import 'intake_screen.dart';
 
-/// The shareable text of a share payload, or null when there is nothing to
-/// parse. Pure so "blank shares never open a half-empty sheet" is testable.
-String? shareTextFrom(Object? payload) {
-  if (payload is! String) return null;
-  final text = payload.trim();
-  return text.isEmpty ? null : text;
+/// What a share carried: text, screenshots, or both. Null when the share held
+/// neither — the sheet must never open empty.
+class SharePayload {
+  final String? text;
+  final List<String> images;
+  const SharePayload({required this.text, required this.images});
+
+  /// Pure parse of the platform map, so "a blank share is not a share" is
+  /// testable off-device. Bad shapes degrade to empty, never to a crash.
+  static SharePayload? from(Object? raw) {
+    if (raw is! Map) return null;
+    final text = raw['text'];
+    final images = raw['images'];
+    final cleanText = text is String && text.trim().isNotEmpty ? text.trim() : null;
+    final cleanImages = <String>[
+      if (images is List)
+        for (final i in images)
+          if (i is String && i.isNotEmpty) i,
+    ];
+    if (cleanText == null && cleanImages.isEmpty) return null;
+    return SharePayload(text: cleanText, images: cleanImages);
+  }
+
+  bool get isScreenshotOnly => text == null && images.isNotEmpty;
 }
 
 /// The two channels MainActivity listens on. Kept tiny: this is our own
@@ -31,28 +51,27 @@ class ShareIntentBridge {
   static const _events = EventChannel('dev.rajath.expense_tracker/share_events');
 
   /// The payload of the intent that launched the app, consumed once.
-  static Future<String?> initialText() async {
+  static Future<SharePayload?> initialPayload() async {
     try {
-      return await _method.invokeMethod<String>('initialText');
+      return SharePayload.from(await _method.invokeMethod<Object?>('initialPayload'));
     } on Object {
       // No platform side (tests, desktop) or a dead channel — not fatal.
       return null;
     }
   }
 
-  /// Text shared while the app is already open. A blank payload is dropped
-  /// rather than pushed as an empty sheet.
-  static Stream<String> get stream => _events
+  /// Shared while the app is already open. Empty shares are dropped.
+  static Stream<SharePayload> get stream => _events
       .receiveBroadcastStream()
-      .map(shareTextFrom)
-      .where((text) => text != null)
-      .cast<String>();
+      .map(SharePayload.from)
+      .where((payload) => payload != null)
+      .cast<SharePayload>();
 }
 
-/// Watches the OS share channel and opens [IntakeScreen] with the shared text.
+/// Watches the OS share channel and opens [IntakeScreen] with what was shared.
 ///
 /// Mounted inside MaterialApp (so a Navigator is available) from main.dart.
-/// If the app is still locked the text is held until the vault opens — a
+/// If the app is still locked the payload is held until the vault opens — a
 /// share must never be a way around the lock gate.
 class ShareTargetListener extends ConsumerStatefulWidget {
   final Widget child;
@@ -63,21 +82,21 @@ class ShareTargetListener extends ConsumerStatefulWidget {
 }
 
 class _ShareTargetListenerState extends ConsumerState<ShareTargetListener> {
-  StreamSubscription<String>? _stream;
-  String? _pending;
+  StreamSubscription<SharePayload>? _stream;
+  SharePayload? _pending;
   bool _opening = false;
 
   @override
   void initState() {
     super.initState();
     _stream = ShareIntentBridge.stream.listen(
-      (text) => _queue(text),
-      onError: (Object _) {}, // a dead channel must not crash the app
-    );
+          _queue,
+          onError: (Object _) {}, // a dead channel must not crash the app
+        );
     // Cold start: the share sheet is what launched us.
     unawaited(
-      ShareIntentBridge.initialText().then((text) {
-        if (text != null) _queue(shareTextFrom(text));
+      ShareIntentBridge.initialPayload().then((payload) {
+        if (payload != null) _queue(payload);
       }),
     );
   }
@@ -88,15 +107,15 @@ class _ShareTargetListenerState extends ConsumerState<ShareTargetListener> {
     super.dispose();
   }
 
-  void _queue(String? text) {
-    if (text == null || !mounted) return;
-    setState(() => _pending = text);
+  void _queue(SharePayload? payload) {
+    if (payload == null || !mounted) return;
+    setState(() => _pending = payload);
     _maybeOpen();
   }
 
   void _maybeOpen() {
-    final text = _pending;
-    if (text == null || _opening) return;
+    final payload = _pending;
+    if (payload == null || _opening) return;
     if (ref.read(lockProvider).locked) return; // held until the vault opens
     _opening = true;
     _pending = null;
@@ -105,7 +124,12 @@ class _ShareTargetListenerState extends ConsumerState<ShareTargetListener> {
       final navigator = Navigator.of(context);
       _opening = false;
       await navigator.push(
-        MaterialPageRoute(builder: (_) => IntakeScreen(initialText: text)),
+        MaterialPageRoute(
+          builder: (_) => IntakeScreen(
+            initialText: payload.text,
+            initialImages: payload.images,
+          ),
+        ),
       );
     });
   }

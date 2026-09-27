@@ -38,16 +38,37 @@ void main() {
 
   group('share target payload (pure)', () {
     test('a shared SMS hands its text to the confirm sheet', () {
-      expect(shareTextFrom('Paid Rs.450 to Swiggy'), 'Paid Rs.450 to Swiggy');
-      expect(shareTextFrom('  Paid Rs.450 to Swiggy \n'), 'Paid Rs.450 to Swiggy');
+      final payload = SharePayload.from({'text': 'Paid Rs.450 to Swiggy', 'images': <String>[]});
+      expect(payload!.text, 'Paid Rs.450 to Swiggy');
+      expect(payload.images, isEmpty);
+      expect(payload.isScreenshotOnly, false);
     });
 
-    test('a blank or non-text share never opens a half-empty sheet', () {
-      expect(shareTextFrom('   '), isNull);
-      expect(shareTextFrom(''), isNull);
-      expect(shareTextFrom(null), isNull);
-      expect(shareTextFrom(42), isNull);
-      expect(shareTextFrom('/storage/emulated/0/IMG_0042.jpg'), '/storage/emulated/0/IMG_0042.jpg');
+    test('a shared screenshot carries file paths, no text', () {
+      final payload = SharePayload.from({
+        'text': null,
+        'images': ['/data/user/0/dev.rajath.expense_tracker/cache/share-1.jpg'],
+      });
+      expect(payload!.text, isNull);
+      expect(payload.images, hasLength(1));
+      expect(payload.isScreenshotOnly, true);
+    });
+
+    test('a blank or malformed share never opens a half-empty sheet', () {
+      expect(SharePayload.from({'text': '   ', 'images': <String>[]}), isNull);
+      expect(SharePayload.from({'text': null, 'images': <String>[]}), isNull);
+      expect(SharePayload.from(null), isNull);
+      expect(SharePayload.from('just a string'), isNull);
+      expect(SharePayload.from({'images': ['', 7]}), isNull);
+    });
+
+    test('text and images can arrive together, junk entries are dropped', () {
+      final payload = SharePayload.from({
+        'text': ' Refund Rs.200 from Amazon ',
+        'images': ['/cache/a.png', '', '/cache/b.png', 42],
+      });
+      expect(payload!.text, 'Refund Rs.200 from Amazon');
+      expect(payload.images, ['/cache/a.png', '/cache/b.png']);
     });
   });
 

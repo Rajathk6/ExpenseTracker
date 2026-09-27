@@ -30,8 +30,14 @@ dependencies:
   fl_chart: ^0.68.0
   intl: ^0.19.0
   uuid: ^4.4.0
-  # Home-screen quick-add tile (2-tap cash spend).
+  # Home-screen quick-add tile (2-tap cash spend). Applies the Kotlin Gradle
+  # plugin, so Flutter prints a future-compat warning — it builds today.
   home_widget: ^0.10.0
+  # On-device OCR for shared screenshots. 0.17.x is the last line that builds
+  # on the pinned compileSdk 36 with jvmTarget 11; recognition is offline
+  # (Latin script model bundled in the APK).
+  google_mlkit_text_recognition: ^0.17.1
+  google_mlkit_text_recognition: ^0.17.1
 
 dev_dependencies:
   flutter_test:
