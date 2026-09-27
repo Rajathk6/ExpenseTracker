@@ -37,12 +37,14 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v6, Phase 10 code-complete ✅ code / ⏳ codegen+tests on dev machine)
+## Data model (Drift v7, codegen + tests green — 109/109 as of 2026-09-16)
 - `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
 - `debts(...)` (v2) + `splits(...)` (v3) — contracts with money trails in transactions.
 - `instruments(id, name, kind freeform, invested, current, note, status, createdAt)` (v4) — vault, tracking-only, never writes transactions. P/L% + interest in instruments/instrument_logic.dart.
 - `snapshots(month, accountId, openBalance, countedClose, hasClose, createdAt)` (v5, PK = month+account) — reconcile inputs. Report reads ledger via transactionsBetween; price memory reads item history (no table); net-worth timeline derives bank/cash from openings + all actuals.
+- `settings(key, value)` (v6) — PIN/decoy salts + auto-lock minutes as opaque rows. `month_open(month, budgetIn, budgetOut, bankBalance, cashBalance, cardLimit)` (v7) — the optional month-start form.
 - Later: `prices(item, amount, date, place)` only if derived history proves too slow.
+- `core/backup/backup_service.dart` walks the single `backupTables` list — a new table must be added there or it silently misses every .etbak.
 - Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.

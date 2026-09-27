@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 import 'package:expense_tracker/core/category_suggest.dart';
 import 'package:expense_tracker/core/backup/backup_service.dart';
@@ -6,9 +7,20 @@ import 'package:expense_tracker/core/backup/codec.dart';
 import 'package:expense_tracker/core/database.dart';
 import 'package:expense_tracker/features/customization/account_repository.dart';
 import 'package:expense_tracker/features/reconcile/month_open_repository.dart';
+import 'package:expense_tracker/features/transactions/item_search_screen.dart';
 import 'package:expense_tracker/features/transactions/transaction_repository.dart';
 
 void main() {
+  Transaction _row(DateTime at, double actual) => Transaction(
+        id: '$at$actual',
+        kind: 'out',
+        actual: actual,
+        budgetImpact: actual,
+        occurredAt: at,
+        categoryRaw: 'food staples maggi',
+        createdAt: at,
+      );
+
   group('category suggestions (pure ranking)', () {
     final past = [
       'food junk gobi-65',
@@ -158,6 +170,32 @@ void main() {
         suggestCategories(await db.distinctCategories(), query: 'mag').first.value,
         'food staples maggi',
       );
+    });
+  });
+
+  group('item search roll-ups (sum/count per month and per year)', () {
+    test('counts and totals per period, plus the average', () async {
+      final rows = [
+        _row(DateTime(2025, 4, 2), -60),
+        _row(DateTime(2025, 4, 20), -70),
+        _row(DateTime(2025, 11, 3), -50),
+        _row(DateTime(2026, 2, 9), -100),
+      ];
+      final byMonth = rollUpByPeriod(rows, DateFormat('MMM yyyy'));
+      expect(byMonth['Apr 2025']!.times, 2);
+      expect(byMonth['Apr 2025']!.total, -130);
+      expect(byMonth['Apr 2025']!.average, -65);
+      expect(byMonth['Nov 2025']!.times, 1);
+
+      final byYear = rollUpByPeriod(rows, DateFormat('yyyy'));
+      expect(byYear['2025']!.times, 3);
+      expect(byYear['2025']!.total, -180);
+      expect(byYear['2025']!.average, -60);
+      expect(byYear['2026']!.total, -100);
+    });
+
+    test('no rows rolls up to nothing', () {
+      expect(rollUpByPeriod(const <Transaction>[], DateFormat('yyyy')), isEmpty);
     });
   });
 

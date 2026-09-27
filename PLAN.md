@@ -5,7 +5,7 @@ All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Dri
 
 ## Approved scope (incl. latest additions)
 1. In/Out with date/time/category picker.
-2. Monthly budgets: set total, N fully-custom buckets (presets: 30/40/30, 50/30/20, custom). **Budget simulator** to preview a ratio on last-3-months data before committing.
+2. Monthly budgets: set total, N fully-custom buckets (presets: 30/40/30, 50/30/20, custom). **Budget simulator** to preview a ratio on last-3-months data before committing — *engine + tests shipped; owner removed the preview UI in the 2026-09-14 UX batch, the pure `simulate()` stays tested*.
 3. Freeform categories: `space` = new level, `-` = item continuation. `food junk gobi-65` → levels `[food, junk]`, item `gobi-65`. Search any token across month/year.
 4. Neutral ledger (lend/borrow): excluded from budget, partials validated vs principal, auto-settle + archive. **Aging + local nudge** (days-since, progress bar, reminder date, per-friend note).
 5. Splits: pay 1000/10 → `actual=-1000, budget=-100, receivable=900`. Manual settles reconcile to bank. Unpaid-at-month-end flagged `absorbed`.
@@ -29,7 +29,7 @@ Split 1000/10 (mine 100): actual = -1000, budgetImpact = -100, receivable = 900
 ```
 
 ## Phases (each = one branch, one VALIDATION row, one PROGRESS entry)
-- **0 foundation** (`feature/00-foundation`, this branch): git, docs, pubspec, folder skeleton, lock shell stub, category parser pure function + test. ← WE ARE HERE
+- **0 foundation** (`feature/00-foundation`): git, docs, pubspec, folder skeleton, lock shell stub, category parser pure function + test. ✅
 - **1 customization core** (`feature/01-custom-core`): lookup tables (buckets/sources/categories), Drift schema v1, settings defaults.
 - **2 transactions+categories** (`feature/02-transactions`): in/out CRUD, datetime picker, category suggest + search aggregates.
 - **3 budgets+simulator** (`feature/03-budgets`): monthly CRUD, N-bucket engine, simulator on history.

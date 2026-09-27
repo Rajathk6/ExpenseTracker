@@ -223,7 +223,8 @@ String _shiftedKey(int year, int month, int back) {
 }
 
 /// Budget-planning truth per month for the 3 months ending at [key]
-/// (oldest first). Used by the budget simulator.
+/// (oldest first). Backs the simulator math in features/budgets/simulator.dart,
+/// whose preview screen the owner retired in the UX batch.
 final pastOutProvider = FutureProvider.family<List<({String key, double out})>, String>((ref, key) async {
   final parts = key.split('-');
   final year = int.parse(parts[0]), month = int.parse(parts[1]);

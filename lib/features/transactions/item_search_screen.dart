@@ -1,6 +1,7 @@
 /// Search + detail: matches raw category, any level, or item
 /// (`food`, `junk`, `gobi-65` all find `food junk gobi-65`).
-/// Exact hyphenated items additionally offer a stats drill-down. Read-only.
+/// Exact hyphenated items additionally offer a stats drill-down rolled up by
+/// month and by year. Read-only.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,31 @@ import '../../core/providers.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
 final _monthFmt = DateFormat('MMM yyyy');
+final _yearFmt = DateFormat('yyyy');
+
+/// One period of an item's history: how many times, what it cost, the average
+/// (the number the overpay flag compares against).
+class PeriodRollUp {
+  final int times;
+  final double total;
+  const PeriodRollUp(this.times, this.total);
+  double get average => times == 0 ? 0 : total / times;
+}
+
+/// Count + total per period label (`Sep 2026`, `2026`) for one item's rows.
+/// PLAN promise: item search answers with sum/count per month AND per year.
+Map<String, PeriodRollUp> rollUpByPeriod(List<Transaction> rows, DateFormat fmt) {
+  final counts = <String, int>{};
+  final totals = <String, double>{};
+  for (final r in rows) {
+    final key = fmt.format(r.occurredAt);
+    counts[key] = (counts[key] ?? 0) + 1;
+    totals[key] = (totals[key] ?? 0) + r.actual;
+  }
+  return {
+    for (final key in counts.keys) key: PeriodRollUp(counts[key]!, totals[key]!),
+  };
+}
 
 class ItemSearchScreen extends ConsumerStatefulWidget {
   const ItemSearchScreen({super.key});
@@ -178,11 +204,9 @@ class _DetailBody extends StatelessWidget {
     if (rows.isEmpty) return const Center(child: Text('Never bought.'));
     final spent = rows.where((r) => r.actual < 0).fold<double>(0, (s, r) => s + r.actual);
     final avg = spent / rows.length;
-    final byMonth = <String, List<Transaction>>{};
-    for (final r in rows) {
-      byMonth.putIfAbsent(_monthFmt.format(r.occurredAt), () => []).add(r);
-    }
-    final months = byMonth.keys.toList()..sort();
+    final byMonth = rollUpByPeriod(rows, _monthFmt);
+    final byYear = rollUpByPeriod(rows, _yearFmt);
+    final years = byYear.keys.toList()..sort();
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -195,19 +219,27 @@ class _DetailBody extends StatelessWidget {
                 _Stat('Times', '${rows.length}'),
                 _Stat('Total', '₹${spent.abs().toStringAsFixed(0)}'),
                 _Stat('Avg', '₹${avg.abs().toStringAsFixed(0)}'),
+                _Stat('Years', '${years.length}'),
               ],
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text('By month', style: Theme.of(context).textTheme.titleSmall),
-        for (final m in months)
+        for (final m in byMonth.keys.toList()..sort())
           ListTile(
             dense: true,
             title: Text(m),
-            trailing: Text(
-              '×${byMonth[m]!.length} · ₹${byMonth[m]!.fold<double>(0, (s, r) => s + r.actual).abs().toStringAsFixed(0)}',
-            ),
+            trailing: Text('×${byMonth[m]!.times} · ₹${byMonth[m]!.total.abs().toStringAsFixed(0)}'),
+          ),
+        const Divider(),
+        Text('By year', style: Theme.of(context).textTheme.titleSmall),
+        for (final y in years)
+          ListTile(
+            dense: true,
+            title: Text(y),
+            subtitle: Text('avg ₹${byYear[y]!.average.abs().toStringAsFixed(0)}'),
+            trailing: Text('×${byYear[y]!.times} · ₹${byYear[y]!.total.abs().toStringAsFixed(0)}'),
           ),
         const Divider(),
         for (final r in rows)

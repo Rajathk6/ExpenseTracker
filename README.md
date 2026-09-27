@@ -23,5 +23,6 @@ flutter run
 flutter test
 ```
 
-Flutter not installed here yet — scaffold is hand-written and ready for `flutter pub get` once SDK is installed.
-See `PLAN.md` Phase 0 for SDK install steps.
+Built and verified with Flutter 3.47.2 (Dart 3.13.2) + Java 17 + Android SDK 36.
+Regenerate Drift code after any table change: `flutter pub run build_runner build --delete-conflicting-outputs`.
+Installable APKs are attached to every GitHub Release; see `PROGRESS.md` for the release log.
