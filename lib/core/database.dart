@@ -276,6 +276,20 @@ class AppDatabase extends _$AppDatabase {
     return (await q.get()).map((r) => r.read(transactions.categoryRaw)!).toList()..sort();
   }
 
+  /// Raw category → how many entries used it. Ties in the suggestion rank
+  /// are broken by usage, so the things you buy most come first.
+  Future<Map<String, int>> categoryUsage() async {
+    final n = transactions.categoryRaw.count();
+    final q = selectOnly(transactions)
+      ..addColumns([transactions.categoryRaw, n])
+      ..groupBy([transactions.categoryRaw]);
+    final out = <String, int>{};
+    for (final r in await q.get()) {
+      out[r.read(transactions.categoryRaw)!] = r.read(n) ?? 0;
+    }
+    return out;
+  }
+
   // --- Budgets ---
 
   Future<Budget?> getBudget(String month) =>
@@ -394,6 +408,8 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Budget>> allBudgets() => select(budgets).get();
 
   Future<List<Snapshot>> allSnapshots() => select(snapshots).get();
+
+  Future<List<MonthOpenData>> allMonthOpens() => select(monthOpen).get();
 
   Future<List<Transaction>> allTransactions() =>
       (select(transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();

@@ -8,6 +8,7 @@ import '../core/database.dart';
 import 'auth/lock_service.dart';
 import 'auth/pin_service.dart';
 import 'backup/backup_service.dart';
+import 'category_suggest.dart';
 import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
@@ -87,9 +88,6 @@ final bucketSpendProvider = FutureProvider.family<Map<String, double>, String>((
   return ref.watch(transactionRepositoryProvider).bucketSpend(start, end);
 });
 
-final categoryHistoryProvider =
-    FutureProvider((ref) => ref.watch(transactionRepositoryProvider).db.distinctCategories());
-
 final allItemsProvider = FutureProvider((ref) => ref.watch(transactionRepositoryProvider).allItems());
 
 final itemRowsProvider =
@@ -104,6 +102,18 @@ final searchProvider =
 final searchSuggestionsProvider = FutureProvider.family<List<String>, String>((ref, query) async {
   if (query.trim().isEmpty) return const [];
   return ref.watch(transactionRepositoryProvider).suggestions(query);
+});
+
+/// Ranked category completions for the entry / intake / quick-add fields, so
+/// half a category is enough (`gob` → `food junk gobi-65`). Pure ranking lives
+/// in core/category_suggest.dart; this only feeds it the ledger's history.
+/// autoDispose so a just-saved category shows up in the next entry form.
+final categorySuggestProvider =
+    FutureProvider.autoDispose.family<List<CategorySuggestion>, String>((ref, query) async {
+  final db = ref.watch(transactionRepositoryProvider).db;
+  final past = await db.distinctCategories();
+  final uses = await db.categoryUsage();
+  return suggestCategories(past, query: query, uses: uses);
 });
 
 // --- Debts UI ---
