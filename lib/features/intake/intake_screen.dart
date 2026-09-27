@@ -13,6 +13,7 @@ import '../../core/database.dart';
 import '../../core/intake/share_parser.dart';
 import '../../core/ledger.dart';
 import '../../core/providers.dart';
+import '../transactions/category_field.dart';
 import '../transactions/entry_logic.dart';
 
 class IntakeScreen extends ConsumerStatefulWidget {
@@ -95,9 +96,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
             note: _parsed?.upiRef == null ? 'via intake' : 'via intake · ${_parsed!.upiRef}',
             accountId: _accountId,
           );
-      ref
-        ..invalidate(recentTransactionsProvider)
-        ..invalidate(categoryHistoryProvider);
+      ref.invalidate(recentTransactionsProvider);
       if (mounted) Navigator.of(context).pop(true);
     } on Object catch (e) {
       if (mounted) {
@@ -162,13 +161,11 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
             decoration: const InputDecoration(labelText: 'Amount (editable)', prefixText: '₹ ', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 8),
-          TextField(
+          CategoryField(
             controller: _category,
-            decoration: const InputDecoration(
-              labelText: 'Category (pickable)',
-              hintText: 'food swiggy order',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Category (pickable)',
+            hintText: 'food swiggy order',
+            helperText: 'type a few letters to pick a past one',
           ),
           const SizedBox(height: 8),
           accounts.when(

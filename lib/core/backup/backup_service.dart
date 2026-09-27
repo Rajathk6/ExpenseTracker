@@ -14,6 +14,20 @@ import 'package:path_provider/path_provider.dart';
 import '../database.dart';
 import 'codec.dart';
 
+/// Every table an .etbak carries. Dump, restore and the row-count report all
+/// walk this one list, so a new table can never be silently left out again.
+const backupTables = [
+  'accounts',
+  'transactions',
+  'budgets',
+  'debts',
+  'splits',
+  'instruments',
+  'snapshots',
+  'settings',
+  'month_open',
+];
+
 class BackupService {
   final AppDatabase db;
   const BackupService(this.db);
@@ -29,6 +43,7 @@ class BackupService {
       'instruments': [for (final r in await db.allInstruments()) r.toJson()],
       'snapshots': [for (final r in await db.allSnapshots()) r.toJson()],
       'settings': [for (final r in settingsRows) r.toJson()],
+      'month_open': [for (final r in await db.allMonthOpens()) r.toJson()],
     };
   }
 
@@ -62,9 +77,11 @@ class BackupService {
     for (final m in rows('settings')) {
       await db.into(db.settings).insertOnConflictUpdate(Setting.fromJson(m).toCompanion(true));
     }
+    for (final m in rows('month_open')) {
+      await db.into(db.monthOpen).insertOnConflictUpdate(MonthOpenData.fromJson(m).toCompanion(true));
+    }
     return {
-      for (final k in const ['accounts', 'transactions', 'budgets', 'debts', 'splits', 'instruments', 'snapshots', 'settings'])
-        k: rows(k).length,
+      for (final k in backupTables) k: rows(k).length,
     };
   }
 
