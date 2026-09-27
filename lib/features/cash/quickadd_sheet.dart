@@ -1,6 +1,7 @@
 /// Quick-add sheet: 2-tap cash spend (amount chip + category), confirm, done.
-/// The home-screen widget / quick tile opens this sheet on the dev-machine
-/// build (native wiring in PROGRESS); the sheet itself is fully offline.
+/// Opened from the in-app button and from the home-screen tile, which arrives
+/// as `homewidget://quickadd?action=quickadd` (see home_tile.dart). Fully
+/// offline — the tile needs no background service.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database.dart';
 import '../../core/ledger.dart';
 import '../../core/providers.dart';
+import '../transactions/category_field.dart';
 import '../transactions/entry_logic.dart';
 
 const _quickSpendAmounts = [50.0, 100.0, 200.0, 500.0, 1000.0];
@@ -69,9 +71,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             note: 'via quick-add',
             accountId: draft.accountId,
           );
-      ref
-        ..invalidate(recentTransactionsProvider)
-        ..invalidate(categoryHistoryProvider);
+      // Suggestions are autoDispose + re-read the DB, so only the list refreshes.
+      ref.invalidate(recentTransactionsProvider);
       if (mounted) Navigator.of(context).pop(true);
     } on Object catch (e) {
       if (mounted) {
@@ -86,7 +87,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountsProvider);
-    final history = ref.watch(categoryHistoryProvider);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 12),
       child: SingleChildScrollView(
@@ -115,33 +115,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
+            CategoryField(
               controller: _category,
               autofocus: true,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                hintText: 'food chai cutting',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            history.maybeWhen(
-              data: (cats) {
-                final q = _category.text.trim().toLowerCase();
-                final matches = cats.where((c) => q.isEmpty ? true : c.toLowerCase().contains(q)).take(4).toList();
-                if (matches.isEmpty) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final m in matches)
-                        ActionChip(label: Text(m), onPressed: () => setState(() => _category.text = m)),
-                    ],
-                  ),
-                );
-              },
-              orElse: () => const SizedBox.shrink(),
+              hintText: 'food chai cutting',
+              helperText: 'type a few letters to pick a past one',
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
@@ -162,8 +140,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 }
 
-/// Opens the quick-add confirm sheet. The home widget / quick tile calls
-/// this after the native wiring lands (see PROGRESS Phase 9 notes).
+/// Opens the quick-add confirm sheet. The home-screen tile calls this when
+/// `homewidget://quickadd?action=quickadd` launches or reaches the app.
 Future<bool> openQuickAdd(BuildContext context) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../../core/database.dart';
 import '../../core/ledger.dart';
 import '../../core/providers.dart';
+import 'category_field.dart';
 import 'entry_logic.dart';
 
 final _whenFmt = DateFormat('d MMM yyyy, h:mm a');
@@ -121,9 +122,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
           accountId: _accountId,
         );
       }
-      ref
-        ..invalidate(recentTransactionsProvider)
-        ..invalidate(categoryHistoryProvider);
+      ref.invalidate(recentTransactionsProvider);
       if (mounted) Navigator.of(context).pop(true);
     } on Object catch (e) {
       if (mounted) {
@@ -203,14 +202,10 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ ', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
-            TextField(
+            CategoryField(
               controller: _category,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                hintText: 'food junk gobi-65',
-                helperText: 'space = level, - continues item',
-                border: OutlineInputBorder(),
-              ),
+              hintText: 'food junk gobi-65',
+              helperText: 'type a few letters to pick a past one · space = level, - continues item',
             ),
             const SizedBox(height: 12),
             bucketNames.maybeWhen(

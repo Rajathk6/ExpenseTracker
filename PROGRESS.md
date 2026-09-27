@@ -90,10 +90,11 @@
 ## PENDING WORKS (remaining, in order)
 1. **x86_64 APK** — built locally (`app-x86_64-release.apk`, 22MB, emulator-only) but upload kept timing out on the slow uplink. Attach to v0.1.0 later via `gh release upload v0.1.0 build/app/outputs/flutter-apk/app-x86_64-release.apk`. Not needed for real phones.
 2. **Phone findings (fixed 2026-09-08):** (a) only Cash source → new Accounts manager (add/rename/delete, freeform kinds), reachable from Transactions AppBar; entry banner kept for first run. (b) search felt broken → it only matched hyphenated items; now matches raw category + any level + item, with empty-query item browser + stats drill-down kept.
-3. **Phase 4 neutral/aging** — IN PROGRESS (`feature/04-neutral`).
-4. **Phases 4–11** per PLAN.md (neutral/aging → splits → instruments → reconcile/prices/net-worth → reports → intake → backup/security → hardening).
-5. **Phase 9/10 native deps** — share/file/auth/OCR/widget/Drive re-added at their phases (trimmed 2026-09-07, zero Dart usages affected).
-6. **Release signing** (Phase 10/11) — replace debug signing with a personal keystore + `release` CI job.
+3. **Phase 4 neutral/aging** — ✅ shipped in v0.3.0 (row stale, kept for numbering).
+4. **Phases 4–11** per PLAN.md — ✅ all shipped (rows stale, kept for numbering).
+5. **Phase 9/10 native deps** — share/file/auth/OCR/widget/Drive re-added at their phases (trimmed 2026-09-07, zero Dart usages affected). The pure-Dart halves shipped; the native wiring is still open (see the 2026-09-16 audit).
+6. **Release signing** (Phase 10/11) — replace debug signing with a personal keystore + `release` CI job. Every APK to date is debug-signed.
+7. **Doc drift (audit 2026-09-16)** — `PLAN.md:32` still says "← WE ARE HERE (Phase 0)", `README.md:26` claims Flutter isn't installed, `ARCHITECTURE.md:40` says Drift v6 (now v7).
 
 ## 2026-09-08 — Phase 3 budgets + phone fixes / `feature/03-budgets`
 - Accounts manager (add SBI/bank/card with freeform kind, rename, delete) + AppBar entry points (Accounts, Search, Budgets).
@@ -172,6 +173,34 @@
 - Splits: custom N-people divisor with live share; main list shows live outstanding in whole rupees; vault got search; interest preview removed; date-only valuations kept.
 - Net worth = banks + cash + investments (+gains inside current); borrowings/settlements/receivables excluded.
 - Tests: 9 new in `ux_feedback_test.dart`; full suite 87/87 green, analyze clean.
+
+## 2026-09-15 — v0.10.0 released / PR #11 merged + tag + GitHub Release
+- Verified locally (this machine, Flutter 3.47.2): `flutter analyze` clean, `flutter test` 87/87 green, version 0.10.0+10, schema v7.
+- Version bump `chore(release): 0.10.0+10` committed to `develop` (380a3e8), pushed; PR #11 (develop→main) merged (986bc9f), tag `v0.10.0` on the merge commit.
+- Release published with arm64 (21.7MB) + armeabi (19.2MB) split release APKs (aapt-verified 0.10.0, dev.rajath.expense_tracker, SDK 36, debug-signed). x86_64 built locally (23.2MB, emulator-only) but not attached, per pattern.
+- Release-process note: `gh release create` uploads on slow uplink need ~10min+ per 20MB asset — create the draft first, then `gh release upload` one APK per command with a long timeout, then `gh release edit --draft=false`.
+- Next: phone-test v0.10.0; remaining ideas (release signing, re-enable CI required checks) on your call.
+
+## 2026-09-16 — Category search + backup gap fix / `develop` (v0.10.0 released, this is post-release)
+- Planned: audit PLAN/PROGRESS/VALIDATION/ARCHITECTURE for pending work, then fix the owner-reported gap — the entry form offered no past categories, so every new entry retyped the full string.
+- Done: `core/category_suggest.dart` (pure ranking: exact > raw-prefix > item-prefix > level-prefix(shallower first) > raw-contains > token-contains, ties by usage then alpha; empty query browses most-used; word-widened `matchedToken` for highlighting) + `AppDatabase.categoryUsage()` (group-by counts) + autoDispose `categorySuggestProvider`; shared `features/transactions/CategoryField` (150ms debounce, controller-listener driven so merchant guesses and chips feed it too, tappable rows, "new category" footer, no blocking of freeform entry). Wired into entry sheet, intake confirm and quick-add (replaced quick-add's ad-hoc chips). Dropped the now-dead `categoryHistoryProvider` + its 3 invalidations.
+- Also fixed a real data-loss gap found by the audit: `month_open` (schema v7) was never written to `.etbak`, so VALIDATION #8's "restores 100%" was false. Dump/restore/report now walk one `backupTables` list (9 tables) so a new table can't be left out again.
+- Validation: Cat ✅ + #8 re-verified 2026-09-16. `flutter test` 109/109 green (87 → +22: 18 pure/repo tests + 4 widget tests), `flutter analyze` clean.
+- Audit findings still open (owner call): Android share-target + OCR plugin + home widget (no `ios/` project at all), `local_auth`/secure_storage/SQLCipher, personal release keystore (all APKs debug-signed today), CI required checks removed, item search lacks the promised year roll-up, simulator + interest fns are dead code still marked green in VALIDATION.
+- Next: cut v0.11.0 on your call, or batch it with the open items above.
+
+## 2026-09-27 — Native integration batch / `feature/native-integration` (post-v0.10.0, → v0.11.0)
+- Planned: work the open list from the 2026-09-16 audit, CI work explicitly skipped by owner.
+- **Share target (no plugin):** `receive_sharing_intent` 1.9.0 needs compileSdk 37 and 1.8.1 dies on the AGP Kotlin/JVM-target clash, so the manifest `ACTION_SEND`/`SEND_MULTIPLE` filter + payload channels live in our own `MainActivity.kt` (~40 lines, incl. copying `content://` images into the cache). A share is held while the vault is locked.
+- **On-device OCR:** `google_mlkit_text_recognition` 0.17.1 (compileSdk 36, jvmTarget 11, Latin model bundled so it stays offline). Intake takes `initialImages`, reads them into the same box a shared SMS uses; a "Read a screenshot" button covers the no-share flow. Cost: arm64 APK 21.7MB → 36.3MB.
+- **Build-file change (one):** `android/app/proguard-rules.pro` with the `-dontwarn` rules AGP generated for the OCR plugin's unused Chinese/Devanagari/Japanese/Korean options — R8 refuses to build without them. No compileSdk or version overrides anywhere.
+- **Security:** PIN/decoy/recovery hashes now live in the Android keychain (`core/auth/secret_store.dart`), namespaced per vault, migrated out of the `settings` table on first read and deleted there; a keystore failure falls back to the legacy row instead of losing the PIN. Consequence, asserted in tests: an `.etbak` no longer carries unlock hashes, so a restore on a new device starts without a PIN. Biometric unlock is real (confirmed by a scan before it turns on, real-vault only, PIN pad always usable). `file_picker` replaces the hand-typed backup path.
+- **Also:** home-screen tile (`QuickAddWidget`) shows this month's budget spend and opens the 2-tap quick-add; item search gained the promised year roll-up (count/total/avg + years covered); doc drift fixed (PLAN/README/ARCHITECTURE v7) and VALIDATION no longer claims UI the owner retired (simulator preview, in-vault interest preview).
+- **SQLCipher evaluated → not adopted.** Reasoning, costs (migration, key custody, reinstall risk, build surface) and the revisit trigger written up in ARCHITECTURE.md.
+- **Release signing done:** personal keystore `~/expense-release.jks` (alias `expense`) + `android/key.properties` (both git-ignored). The Phase 11 template picked it up — v0.11.0 APKs are the first properly signed ones (apksigner: `CN=ExpenseTracker`). A signing key cannot be rotated for an installed app, so this key is the install base from here.
+- Gotchas worth remembering: a KDoc containing `image/*` silently opens a nested Kotlin comment ("Unclosed comment"); real file I/O inside `testWidgets` deadlocks the fake-async zone (create temp files in `setUp`); a lazy `ListView` never builds off-screen children, so widget tests need a phone-sized `tester.view` or `scrollUntilVisible`; a live drift stream leaves a zero-duration timer at teardown (override it in widget tests).
+- Validation: Intake / Intake-img / Quick / #9 re-verified 2026-09-27. `flutter test` 127/127 green (118 → +9), `flutter analyze` clean, debug + release APKs build.
+- Next: merge `feature/native-integration` → `develop` → `main`, tag `v0.11.0`, publish the signed split APKs.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

@@ -1,11 +1,16 @@
-/// Settings: PIN + decoy, auto-lock, encrypted backup, about.
+/// Settings: PIN + decoy, biometric, auto-lock, encrypted backup, about.
 /// Everything here works offline. Drive upload stays a manual Files-app
-/// step per PLAN (export shows the exact file path).
+/// step per PLAN (export shows the exact file path); restore picks the
+/// .etbak with the system file browser.
 library;
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/auth/biometric_service.dart';
 import '../../core/auth/lock_service.dart';
 import '../../core/backup/codec.dart';
 import '../../core/providers.dart';
@@ -71,7 +76,21 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final path = TextEditingController();
+    // Pick the .etbak with the system file browser instead of hand-typing a
+    // path — the file is on Drive/Downloads, not on the device.
+    PlatformFile? picked;
+    try {
+      picked = await FilePicker.pickFile(
+        type: FileType.any,
+        dialogTitle: 'Choose an ExpenseTracker backup (.etbak)',
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not open the file browser: $e')));
+      return;
+    }
+    final path = picked?.path;
+    if (path == null || path.isEmpty) return;
+    if (!context.mounted) return;
     final password = TextEditingController();
     String? error;
     final counts = await showDialog<Map<String, int>>(
@@ -83,8 +102,13 @@ class SettingsScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Restoring overwrites conflicting rows. Export first if unsure.'),
-              const SizedBox(height: 8),
-              TextField(controller: path, decoration: const InputDecoration(labelText: 'File path (.etbak)', border: OutlineInputBorder())),
+              const SizedBox(height: 4),
+              Text(
+                path.split(Platform.pathSeparator).last,
+                style: Theme.of(ctx).textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 8),
               TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Backup password', border: OutlineInputBorder())),
               if (error != null) Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
@@ -94,8 +118,12 @@ class SettingsScreen extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
+                if (password.text.isEmpty) {
+                  setDialog(() => error = 'Enter the password this backup was made with');
+                  return;
+                }
                 try {
-                  final c = await ref.read(backupServiceProvider).importFromFile(path.text.trim(), password.text);
+                  final c = await ref.read(backupServiceProvider).importFromFile(path, password.text);
                   if (ctx.mounted) Navigator.of(ctx).pop(c);
                 } on BackupPasswordError {
                   setDialog(() => error = 'Wrong password — file untouched');
@@ -114,6 +142,63 @@ class SettingsScreen extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(content: Text('Restored ${counts['transactions'] ?? 0} entries, ${counts['accounts'] ?? 0} accounts.')),
       );
+    }
+  }
+
+  Future<void> _biometric(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final bio = ref.read(biometricServiceProvider);
+    final pins = ref.read(pinServiceProvider);
+    if (!await pins.hasPin) {
+      messenger.showSnackBar(const SnackBar(content: Text('Set a PIN first — biometrics are a shortcut, not the key.')));
+      return;
+    }
+    if (await pins.biometricEnabled) {
+      if (!context.mounted) return;
+      final off = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Turn off biometric unlock?'),
+          content: const Text('Your PIN stays as the way in.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Keep it on')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Turn off')),
+          ],
+        ),
+      );
+      if (off ?? false) {
+        await pins.setBiometricEnabled(false);
+        if (context.mounted) {
+          messenger.showSnackBar(const SnackBar(content: Text('Biometric unlock off — PIN only.')));
+        }
+      }
+      return;
+    }
+    if (!await bio.isAvailable()) {
+      messenger.showSnackBar(const SnackBar(content: Text('This device cannot do fingerprint or face unlock.')));
+      return;
+    }
+    if (!await bio.hasEnrolledBiometric()) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No fingerprint or face set up yet — add one in Android settings, then retry.'),
+        ),
+      );
+      return;
+    }
+    // Confirm the enrolment with a real scan before switching it on.
+    final outcome = await bio.authenticate(
+      reason: 'Confirm to turn on biometric unlock',
+      biometricOnly: false,
+    );
+    final message = biometricMessage(outcome);
+    if (outcome == BiometricOutcome.success) {
+      await pins.setBiometricEnabled(true);
+      if (context.mounted) {
+        messenger.showSnackBar(const SnackBar(content: Text('Biometric unlock on.')));
+      }
+    } else if (message != null && context.mounted) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -238,10 +323,11 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.fingerprint),
             title: const Text('Biometric unlock'),
-            subtitle: const Text('Re-added on the dev machine (local_auth)'),
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Needs the native plugin — dev-machine step, see PROGRESS.')),
+            subtitle: FutureBuilder<bool>(
+              future: pin.biometricEnabled,
+              builder: (_, s) => Text(s.data ?? false ? 'On — fingerprint/face opens the real vault' : 'Off — PIN only'),
             ),
+            onTap: () => _biometric(context, ref),
           ),
           ListTile(
             leading: const Icon(Icons.lock_open_outlined),

@@ -1,7 +1,7 @@
-/// PIN service: 6-digit PIN + decoy PIN, salted SHA-256 hashes in Settings.
-/// No raw PIN is ever stored. Biometric (local_auth) is a dev-machine
-/// re-add — this layer already returns the same 'real'/'decoy'/null verdict
-/// shape a biometric path will feed. Phase 10.
+/// PIN service: 6-digit PIN + decoy PIN, salted SHA-256 hashes in the OS
+/// keychain (see secret_store.dart — nothing secret is written to the SQLite
+/// file). No raw PIN is ever stored. Biometrics feed the same
+/// 'real'/'decoy'/null verdict shape from core/auth/biometric_service.dart.
 library;
 
 import 'dart:convert';
@@ -10,6 +10,7 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 
 import '../database.dart';
+import 'secret_store.dart';
 
 const _pinKey = 'pin.hash';
 const _pinSaltKey = 'pin.salt';
@@ -19,6 +20,7 @@ const _lockMinutesKey = 'lock.minutes';
 const _recoveryQKey = 'recovery.question';
 const _recoveryAHashKey = 'recovery.answer.hash';
 const _recoveryASaltKey = 'recovery.answer.salt';
+const _biometricKey = 'biometric.enabled';
 
 String? validatePinFormat(String pin) {
   if (!RegExp(r'^\d{6}$').hasMatch(pin)) return 'PIN must be exactly 6 digits';
@@ -40,58 +42,63 @@ Future<String> hashPin(String pin, String salt) async {
 
 class PinService {
   final AppDatabase db;
-  const PinService(this.db);
+  final SecretStore secrets;
 
-  Future<bool> get hasPin async => (await db.getSetting(_pinKey)) != null;
+  /// Secrets default to the Android keychain; tests inject a memory store.
+  /// [vault] namespaces the keychain keys per vault ('real' / 'demo').
+  PinService(this.db, {SecretStore? secrets, String vault = 'real'})
+      : secrets = secrets ?? KeychainSecretStore(db, vault: vault);
 
-  Future<bool> get hasDecoy async => (await db.getSetting(_decoyKey)) != null;
+  Future<bool> get hasPin async => (await secrets.read(_pinKey)) != null;
+
+  Future<bool> get hasDecoy async => (await secrets.read(_decoyKey)) != null;
 
   Future<void> setPin(String pin) async {
     final err = validatePinFormat(pin);
     if (err != null) throw ArgumentError(err);
     final salt = newSalt();
-    await db.setSetting(_pinSaltKey, salt);
-    await db.setSetting(_pinKey, await hashPin(pin, salt));
+    await secrets.write(_pinSaltKey, salt);
+    await secrets.write(_pinKey, await hashPin(pin, salt));
   }
 
   Future<void> setDecoy(String pin) async {
     final err = validatePinFormat(pin);
     if (err != null) throw ArgumentError(err);
     final salt = newSalt();
-    await db.setSetting(_decoySaltKey, salt);
-    await db.setSetting(_decoyKey, await hashPin(pin, salt));
+    await secrets.write(_decoySaltKey, salt);
+    await secrets.write(_decoyKey, await hashPin(pin, salt));
   }
 
   /// 'real' | 'decoy' | null (wrong). Decoy is checked first so a shared
   /// prefix can't leak which PIN matched.
   Future<String?> verify(String pin) async {
-    final decoyHash = await db.getSetting(_decoyKey);
+    final decoyHash = await secrets.read(_decoyKey);
     if (decoyHash != null) {
-      final salt = await db.getSetting(_decoySaltKey) ?? '';
+      final salt = await secrets.read(_decoySaltKey) ?? '';
       if (await hashPin(pin, salt) == decoyHash) return 'decoy';
     }
-    final pinHash = await db.getSetting(_pinKey);
+    final pinHash = await secrets.read(_pinKey);
     if (pinHash == null) return null;
-    final salt = await db.getSetting(_pinSaltKey) ?? '';
+    final salt = await secrets.read(_pinSaltKey) ?? '';
     if (await hashPin(pin, salt) == pinHash) return 'real';
     return null;
   }
 
   Future<void> clearPin() async {
-    await db.deleteSetting(_pinKey);
-    await db.deleteSetting(_pinSaltKey);
+    await secrets.remove(_pinKey);
+    await secrets.remove(_pinSaltKey);
   }
 
   Future<void> clearDecoy() async {
-    await db.deleteSetting(_decoyKey);
-    await db.deleteSetting(_decoySaltKey);
+    await secrets.remove(_decoyKey);
+    await secrets.remove(_decoySaltKey);
   }
 
   /// Recovery Q&A for "forgot PIN". The answer is salted+hashed like a PIN;
   /// matching is case-insensitive on trimmed text. Optional — without it,
   /// forgot-PIN cannot reset (by design: offline vault, no backdoor).
   Future<bool> get hasRecovery async =>
-      (await db.getSetting(_recoveryQKey)) != null && (await db.getSetting(_recoveryAHashKey)) != null;
+      (await db.getSetting(_recoveryQKey)) != null && (await secrets.read(_recoveryAHashKey)) != null;
 
   Future<String?> get recoveryQuestion async => db.getSetting(_recoveryQKey);
 
@@ -100,15 +107,15 @@ class PinService {
     if (answer.trim().isEmpty) throw ArgumentError('Answer cannot be empty');
     final salt = newSalt();
     await db.setSetting(_recoveryQKey, question.trim());
-    await db.setSetting(_recoveryASaltKey, salt);
-    await db.setSetting(_recoveryAHashKey, await hashPin(answer.trim().toLowerCase(), salt));
+    await secrets.write(_recoveryASaltKey, salt);
+    await secrets.write(_recoveryAHashKey, await hashPin(answer.trim().toLowerCase(), salt));
   }
 
   /// True when [answer] matches (case-insensitive). Never reveals anything.
   Future<bool> verifyRecoveryAnswer(String answer) async {
-    final want = await db.getSetting(_recoveryAHashKey);
+    final want = await secrets.read(_recoveryAHashKey);
     if (want == null) return false;
-    final salt = await db.getSetting(_recoveryASaltKey) ?? '';
+    final salt = await secrets.read(_recoveryASaltKey) ?? '';
     return (await hashPin(answer.trim().toLowerCase(), salt)) == want;
   }
 
@@ -129,4 +136,10 @@ class PinService {
     }
     await db.setSetting(_lockMinutesKey, '$minutes');
   }
+
+  /// Biometric unlock is opt-in and off by default. Not a secret: it lives in
+  /// the plain settings table like auto-lock does.
+  Future<bool> get biometricEnabled async => (await db.getSetting(_biometricKey)) == '1';
+
+  Future<void> setBiometricEnabled(bool on) => db.setSetting(_biometricKey, on ? '1' : '0');
 }

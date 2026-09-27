@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/auth/biometric_service.dart';
 import '../../core/auth/lock_service.dart';
 import '../../core/providers.dart';
 
@@ -9,7 +10,9 @@ import '../../core/providers.dart';
 /// bottom and grows as tall as it needs. Forgot-PIN recovers through the
 /// security question set alongside the PIN (answer is salted+hashed;
 /// without it there is no reset — offline vault, no backdoor).
-/// Decoy PIN opens the demo vault; biometric arrives with local_auth.
+/// Decoy PIN opens the demo vault; fingerprint/face (local_auth) is offered
+/// only when the owner turned it on in Settings, and it can only ever open
+/// the real vault.
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
 
@@ -22,6 +25,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   String? _error;
   bool _busy = false;
   bool? _hasPin;
+  bool _bioReady = false;
+  bool _bioBusy = false;
 
   @override
   void initState() {
@@ -29,14 +34,54 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     _refresh();
   }
 
+  @override
+  void dispose() {
+    // Never leave a system prompt hanging behind a dead lock screen.
+    if (_bioBusy) ref.read(biometricServiceProvider).cancel();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     final has = await ref.read(pinServiceProvider).hasPin;
-    if (mounted) setState(() => _hasPin = has);
+    final enabled = has && await ref.read(pinServiceProvider).biometricEnabled;
+    final enrolled = enabled && await ref.read(biometricServiceProvider).hasEnrolledBiometric();
+    if (mounted) {
+      setState(() {
+        _hasPin = has;
+        _bioReady = enrolled;
+      });
+    }
   }
 
   Future<void> _armTimer() async {
     final minutes = await ref.read(pinServiceProvider).lockMinutes();
     ref.read(lockProvider.notifier).setTimeout(minutes == 0 ? null : Duration(minutes: minutes));
+  }
+
+  /// Biometric path. A success opens the REAL vault — a fingerprint must never
+  /// be able to land in the decoy.
+  Future<void> _biometric() async {
+    if (_bioBusy) return;
+    setState(() {
+      _bioBusy = true;
+      _error = null;
+    });
+    final outcome = await ref.read(biometricServiceProvider).authenticate(
+          reason: 'Unlock ExpenseTracker',
+        );
+    if (!mounted) return;
+    if (outcome == BiometricOutcome.success) {
+      await _armTimer();
+      ref.read(lockProvider.notifier).unlock(ok: true);
+      return;
+    }
+    setState(() {
+      _bioBusy = false;
+      _error = biometricMessage(outcome);
+      if (outcome == BiometricOutcome.notEnrolled || outcome == BiometricOutcome.noHardware) {
+        _bioReady = false;
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -144,6 +189,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (_bioReady) ...[
+          FilledButton.icon(
+            onPressed: _bioBusy ? null : _biometric,
+            icon: const Icon(Icons.fingerprint),
+            label: Text(_bioBusy ? 'Waiting…' : 'Unlock with fingerprint / face'),
+          ),
+          const SizedBox(height: 12),
+        ],
         Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.outlineVariant, borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 12),
         const Icon(Icons.lock_outline, size: 36),
@@ -175,7 +228,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ],
           ),
         TextButton(onPressed: _forgotPin, child: const Text('Forgot PIN?')),
-        const Text('Biometric unlock arrives with the system plugin (dev-machine step).'),
       ],
     );
   }
