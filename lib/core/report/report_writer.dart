@@ -5,6 +5,7 @@
 /// No native dependencies: `pdf`, `csv` and `excel` are pure Dart.
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
@@ -38,16 +39,16 @@ Future<String> writeReport({
   String? tag,
 }) async {
   final paths = await ExportPaths.resolve();
-  final file = paths.stamped(format.extension, tag: tag ?? (months.length == 1 ? months.first.monthKey : '${months.length}months'));
-  switch (format) {
-    case ReportFormat.csv:
-      await file.writeAsString(renderCsv(months), flush: true);
-    case ReportFormat.xlsx:
-      await file.writeAsBytes(renderXlsx(months), flush: true);
-    case ReportFormat.pdf:
-      await file.writeAsBytes(await renderPdf(months), flush: true);
-  }
-  return file.path;
+  final name = paths.stamped(
+    format.extension,
+    tag: tag ?? (months.length == 1 ? months.first.monthKey : '${months.length}months'),
+  ).uri.pathSegments.last;
+  final bytes = switch (format) {
+    ReportFormat.csv => Uint8List.fromList(utf8.encode(renderCsv(months))),
+    ReportFormat.xlsx => renderXlsx(months),
+    ReportFormat.pdf => await renderPdf(months),
+  };
+  return ExportPaths.save(name, bytes, paths.directory);
 }
 
 String renderCsv(List<ReportMonth> months) {
@@ -76,6 +77,12 @@ String renderCsv(List<ReportMonth> months) {
     rows.add(['Borrowed']);
     rows.add(['What', 'Who', 'Status', 'Amount', 'Back so far', 'Still open', 'Detail']);
     for (final l in m.borrows) {
+      rows.add([l.title, l.who, l.status, l.amount.toStringAsFixed(2), l.settled.toStringAsFixed(2), l.open.toStringAsFixed(2), l.detail]);
+    }
+    rows.add([]);
+    rows.add(['Settlements']);
+    rows.add(['What', 'Who', 'Status', 'Amount', 'Back', 'Still open', 'Detail']);
+    for (final l in m.settlements) {
       rows.add([l.title, l.who, l.status, l.amount.toStringAsFixed(2), l.settled.toStringAsFixed(2), l.open.toStringAsFixed(2), l.detail]);
     }
     rows.add([]);
@@ -136,6 +143,12 @@ Uint8List renderXlsx(List<ReportMonth> months) {
       row([l.title, l.who, l.status, l.amount, l.settled, l.open, l.detail]);
     }
     row([]);
+    row(['Settlements'], header: true);
+    row(['What', 'Who', 'Status', 'Amount', 'Back', 'Still open', 'Detail']);
+    for (final l in m.settlements) {
+      row([l.title, l.who, l.status, l.amount, l.settled, l.open, l.detail]);
+    }
+    row([]);
     row(['Splits'], header: true);
     row(['Title', 'People', 'Status', 'I paid', 'Came back', 'Still out', 'Detail']);
     for (final l in m.splits) {
@@ -186,6 +199,14 @@ Future<Uint8List> renderPdf(List<ReportMonth> months) async {
             _pdfTable(
               ['Who', 'Status', 'Amount', 'Back', 'Still open'],
               [for (final l in m.borrows) [l.who, l.status, money(l.amount), money(l.settled), money(l.open)]],
+            ),
+          ],
+          if (m.settlements.isNotEmpty) ...[
+            pw.SizedBox(height: 14),
+            pw.Text('Settlements', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+            _pdfTable(
+              ['Who', 'Status', 'Amount', 'Back', 'Still open'],
+              [for (final l in m.settlements) [l.who, l.status, money(l.amount), money(l.settled), money(l.open)]],
             ),
           ],
           if (m.splits.isNotEmpty) ...[

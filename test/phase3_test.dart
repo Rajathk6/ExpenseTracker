@@ -11,16 +11,16 @@ void main() {
   group('simulator (pure)', () {
     test('30/40/30 over three months', () {
       final sim = simulate(bucketPresets['30/40/30']!, [10000, 20000, 30000]);
-      expect(sim['Needs']!.perMonth, [3000, 6000, 9000]);
-      expect(sim['Needs']!.avg, 6000);
-      expect(sim['Wants']!.perMonth, [4000, 8000, 12000]);
-      expect(sim['Invest']!.avg, 6000);
+      expect(sim['need']!.perMonth, [3000, 6000, 9000]);
+      expect(sim['need']!.avg, 6000);
+      expect(sim['want']!.perMonth, [4000, 8000, 12000]);
+      expect(sim['invest']!.avg, 6000);
     });
 
     test('empty history averages zero', () {
       final sim = simulate(bucketPresets['50/30/20']!, []);
-      expect(sim['Needs']!.perMonth, isEmpty);
-      expect(sim['Needs']!.avg, 0);
+      expect(sim['need']!.perMonth, isEmpty);
+      expect(sim['need']!.avg, 0);
     });
   });
 

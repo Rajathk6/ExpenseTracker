@@ -16,7 +16,6 @@ const _pinKey = 'pin.hash';
 const _pinSaltKey = 'pin.salt';
 const _decoyKey = 'decoy.hash';
 const _decoySaltKey = 'decoy.salt';
-const _lockMinutesKey = 'lock.minutes';
 const _recoveryQKey = 'recovery.question';
 const _recoveryAHashKey = 'recovery.answer.hash';
 const _recoveryASaltKey = 'recovery.answer.salt';
@@ -125,20 +124,8 @@ class PinService {
     await setPin(newPin);
   }
 
-  Future<int> lockMinutes() async {
-    final raw = await db.getSetting(_lockMinutesKey);
-    return int.tryParse(raw ?? '') ?? 5;
-  }
-
-  Future<void> setLockMinutes(int minutes) async {
-    if (minutes != 0 && (minutes < 1 || minutes > 120)) {
-      throw ArgumentError('Auto-lock must be 0 (never) or 1–120 minutes');
-    }
-    await db.setSetting(_lockMinutesKey, '$minutes');
-  }
-
-  /// Biometric unlock is opt-in and off by default. Not a secret: it lives in
-  /// the plain settings table like auto-lock does.
+  /// Biometric unlock is opt-in and off by default. Not a secret, so it lives in
+  /// the plain settings table.
   Future<bool> get biometricEnabled async => (await db.getSetting(_biometricKey)) == '1';
 
   Future<void> setBiometricEnabled(bool on) => db.setSetting(_biometricKey, on ? '1' : '0');

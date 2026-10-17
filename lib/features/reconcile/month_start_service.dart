@@ -80,13 +80,7 @@ class MonthStartService {
     var bucketsUsed = const <Bucket>[];
     if (budgetOut != null && budgetOut > 0) {
       final effective = await _budgets.getEffective(month);
-      final buckets = (effective?.buckets.isNotEmpty ?? false)
-          ? effective!.buckets
-          : const [
-              Bucket(name: 'need', pct: 50),
-              Bucket(name: 'want', pct: 30),
-              Bucket(name: 'invest', pct: 20),
-            ];
+      final buckets = (effective?.buckets.isNotEmpty ?? false) ? effective!.buckets : defaultBuckets;
       await _budgets.save(month: month, total: budgetOut, buckets: buckets);
       budgetWritten = true;
       bucketsUsed = buckets;
@@ -97,6 +91,8 @@ class MonthStartService {
     final accounts = await db.allAccounts();
     Future<void> snapshotFor(String kindContains, double? value) async {
       if (value == null) return;
+      // Only a *matching* account is written. Guessing "probably the first one"
+      // put a bank balance on a wallet, which then made reconcile lie.
       Account? account;
       for (final a in accounts) {
         if (a.kind.toLowerCase().contains(kindContains)) {
@@ -104,7 +100,6 @@ class MonthStartService {
           break;
         }
       }
-      account ??= accounts.isEmpty ? null : accounts.first;
       if (account == null) return;
       await db.upsertSnapshot(
         SnapshotsCompanion(
@@ -122,9 +117,15 @@ class MonthStartService {
     // 3) A repeating income entry, if the owner wants the salary typed once.
     var rules = 0;
     if (salaryAmount != null && salaryAmount > 0 && salaryMonths > 0) {
+      // One rule per (month, label): adding a second salary does not overwrite
+      // the first, and re-saving the same one keeps its progress.
+      final tag = (salaryCategory ?? 'salary').trim().toLowerCase().replaceAll(' ', '-');
+      final existing = (await db.allRecurringRules())
+          .where((r) => r.startMonth == month && r.categoryRaw.toLowerCase() == tag)
+          .toList();
       await db.upsertRecurringRule(
         RecurringRulesCompanion(
-          id: Value('salary-$month'),
+          id: Value(existing.isEmpty ? 'rule-$month-$tag' : existing.first.id),
           kind: const Value('in'),
           amount: Value(salaryAmount),
           categoryRaw: Value((salaryCategory == null || salaryCategory.trim().isEmpty) ? 'salary' : salaryCategory.trim().toLowerCase()),

@@ -43,7 +43,21 @@ class GroupCard extends ConsumerWidget {
           ],
         ),
         isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (group.status == 'open')
+              IconButton(
+                tooltip: 'Close this group',
+                icon: const Icon(Icons.check_circle_outline),
+                onPressed: () async {
+                  await ref.read(groupRepositoryProvider).close(group.id);
+                  ref.invalidate(groupsProvider);
+                },
+              ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id)),
         ),

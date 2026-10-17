@@ -69,6 +69,8 @@ class GroupBalances {
   }
 }
 
+final _monthRe = RegExp(r'^\d{4}-(0[1-9]|1[0-2])$');
+
 class GroupRepository {
   final AppDatabase db;
   const GroupRepository(this.db);
@@ -86,6 +88,9 @@ class GroupRepository {
   }) async {
     final clean = name.trim();
     if (clean.isEmpty) throw ArgumentError('Give the group a name');
+    if (!_monthRe.hasMatch(monthKey)) {
+      throw ArgumentError('Month must be YYYY-MM (got "$monthKey")');
+    }
     final names = [for (final p in people) p.trim()].where((p) => p.isNotEmpty).toList();
     if (names.isEmpty) throw ArgumentError('Add at least one person');
     if (<String>{for (final n in names) n.toLowerCase()}.length != names.length) {

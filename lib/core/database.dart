@@ -7,7 +7,8 @@
 ///   plus pre-parsed category levels/item for fast offline search.
 /// - [Budgets]: one row per month (`YYYY-MM`), N custom buckets as JSON.
 ///
-/// Phase 1. Later phases add debts/splits/snapshots/prices tables + migrations.
+/// Phase 1. Later phases added debts / splits / instruments / snapshots /
+/// settings / month_open / recurring / groups tables — see `schemaVersion`.
 library;
 
 import 'dart:convert';

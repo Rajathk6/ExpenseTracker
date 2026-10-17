@@ -109,10 +109,6 @@ final allItemsProvider = FutureProvider((ref) => ref.watch(transactionRepository
 final itemRowsProvider =
     FutureProvider.family((ref, String item) => ref.watch(transactionRepositoryProvider).forItem(item));
 
-/// Live search across raw category / levels / item.
-final searchProvider =
-    FutureProvider.family((ref, String query) => ref.watch(transactionRepositoryProvider).search(query));
-
 /// Search inside a window: `{query, from, to}`. Defaults to the current month
 /// so the first thing the owner sees is this month, not all of history.
 typedef SearchScope = ({String query, DateTime? from, DateTime? to});
@@ -121,13 +117,6 @@ final scopedSearchProvider = FutureProvider.family<List<Transaction>, SearchScop
   return ref
       .watch(transactionRepositoryProvider)
       .searchIn(scope.query, from: scope.from, to: scope.to);
-});
-
-/// Suggestion options while searching: past categories containing the query.
-/// Empty query → empty (suggestions appear only once you type).
-final searchSuggestionsProvider = FutureProvider.family<List<String>, String>((ref, query) async {
-  if (query.trim().isEmpty) return const [];
-  return ref.watch(transactionRepositoryProvider).suggestions(query);
 });
 
 /// Ranked category completions for the entry / intake / quick-add fields, so
@@ -170,6 +159,16 @@ final unabsorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async 
   return [
     for (final r in rows)
       if (TransactionRepository.isUnabsorbedNeutral(r)) r,
+  ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+});
+
+/// …and the ones already absorbed, so the decision can be undone from the same
+/// place. Absorbing is never a one-way door.
+final absorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async {
+  final rows = await ref.watch(transactionRepositoryProvider).all();
+  return [
+    for (final r in rows)
+      if (TransactionRepository.isNeutral(r) && r.absorbed == 1) r,
   ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 });
 
@@ -217,15 +216,6 @@ final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvide
 
 final debtHistoryProvider =
     FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
-
-/// Every debt-linked payoff across all contracts, newest first.
-/// Powers the Settlements tab: lending/borrowing/settlement stay separate.
-final debtSettlementsProvider = FutureProvider((ref) async {
-  final txns = await ref.watch(transactionRepositoryProvider).recent(limit: 2000);
-  final rows = txns.where((t) => t.linkType == 'debt' && t.kind == 'settle').toList();
-  rows.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-  return rows;
-});
 
 // --- Splits UI ---
 

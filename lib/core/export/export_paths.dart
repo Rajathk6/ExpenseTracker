@@ -1,16 +1,16 @@
 /// Where anything this app writes ends up: **Downloads/ExpenseTracker/** on
-/// the phone.
+/// the phone, visible in any file manager.
 ///
 /// The old behaviour put the encrypted backup in the private app documents
-/// directory, which no file manager shows — the owner had no idea where the
-/// file was, so a backup was effectively useless. `getExternalStorageDirectory`
-/// maps to `Android/data/<pkg>/files` on modern Android, which is *also*
-/// hidden, so this walks the public Downloads directory instead and falls
-/// back through the app's own directories if the OS refuses.
+/// directory, which no file manager shows — a backup nobody can find is not a
+/// backup. Writing to the *public* Downloads folder needs platform help on
+/// Android 10+ (the OS refuses direct writes), so the bytes go through
+/// MainActivity's MediaStore channel; the Dart-side fallbacks below only run
+/// when that channel is unavailable (tests, desktop).
 library;
 
 import 'dart:io';
-
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -18,11 +18,17 @@ import 'package:path_provider/path_provider.dart';
 /// to clear in one go.
 const exportFolderName = 'ExpenseTracker';
 
+const _saveChannel = MethodChannel('dev.rajath.expense_tracker/share');
+
 class ExportPaths {
-  const ExportPaths(this.directory);
+  const ExportPaths(this.directory, {this.publicLabel});
 
   /// Resolved directory plus the label to show the owner ("Downloads/…").
   final Directory directory;
+
+  /// What was actually written, when the platform did it (e.g.
+  /// `Downloads/ExpenseTracker/report.pdf`). Null when a local file was used.
+  final String? publicLabel;
 
   String get displayPath {
     final parts = directory.path.split('/').where((e) => e.isNotEmpty).toList();
@@ -40,6 +46,26 @@ class ExportPaths {
     final stamp = '${now.year}-${two(now.month)}-${two(now.day)}-${two(now.hour)}${two(now.minute)}';
     final suffix = tag.isEmpty ? '' : '-$tag';
     return file('expensetracker-$stamp$suffix.$extension');
+  }
+
+  /// Writes [bytes] under [name] into public Downloads and returns the path
+  /// the owner will see. Falls back to a local write when the platform channel
+  /// is not there.
+  static Future<String> save(String name, Uint8List bytes, Directory fallback) async {
+    try {
+      final saved = await _saveChannel.invokeMethod<String>('saveToDownloads', {
+        'name': name,
+        'bytes': bytes,
+      });
+      if (saved != null && saved.isNotEmpty) return saved;
+    } on MissingPluginException {
+      // Not Android (or a test) — write it locally.
+    } on PlatformException {
+      // MediaStore refused; fall through rather than lose the export.
+    }
+    final target = File(p.join(fallback.path, name));
+    await target.writeAsBytes(bytes, flush: true);
+    return target.path;
   }
 
   /// Downloads/ExpenseTracker, created on first use.

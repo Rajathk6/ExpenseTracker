@@ -97,7 +97,7 @@ class ReportsRepository {
     }
     final categories = topSlices(sumsByTag(catMoves), topN);
     final split = splitCashDigital(cashMoves);
-    final budgetTotal = (await db.getBudget(month))?.total ?? 0;
+    final budgetTotal = (await db.latestBudgetAtOrBefore(month))?.total ?? 0;
 
     // Trend: trailing window ending at [month], oldest first.
     final startKey = shiftMonthKey(month, -(trendMonths - 1));
@@ -147,13 +147,22 @@ class ReportsRepository {
     final end = DateTime(year + 1).subtract(const Duration(milliseconds: 1));
     final txns = await db.transactionsBetween(start, end);
     var inActual = 0.0, outBudget = 0.0;
+    var counted = 0;
     final catMoves = <TaggedOut>[];
     final itemMoves = <TaggedOut>[];
     final monthMoves = <TaggedOut>[];
     for (final t in txns) {
-      if (t.actual > 0) inActual += t.actual;
-      if (t.budgetImpact < 0) {
-        final out = -t.budgetImpact;
+      // Same truth as every other card: neutral rows (lend/borrow/payoffs) are
+      // out unless the owner absorbed them, and income is budget truth so an
+      // absorbed borrowing counts as the month's income, not a bank statement
+      // total. Counting every row here made borrowed cash look like a salary.
+      final neutral = t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt';
+      if (neutral && t.absorbed == 0) continue;
+      final hit = t.absorbed == 1 ? t.actual : t.budgetImpact;
+      counted++;
+      if (hit > 0) inActual += hit;
+      if (hit < 0) {
+        final out = -hit;
         outBudget += out;
         catMoves.add((tag: t.level0, out: out));
         if (t.item != null) itemMoves.add((tag: t.item, out: out));
@@ -167,7 +176,7 @@ class ReportsRepository {
       topCategory: pickTop(sumsByTag(catMoves)),
       topItem: pickTop(sumsByTag(itemMoves)),
       biggestMonth: pickTop(sumsByTag(monthMoves)),
-      txnCount: txns.length,
+      txnCount: counted,
     );
   }
 }

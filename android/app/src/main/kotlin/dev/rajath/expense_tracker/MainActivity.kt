@@ -1,8 +1,11 @@
 package dev.rajath.expense_tracker
 
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -43,6 +46,24 @@ class MainActivity : FlutterFragmentActivity() {
                 "initialPayload" -> {
                     result.success(pending)
                     pending = null
+                }
+                // Write a file into the *public* Downloads folder. Android 10+
+                // refuses direct writes there, but MediaStore can add a file
+                // with no permission at all — which is what makes the backup
+                // actually findable in the Files app instead of hidden in the
+                // app's own directory.
+                "saveToDownloads" -> {
+                    val name = call.argument<String>("name")
+                    val bytes = call.argument<ByteArray>("bytes")
+                    if (name == null || bytes == null) {
+                        result.error("bad_args", "name and bytes are required", null)
+                    } else {
+                        try {
+                            result.success(saveToDownloads(name, bytes))
+                        } catch (error: Exception) {
+                            result.error("save_failed", error.message, null)
+                        }
+                    }
                 }
                 else -> result.notImplemented()
             }
@@ -120,8 +141,50 @@ class MainActivity : FlutterFragmentActivity() {
         null
     }
 
+    /**
+     * Saves bytes into Downloads. MediaStore first (Android 9+), the legacy
+     * public path below that. Returns the location shown to the owner.
+     */
+    private fun saveToDownloads(name: String, bytes: ByteArray): String {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.MIME_TYPE, mimeOf(name))
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_SUBDIR)
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val resolver = contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("Downloads folder is not available")
+            resolver.openOutputStream(uri)?.use { it.write(bytes) }
+                ?: throw IllegalStateException("Could not write to Downloads")
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            return "Downloads/$DOWNLOAD_SUBDIR/$name"
+        }
+        @Suppress("DEPRECATION")
+        val dir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            DOWNLOAD_SUBDIR,
+        )
+        if (!dir.exists() && !dir.mkdirs()) throw IllegalStateException("Could not create the Downloads folder")
+        val file = File(dir, name)
+        file.writeBytes(bytes)
+        return file.absolutePath
+    }
+
+    private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "csv" -> "text/csv"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "pdf" -> "application/pdf"
+        "etbak" -> "application/octet-stream"
+        else -> "application/octet-stream"
+    }
+
     companion object {
         private const val METHOD_CHANNEL = "dev.rajath.expense_tracker/share"
         private const val EVENT_CHANNEL = "dev.rajath.expense_tracker/share_events"
+        private const val DOWNLOAD_SUBDIR = "ExpenseTracker"
     }
 }

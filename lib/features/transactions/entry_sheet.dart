@@ -13,6 +13,7 @@ import '../../core/database.dart';
 import '../../core/ledger.dart';
 import '../../core/months.dart';
 import '../../core/providers.dart';
+import '../budgets/bucket_math.dart';
 import 'category_field.dart';
 import 'entry_logic.dart';
 
@@ -116,7 +117,10 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
       final repo = ref.read(transactionRepositoryProvider);
       final bucket = (_bucket ?? '').trim().isEmpty ? null : _bucket!.trim();
       final person = _person.text.trim();
-      if (person.isNotEmpty) {
+      // A person only means something for a lend/borrow/settle. Anything else
+      // is a normal entry — silently dropping it used to lose the entry while
+      // the sheet reported success.
+      if (person.isNotEmpty && _role != EntryRole.normal) {
         await _saveThroughPerson(amount, person, bucket);
         return;
       }
@@ -193,15 +197,18 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
           if (open.isEmpty) {
             throw ArgumentError('No open contract with $person — record a lend/borrow first');
           }
+          // All-or-nothing: check what is due *before* writing anything, so a
+          // half-finished settlement can never be left behind.
+          final due = open.fold<double>(0, (s, d) => s + (d.principal - d.paid));
+          if (amount > due + 0.005) {
+            throw ArgumentError('Only ₹${due.round()} is due with $person right now');
+          }
           var left = amount;
           for (final d in open) {
             if (left <= 0.005) break;
             final chunk = left > (d.principal - d.paid) ? d.principal - d.paid : left;
             await debts.pay(debtId: d.id, amount: chunk, accountId: accountId, at: at, note: note.isEmpty ? null : note);
             left -= chunk;
-          }
-          if (left > 0.005) {
-            throw ArgumentError('Only ₹${(amount - left).round()} was due with $person');
           }
         case EntryRole.normal:
           break;
@@ -210,8 +217,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
         ..invalidate(recentTransactionsProvider)
         ..invalidate(openDebtsProvider)
         ..invalidate(allDebtsProvider)
-        ..invalidate(debtSettlementsProvider)
-        ..invalidate(unabsorbedNeutralProvider)
+          ..invalidate(unabsorbedNeutralProvider)
         ..invalidate(budgetStatusProvider(monthKey(_when)))
         ..invalidate(monthSummaryProvider(monthKey(_when)));
       if (mounted) Navigator.of(context).pop(true);
@@ -489,5 +495,5 @@ final _bucketOptionsProvider = FutureProvider<List<String>>((ref) async {
   final key = '${now.year}-${now.month.toString().padLeft(2, '0')}';
   final b = await ref.watch(budgetRepositoryProvider).getEffective(key);
   if (b != null && b.buckets.isNotEmpty) return [for (final x in b.buckets) x.name];
-  return const ['need', 'want', 'invest'];
+  return [for (final b in defaultBuckets) b.name];
 });

@@ -11,7 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database.dart';
 
 /// Settings keys that must never live in the plain database. Non-secret
-/// settings (auto-lock minutes, biometric toggle) stay in the database.
+/// settings (the biometric toggle) stay in the database.
 const secretSettingKeys = [
   'pin.hash',
   'pin.salt',

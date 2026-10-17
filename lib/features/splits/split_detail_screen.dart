@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
 import '../../core/providers.dart';
+import '../shared/shared_parts.dart';
 import '../splits/split_logic.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
@@ -162,86 +163,6 @@ class _Figure extends StatelessWidget {
       children: [
         Text(value, style: Theme.of(context).textTheme.titleMedium),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    );
-  }
-}
-
-class MoneyDialog extends ConsumerStatefulWidget {
-  final String title;
-  final Split split;
-  final bool absorb;
-  const MoneyDialog({super.key, required this.title, required this.split, required this.absorb});
-
-  @override
-  ConsumerState<MoneyDialog> createState() => MoneyDialogState();
-}
-
-class MoneyDialogState extends ConsumerState<MoneyDialog> {
-  final _amount = TextEditingController();
-  final _who = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    _who.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final left = splitRemaining(
-      widget.split.totalPaid,
-      widget.split.myShare,
-      widget.split.received,
-      widget.split.absorbed,
-    );
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('₹${left.toStringAsFixed(0)} outstanding on “${widget.split.title}”'),
-          TextField(
-            controller: _amount,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
-          ),
-          if (!widget.absorb)
-            TextField(controller: _who, decoration: const InputDecoration(labelText: 'From whom (optional)')),
-          if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-        FilledButton(
-          onPressed: () async {
-            final amount = double.tryParse(_amount.text.trim());
-            if (amount == null || amount <= 0) {
-              setState(() => _error = 'Enter a valid amount');
-              return;
-            }
-            try {
-              final repo = ref.read(splitRepositoryProvider);
-              if (widget.absorb) {
-                await repo.absorb(splitId: widget.split.id, amount: amount);
-              } else {
-                await repo.settle(splitId: widget.split.id, amount: amount, who: _who.text);
-              }
-              if (context.mounted) Navigator.of(context).pop(true);
-            } on Object catch (e) {
-              setState(
-                () => _error = e
-                    .toString()
-                    .replaceFirst('Invalid argument(s): ', '')
-                    .replaceFirst('Bad state: ', ''),
-              );
-            }
-          },
-          child: const Text('Record'),
-        ),
       ],
     );
   }

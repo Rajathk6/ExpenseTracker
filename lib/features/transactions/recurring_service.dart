@@ -53,7 +53,7 @@ class RecurringService {
     final existing = (await db.allTransactions())
         .where((t) => '${t.occurredAt.year}-${t.occurredAt.month.toString().padLeft(2, '0')}' == month)
         .where((t) => t.categoryRaw.toLowerCase() == rule.categoryRaw.toLowerCase())
-        .where((t) => t.note != null && t.note!.contains(rule.id))
+        .where((t) => t.note != null && t.note!.contains(ruleTag(rule)))
         .toList();
     if (existing.isNotEmpty) return null;
     final entry = rule.kind == 'in' ? income(rule.amount) : spend(rule.amount);
@@ -68,7 +68,7 @@ class RecurringService {
         categoryRaw: Value(rule.categoryRaw),
         level0: Value(rule.categoryRaw.split(' ').first),
         bucket: Value(rule.bucket),
-        note: Value('repeating ${rule.id.substring(0, min(rule.id.length, 8))} · $month'),
+        note: Value('repeating ${ruleTag(rule)} · $month'),
         accountId: Value(rule.accountId),
       ),
     );
@@ -87,7 +87,12 @@ class RecurringService {
     return written;
   }
 
-  static int min(int a, int b) => a < b ? a : b;
+  /// Short, stable marker written into every entry a rule produces, so a rule
+  /// can recognise its own past work even after the row is edited by hand.
+  static String ruleTag(RecurringRule rule) {
+    final id = rule.id.length <= 8 ? rule.id : rule.id.substring(0, 8);
+    return id;
+  }
 
   static DateTime _parse(String month) {
     final parts = month.split('-');

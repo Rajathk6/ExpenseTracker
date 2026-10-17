@@ -206,7 +206,23 @@ class MonthReportBuilder {
         );
       }
 
-      for (final d in debts.where((d) => monthOf(d.createdAt) == month)) {
+      // A contract belongs to the months its *money* touched, not to the month
+      // the row was typed in: a loan made in August and repaid in September has
+      // to show up in September's report (and in August's, for the principal).
+      final monthsTouched = <String, List<Transaction>>{};
+      for (final t in monthRows) {
+        final id = t.linkId;
+        if (id == null || t.linkType != 'debt') continue;
+        monthsTouched.putIfAbsent(id, () => []).add(t);
+      }
+      for (final d in debts) {
+        final touched = monthsTouched[d.id] ?? const <Transaction>[];
+        // The contract belongs to the month the money actually moved (the
+        // principal row), not the month the row happened to be typed in.
+        final principal = [for (final t in touched) if (t.kind == 'lend' || t.kind == 'borrow') t];
+        final contractMonth = monthOf(principal.isNotEmpty ? principal.first.occurredAt : d.createdAt);
+        final createdHere = contractMonth == month;
+        if (!createdHere && touched.isEmpty) continue;
         final line = ReportLine(
           title: d.note?.isNotEmpty == true ? d.note! : (d.direction == 'lent' ? 'Lent' : 'Borrowed'),
           who: d.counterparty,
@@ -215,7 +231,9 @@ class MonthReportBuilder {
           settled: d.paid,
           detail: d.dueDate == null ? '' : 'due ${DateFormat('d MMM yyyy').format(d.dueDate!)}',
         );
-        (d.direction == 'lent' ? lends : borrows).add(line);
+        // The contract totals are shown once, in the month of the principal;
+        // a later payoff still surfaces that month under Settlements.
+        if (createdHere) (d.direction == 'lent' ? lends : borrows).add(line);
         settlements.add(
           ReportLine(
             title: '${d.direction == 'lent' ? 'Lent' : 'Borrowed'} · ${d.counterparty}',
@@ -223,7 +241,11 @@ class MonthReportBuilder {
             status: d.status,
             amount: d.principal,
             settled: d.paid,
-            detail: d.paid <= 0 ? 'nothing returned yet' : 'partly back',
+            detail: [
+              if (createdHere) null,
+              if (touched.any((t) => t.kind == 'settle')) 'payoff this month',
+              if (touched.any((t) => t.kind == 'lend' || t.kind == 'borrow')) 'money moved this month',
+            ].whereType<String>().join(' · '),
           ),
         );
       }

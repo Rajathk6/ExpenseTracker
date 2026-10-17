@@ -40,7 +40,6 @@ class _SharedScreenState extends ConsumerState<SharedScreen> with SingleTickerPr
     ref
       ..invalidate(allDebtsProvider)
       ..invalidate(openDebtsProvider)
-      ..invalidate(debtSettlementsProvider)
       ..invalidate(openSplitsProvider)
       ..invalidate(allSplitsProvider)
       ..invalidate(groupsProvider)

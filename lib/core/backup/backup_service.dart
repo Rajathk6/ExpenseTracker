@@ -24,6 +24,11 @@ const backupTables = [
   'snapshots',
   'settings',
   'month_open',
+  'recurring_rules',
+  'groups',
+  'group_members',
+  'group_expenses',
+  'group_payments',
 ];
 
 class BackupService {
@@ -42,6 +47,11 @@ class BackupService {
       'snapshots': [for (final r in await db.allSnapshots()) r.toJson()],
       'settings': [for (final r in settingsRows) r.toJson()],
       'month_open': [for (final r in await db.allMonthOpens()) r.toJson()],
+      'recurring_rules': [for (final r in await db.allRecurring()) r.toJson()],
+      'groups': [for (final r in await db.allGroups()) r.toJson()],
+      'group_members': [for (final r in await db.allMembers()) r.toJson()],
+      'group_expenses': [for (final r in await db.allGroupExpenses()) r.toJson()],
+      'group_payments': [for (final r in await db.allGroupPayments()) r.toJson()],
     };
   }
 
@@ -78,6 +88,21 @@ class BackupService {
     for (final m in rows('month_open')) {
       await db.into(db.monthOpen).insertOnConflictUpdate(MonthOpenData.fromJson(m).toCompanion(true));
     }
+    for (final m in rows('recurring_rules')) {
+      await db.into(db.recurringRules).insertOnConflictUpdate(RecurringRule.fromJson(m).toCompanion(true));
+    }
+    for (final m in rows('groups')) {
+      await db.into(db.groups).insertOnConflictUpdate(Group.fromJson(m).toCompanion(true));
+    }
+    for (final m in rows('group_members')) {
+      await db.into(db.groupMembers).insertOnConflictUpdate(GroupMember.fromJson(m).toCompanion(true));
+    }
+    for (final m in rows('group_expenses')) {
+      await db.into(db.groupExpenses).insertOnConflictUpdate(GroupExpense.fromJson(m).toCompanion(true));
+    }
+    for (final m in rows('group_payments')) {
+      await db.into(db.groupPayments).insertOnConflictUpdate(GroupPayment.fromJson(m).toCompanion(true));
+    }
     return {
       for (final k in backupTables) k: rows(k).length,
     };
@@ -90,8 +115,7 @@ class BackupService {
     final packed = await encryptBackup(await dumpTables(), password);
     final paths = await ExportPaths.resolve();
     final file = paths.stamped('etbak');
-    await file.writeAsBytes(packed, flush: true);
-    return file.path;
+    return ExportPaths.save(file.uri.pathSegments.last, packed, paths.directory);
   }
 
   /// Reads + decrypts + restores. Wrong password throws [BackupPasswordError].

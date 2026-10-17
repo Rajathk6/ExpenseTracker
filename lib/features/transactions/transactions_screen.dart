@@ -199,6 +199,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
           _BudgetPulseCard(monthKey: key),
           _NeutralHoldCard(monthKey: key),
+          const _AbsorbedNeutralCard(),
           accounts.maybeWhen(
             data: (l) => l.isEmpty
                 ? _NoAccountBanner(
@@ -501,6 +502,60 @@ class _BudgetPulseCard extends ConsumerWidget {
   }
 }
 
+/// Neutral rows already absorbed into a month — listed so the choice can be
+/// taken back (#10: absorbing is a decision, not an edit).
+class _AbsorbedNeutralCard extends ConsumerWidget {
+  const _AbsorbedNeutralCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(absorbedNeutralProvider);
+    return rows.maybeWhen(
+      data: (all) {
+        if (all.isEmpty) return const SizedBox.shrink();
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Counting toward a month (${all.length})', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  'These lend/borrow rows were absorbed into their month. Undo any of them here.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (final r in all.take(4))
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(r.categoryRaw),
+                    subtitle: Text(
+                      '${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: false);
+                        ref
+                          ..invalidate(absorbedNeutralProvider)
+                          ..invalidate(unabsorbedNeutralProvider)
+                          ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())))
+                          ..invalidate(monthSummaryProvider(_monthKey(DateTime.now())));
+                      },
+                      child: const Text('Undo'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
 /// Neutral ledger held out of the month until the owner absorbs it (#10).
 class _NeutralHoldCard extends ConsumerWidget {
   final String monthKey;
@@ -669,7 +724,11 @@ class _MonthSetupCard extends ConsumerWidget {
       ..invalidate(monthOpenProvider(monthKey))
       ..invalidate(effectiveBudgetProvider(monthKey))
       ..invalidate(bucketSpendProvider(monthKey))
-      ..invalidate(monthSummaryProvider(key));
+      ..invalidate(budgetStatusProvider(monthKey))
+      // A salary rule created there has to appear in its own card at once.
+      ..invalidate(recurringRulesProvider)
+      ..invalidate(monthSummaryProvider(key))
+      ..invalidate(budgetStatusProvider(key));
   }
 
   static String _describe(MonthOpenData m, String carried) {

@@ -30,8 +30,21 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  /// The month being viewed.
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-  late final Set<String> _exportMonths = {monthKey(_month)};
+
+  /// Months ticked for export. Follows the month being viewed, so the download
+  /// can never silently cover a month you are not looking at.
+  final Set<String> _exportMonths = {monthKey(DateTime.now())};
+
+  /// Arrow bar: move the report window, and add the month it lands on to the
+  /// export set.
+  void _goto(DateTime month) {
+    setState(() {
+      _month = month;
+      if (!_exportMonths.contains(monthKey(month))) _exportMonths.add(monthKey(month));
+    });
+  }
 
   /// Writes the selected months as CSV / Excel / PDF into Downloads and says
   /// exactly where (#5 + #18). Reports are offline files, never uploads.
@@ -67,12 +80,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                onPressed: () => setState(() => _month = monthStart(shiftMonthKey(key, -1))),
+                onPressed: () => _goto(monthStart(shiftMonthKey(key, -1))),
                 icon: const Icon(Icons.chevron_left),
               ),
               Text(key, style: Theme.of(context).textTheme.titleMedium),
               IconButton(
-                onPressed: () => setState(() => _month = monthStart(shiftMonthKey(key, 1))),
+                onPressed: () => _goto(monthStart(shiftMonthKey(key, 1))),
                 icon: const Icon(Icons.chevron_right),
               ),
             ],
