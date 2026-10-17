@@ -14,6 +14,7 @@ import '../features/budgets/bucket_math.dart';
 import '../features/budgets/budget_status.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
+import '../features/groups/group_repository.dart';
 import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
 import '../features/reconcile/month_open_repository.dart';
@@ -173,6 +174,21 @@ final unabsorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async 
 });
 
 final recurringServiceProvider = Provider((ref) => RecurringService(ref.watch(databaseProvider)));
+
+final groupRepositoryProvider = Provider((ref) => GroupRepository(ref.watch(databaseProvider)));
+
+/// Every group, newest first (#9).
+final groupsProvider = FutureProvider((ref) => ref.watch(groupRepositoryProvider).all());
+
+/// Live balances for one group — the Splitwise-style "who owes whom".
+final groupBalancesProvider = FutureProvider.family<GroupBalances?, String>(
+    (ref, groupId) => ref.watch(groupRepositoryProvider).balances(groupId),);
+
+final debtByIdProvider = FutureProvider.family<Debt?, String>(
+    (ref, id) => ref.watch(debtRepositoryProvider).db.getDebt(id),);
+
+final splitByIdProvider = FutureProvider.family<Split?, String>(
+    (ref, id) => ref.watch(splitRepositoryProvider).db.getSplit(id),);
 
 /// Repeating entries the owner set up (salary and friends).
 final recurringRulesProvider = FutureProvider((ref) => ref.watch(recurringServiceProvider).all());

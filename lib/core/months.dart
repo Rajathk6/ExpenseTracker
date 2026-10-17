@@ -4,6 +4,8 @@
 /// lives in core so features never import each other.
 library;
 
+import 'package:intl/intl.dart';
+
 /// `YYYY-MM` key for a date.
 String monthKey(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
 
@@ -33,4 +35,14 @@ String shiftMonthKey(String key, int delta) {
     y++;
   }
   return '$y-${m.toString().padLeft(2, '0')}';
+}
+
+/// "2026-09" -> "September 2026" for screens that say the period in words.
+String monthLabel(String key) {
+  final parts = key.split('-');
+  if (parts.length != 2) return key;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  if (year == null || month == null || month < 1 || month > 12) return key;
+  return DateFormat('MMMM yyyy').format(DateTime(year, month));
 }

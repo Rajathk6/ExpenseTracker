@@ -14,12 +14,11 @@ import '../cash/transfer_sheet.dart';
 import '../customization/accounts_screen.dart';
 import '../instruments/instruments_screen.dart';
 import '../intake/intake_screen.dart';
-import '../neutral/debts_screen.dart';
+import '../shared/shared_screen.dart';
 import '../reconcile/networth_screen.dart';
 import '../reconcile/reconcile_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/settings_screen.dart';
-import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
 
@@ -140,14 +139,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
           ),
           IconButton(
-            tooltip: 'Lending & loans',
+            tooltip: 'Lent, borrowed, splits & groups',
             icon: const Icon(Icons.handshake_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DebtsScreen())),
-          ),
-          IconButton(
-            tooltip: 'Splits',
-            icon: const Icon(Icons.group_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SplitsScreen())),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SharedScreen())),
           ),
           IconButton(
             tooltip: 'Instruments',

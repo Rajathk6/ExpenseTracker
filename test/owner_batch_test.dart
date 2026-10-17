@@ -1,4 +1,5 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/material.dart' hide Split;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:expense_tracker/core/database.dart';
@@ -6,6 +7,10 @@ import 'package:expense_tracker/features/budgets/bucket_math.dart';
 import 'package:expense_tracker/features/budgets/budget_repository.dart';
 import 'package:expense_tracker/features/budgets/budget_status.dart';
 import 'package:expense_tracker/features/customization/account_repository.dart';
+import 'package:expense_tracker/features/instruments/instruments_screen.dart';
+import 'package:expense_tracker/features/groups/group_repository.dart';
+import 'package:expense_tracker/features/shared/shared_logic.dart';
+import 'package:expense_tracker/features/splits/split_logic.dart';
 import 'package:expense_tracker/features/neutral/debt_repository.dart';
 import 'package:expense_tracker/features/reconcile/month_start_service.dart';
 import 'package:expense_tracker/features/transactions/recurring_service.dart';
@@ -299,6 +304,184 @@ void main() {
       await seed(DateTime(2026, 9, 4), 'food junk gobi-65');
       expect(await txns.search('food'), hasLength(2));
       expect(await txns.within(), isEmpty, reason: 'no window and no query = nothing to show');
+    });
+  });
+
+  group('groups: code, balances, settle-up (#9)', () {
+    late AppDatabase db;
+    late GroupRepository groups;
+
+    setUp(() {
+      db = AppDatabase.memory();
+      groups = GroupRepository(db);
+    });
+
+    tearDown(() => db.close());
+
+    test('a group needs a name and at least one person', () async {
+      expect(() => groups.create(name: '  ', monthKey: '2026-09', people: const ['Me']), throwsArgumentError);
+      expect(() => groups.create(name: 'Flat', monthKey: '2026-09', people: const []), throwsArgumentError);
+      expect(
+        () => groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'me']),
+        throwsArgumentError,
+      );
+    });
+
+    test('the code identifies the group and refuses a duplicate', () async {
+      final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      expect(g.code, startsWith('ET-'));
+      expect(await groups.byCode(g.code), isNotNull);
+      expect(
+        () => groups.create(name: 'Other', monthKey: '2026-09', people: const ['Me'], code: g.code),
+        throwsArgumentError,
+      );
+    });
+
+    test('joining with the code adds people to the same group', () async {
+      final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      await groups.join(code: g.code, people: const ['Asha', 'ravi']);
+      final people = [for (final m in await groups.people(g.id)) m.name];
+      expect(people, ['Me', 'Ravi', 'Asha'], reason: 'a name is never added twice');
+    });
+
+    test('balances: even split, payer credited, settle-up in whole rupees', () async {
+      final g = await groups.create(name: 'Trip', monthKey: '2026-09', people: const ['Me', 'Ravi', 'Asha']);
+      await groups.addExpense(groupId: g.id, title: 'Hotel', amount: 900, paidBy: 'Ravi');
+      var b = await groups.balances(g.id);
+      expect(b.totalSpent, 900);
+      final ravi = b.balances.firstWhere((x) => x.name == 'Ravi');
+      final me = b.balances.firstWhere((x) => x.name == 'Me');
+      expect(ravi.net, 600);
+      expect(me.net, -300);
+      expect(b.settleUp.map((m) => (m.from, m.to)).toList(), [
+        ('Me', 'Ravi'),
+        ('Asha', 'Ravi'),
+      ]);
+
+      await groups.addPayment(groupId: g.id, paidBy: 'Me', paidTo: 'Ravi', amount: 300);
+      b = await groups.balances(g.id);
+      expect(b.balances.firstWhere((x) => x.name == 'Me').net, 0);
+      expect(b.balances.fold<double>(0, (s, x) => s + x.net), closeTo(0, 0.01));
+    });
+
+    test('an expense with no payer is split evenly', () async {
+      final g = await groups.create(name: 'Dinner', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      await groups.addExpense(groupId: g.id, title: 'Pizza', amount: 1000);
+      final b = await groups.balances(g.id);
+      for (final x in b.balances) {
+        expect(x.net, closeTo(0, 0.01));
+      }
+    });
+
+    test('a payment between non-members is rejected', () async {
+      final g = await groups.create(name: 'Trip', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      expect(
+        () => groups.addPayment(groupId: g.id, paidBy: 'Me', paidTo: 'Stranger', amount: 100),
+        throwsArgumentError,
+      );
+    });
+
+    test('export/import round-trips a group without duplicating rows', () async {
+      final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      await groups.addExpense(groupId: g.id, title: 'Groceries', amount: 1500, paidBy: 'Me');
+      await groups.addPayment(groupId: g.id, paidBy: 'Ravi', paidTo: 'Me', amount: 500);
+      final payload = await groups.encodeGroup(g.id);
+
+      // A second device: fresh database, same export.
+      final other = AppDatabase.memory();
+      final groups2 = GroupRepository(other);
+      final joined = await groups2.decodeGroup(payload);
+      expect(joined!.id, g.id);
+      expect((await groups2.people(g.id)).length, 2);
+      expect((await groups2.expenses(g.id)).length, 1);
+      expect((await groups2.payments(g.id)).length, 1);
+      // Importing twice must not double anything.
+      await groups2.decodeGroup(payload);
+      expect((await groups2.expenses(g.id)).length, 1);
+      expect((await groups2.payments(g.id)).length, 1);
+      await other.close();
+    });
+  });
+
+  group('shared-screen totals (#11)', () {
+    test('lent and borrowed totals only count what is still open', () {
+      final debts = [
+        Debt(
+          id: '1',
+          counterparty: 'Ravi',
+          direction: 'lent',
+          principal: 1000,
+          paid: 400,
+          note: null,
+          dueDate: null,
+          nudgeDate: null,
+          status: 'open',
+          createdAt: DateTime(2026, 9, 1),
+        ),
+        Debt(
+          id: '2',
+          counterparty: 'Asha',
+          direction: 'lent',
+          principal: 500,
+          paid: 500,
+          note: null,
+          dueDate: null,
+          nudgeDate: null,
+          status: 'settled',
+          createdAt: DateTime(2026, 8, 1),
+        ),
+      ];
+      expect(sharedDebtTotals(debts), 600);
+    });
+
+    test('split outstanding excludes my own share', () {
+      final split = Split(
+        id: '1',
+        title: 'Dinner',
+        totalPaid: 1000,
+        myShare: 100,
+        received: 300,
+        absorbed: 0,
+        membersJson: '["Me","Ravi"]',
+        code: 'SP-ABCD',
+        note: null,
+        status: 'open',
+        createdAt: DateTime(2026, 9, 1),
+      );
+      expect(splitOutstandingTotal([split]), 600);
+    });
+  });
+
+  group('split share is derived from the headcount (#13)', () {
+    test('my share is total / people, never typed', () {
+      expect(myShareFor(total: 1000, people: 10), 100);
+      expect(myShareFor(total: 999, people: 3), 333);
+    });
+
+    test('members must be named and unique', () {
+      expect(validateMembers(const []), isNotNull);
+      expect(validateMembers(const ['  ']), isNotNull);
+      expect(validateMembers(const ['Me', 'me']), isNotNull);
+      expect(validateMembers(const ['Me', 'Ravi']), isNull);
+    });
+
+    test('codes avoid characters people mishear', () {
+      expect(newCode('SP', (max) => 0), 'SP-AAAA');
+      expect(newCode('ET', (max) => max - 1), matches(RegExp(r'^ET-[A-Z2-9]{4}$')));
+    });
+  });
+
+  group('instrument sections (#15)', () {
+    test('kinds get a readable label, a colour and an icon', () {
+      expect(kindLabel('fd'), 'FD');
+      expect(kindLabel('credit card'), 'Credit Card');
+      expect(kindLabel('stock'), 'Stock');
+      expect(kindLabel('gold'), 'Gold');
+      // Never the same colour twice for different kinds.
+      final colours = {for (final k in ['stock', 'mutual', 'fd', 'loan', 'card', 'paper', 'plan']) kindAccent(k)};
+      expect(colours.length, 7);
+      expect(kindIcon('fd'), isNot(Icons.category_outlined));
+      expect(kindIcon('unknown thing'), Icons.category_outlined);
     });
   });
 }

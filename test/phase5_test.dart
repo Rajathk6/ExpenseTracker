@@ -58,14 +58,18 @@ void main() {
     tearDown(() => db.close());
 
     test('create → partial settles → absorb rest → closed + honest budget', () async {
+      // 10 people → my share is exactly 100, derived rather than typed (#13).
       final s0 = await splits.create(
         title: 'Dinner',
         total: 1000,
-        myShare: 100,
+        people: 10,
+        members: const ['Me', 'Ravi', 'Asha', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
         accountId: cashId,
         at: DateTime(2026, 9, 1),
       );
       expect(s0.status, 'open');
+      expect(s0.myShare, 100);
+      expect(s0.code, isNotNull);
 
       // Month sees bank -1000 but budget -100.
       final sums = await txns.sumsBetween(DateTime(2026, 9, 1), DateTime(2026, 9, 30, 23, 59));
@@ -97,7 +101,14 @@ void main() {
     });
 
     test('full recovery closes with budget = my share only', () async {
-      final s0 = await splits.create(title: 'Trip', total: 1000, myShare: 100, accountId: cashId, at: DateTime(2026, 9, 1));
+      final s0 = await splits.create(
+        title: 'Trip',
+        total: 1000,
+        people: 10,
+        members: const ['Me', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'],
+        accountId: cashId,
+        at: DateTime(2026, 9, 1),
+      );
       final s = await splits.settle(splitId: s0.id, amount: 900, accountId: cashId, at: DateTime(2026, 9, 2));
       expect(s.status, 'closed');
       final sums = await txns.sumsBetween(DateTime(2026, 9, 1), DateTime(2026, 9, 30, 23, 59));

@@ -1949,6 +1949,11 @@ class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
       'title', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+      'code', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _totalPaidMeta =
       const VerificationMeta('totalPaid');
   @override
@@ -2009,6 +2014,7 @@ class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
   List<GeneratedColumn> get $columns => [
         id,
         title,
+        code,
         totalPaid,
         myShare,
         received,
@@ -2038,6 +2044,10 @@ class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
           _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+          _codeMeta, code.isAcceptableOrUnknown(data['code']!, _codeMeta));
     }
     if (data.containsKey('total_paid')) {
       context.handle(_totalPaidMeta,
@@ -2090,6 +2100,8 @@ class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      code: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}code']),
       totalPaid: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}total_paid'])!,
       myShare: attachedDatabase.typeMapping
@@ -2118,6 +2130,10 @@ class $SplitsTable extends Splits with TableInfo<$SplitsTable, Split> {
 class Split extends DataClass implements Insertable<Split> {
   final String id;
   final String title;
+
+  /// Short share code (e.g. `SP-7K2Q`) so the people in the split can be
+  /// named and see the same split. Owner rule 2026-09-27.
+  final String? code;
   final double totalPaid;
   final double myShare;
   final double received;
@@ -2133,6 +2149,7 @@ class Split extends DataClass implements Insertable<Split> {
   const Split(
       {required this.id,
       required this.title,
+      this.code,
       required this.totalPaid,
       required this.myShare,
       required this.received,
@@ -2146,6 +2163,9 @@ class Split extends DataClass implements Insertable<Split> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || code != null) {
+      map['code'] = Variable<String>(code);
+    }
     map['total_paid'] = Variable<double>(totalPaid);
     map['my_share'] = Variable<double>(myShare);
     map['received'] = Variable<double>(received);
@@ -2163,6 +2183,7 @@ class Split extends DataClass implements Insertable<Split> {
     return SplitsCompanion(
       id: Value(id),
       title: Value(title),
+      code: code == null && nullToAbsent ? const Value.absent() : Value(code),
       totalPaid: Value(totalPaid),
       myShare: Value(myShare),
       received: Value(received),
@@ -2180,6 +2201,7 @@ class Split extends DataClass implements Insertable<Split> {
     return Split(
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
+      code: serializer.fromJson<String?>(json['code']),
       totalPaid: serializer.fromJson<double>(json['totalPaid']),
       myShare: serializer.fromJson<double>(json['myShare']),
       received: serializer.fromJson<double>(json['received']),
@@ -2196,6 +2218,7 @@ class Split extends DataClass implements Insertable<Split> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
+      'code': serializer.toJson<String?>(code),
       'totalPaid': serializer.toJson<double>(totalPaid),
       'myShare': serializer.toJson<double>(myShare),
       'received': serializer.toJson<double>(received),
@@ -2210,6 +2233,7 @@ class Split extends DataClass implements Insertable<Split> {
   Split copyWith(
           {String? id,
           String? title,
+          Value<String?> code = const Value.absent(),
           double? totalPaid,
           double? myShare,
           double? received,
@@ -2221,6 +2245,7 @@ class Split extends DataClass implements Insertable<Split> {
       Split(
         id: id ?? this.id,
         title: title ?? this.title,
+        code: code.present ? code.value : this.code,
         totalPaid: totalPaid ?? this.totalPaid,
         myShare: myShare ?? this.myShare,
         received: received ?? this.received,
@@ -2234,6 +2259,7 @@ class Split extends DataClass implements Insertable<Split> {
     return Split(
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
+      code: data.code.present ? data.code.value : this.code,
       totalPaid: data.totalPaid.present ? data.totalPaid.value : this.totalPaid,
       myShare: data.myShare.present ? data.myShare.value : this.myShare,
       received: data.received.present ? data.received.value : this.received,
@@ -2251,6 +2277,7 @@ class Split extends DataClass implements Insertable<Split> {
     return (StringBuffer('Split(')
           ..write('id: $id, ')
           ..write('title: $title, ')
+          ..write('code: $code, ')
           ..write('totalPaid: $totalPaid, ')
           ..write('myShare: $myShare, ')
           ..write('received: $received, ')
@@ -2264,7 +2291,7 @@ class Split extends DataClass implements Insertable<Split> {
   }
 
   @override
-  int get hashCode => Object.hash(id, title, totalPaid, myShare, received,
+  int get hashCode => Object.hash(id, title, code, totalPaid, myShare, received,
       absorbed, membersJson, note, status, createdAt);
   @override
   bool operator ==(Object other) =>
@@ -2272,6 +2299,7 @@ class Split extends DataClass implements Insertable<Split> {
       (other is Split &&
           other.id == this.id &&
           other.title == this.title &&
+          other.code == this.code &&
           other.totalPaid == this.totalPaid &&
           other.myShare == this.myShare &&
           other.received == this.received &&
@@ -2285,6 +2313,7 @@ class Split extends DataClass implements Insertable<Split> {
 class SplitsCompanion extends UpdateCompanion<Split> {
   final Value<String> id;
   final Value<String> title;
+  final Value<String?> code;
   final Value<double> totalPaid;
   final Value<double> myShare;
   final Value<double> received;
@@ -2297,6 +2326,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
   const SplitsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
+    this.code = const Value.absent(),
     this.totalPaid = const Value.absent(),
     this.myShare = const Value.absent(),
     this.received = const Value.absent(),
@@ -2310,6 +2340,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
   SplitsCompanion.insert({
     required String id,
     required String title,
+    this.code = const Value.absent(),
     required double totalPaid,
     required double myShare,
     this.received = const Value.absent(),
@@ -2326,6 +2357,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
   static Insertable<Split> custom({
     Expression<String>? id,
     Expression<String>? title,
+    Expression<String>? code,
     Expression<double>? totalPaid,
     Expression<double>? myShare,
     Expression<double>? received,
@@ -2339,6 +2371,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (title != null) 'title': title,
+      if (code != null) 'code': code,
       if (totalPaid != null) 'total_paid': totalPaid,
       if (myShare != null) 'my_share': myShare,
       if (received != null) 'received': received,
@@ -2354,6 +2387,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
   SplitsCompanion copyWith(
       {Value<String>? id,
       Value<String>? title,
+      Value<String?>? code,
       Value<double>? totalPaid,
       Value<double>? myShare,
       Value<double>? received,
@@ -2366,6 +2400,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
     return SplitsCompanion(
       id: id ?? this.id,
       title: title ?? this.title,
+      code: code ?? this.code,
       totalPaid: totalPaid ?? this.totalPaid,
       myShare: myShare ?? this.myShare,
       received: received ?? this.received,
@@ -2386,6 +2421,9 @@ class SplitsCompanion extends UpdateCompanion<Split> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
     }
     if (totalPaid.present) {
       map['total_paid'] = Variable<double>(totalPaid.value);
@@ -2422,6 +2460,7 @@ class SplitsCompanion extends UpdateCompanion<Split> {
     return (StringBuffer('SplitsCompanion(')
           ..write('id: $id, ')
           ..write('title: $title, ')
+          ..write('code: $code, ')
           ..write('totalPaid: $totalPaid, ')
           ..write('myShare: $myShare, ')
           ..write('received: $received, ')
@@ -6766,6 +6805,7 @@ typedef $$DebtsTableProcessedTableManager = ProcessedTableManager<
 typedef $$SplitsTableCreateCompanionBuilder = SplitsCompanion Function({
   required String id,
   required String title,
+  Value<String?> code,
   required double totalPaid,
   required double myShare,
   Value<double> received,
@@ -6779,6 +6819,7 @@ typedef $$SplitsTableCreateCompanionBuilder = SplitsCompanion Function({
 typedef $$SplitsTableUpdateCompanionBuilder = SplitsCompanion Function({
   Value<String> id,
   Value<String> title,
+  Value<String?> code,
   Value<double> totalPaid,
   Value<double> myShare,
   Value<double> received,
@@ -6804,6 +6845,9 @@ class $$SplitsTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get code => $composableBuilder(
+      column: $table.code, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get totalPaid => $composableBuilder(
       column: $table.totalPaid, builder: (column) => ColumnFilters(column));
@@ -6845,6 +6889,9 @@ class $$SplitsTableOrderingComposer
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get code => $composableBuilder(
+      column: $table.code, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get totalPaid => $composableBuilder(
       column: $table.totalPaid, builder: (column) => ColumnOrderings(column));
 
@@ -6884,6 +6931,9 @@ class $$SplitsTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
 
   GeneratedColumn<double> get totalPaid =>
       $composableBuilder(column: $table.totalPaid, builder: (column) => column);
@@ -6935,6 +6985,7 @@ class $$SplitsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> title = const Value.absent(),
+            Value<String?> code = const Value.absent(),
             Value<double> totalPaid = const Value.absent(),
             Value<double> myShare = const Value.absent(),
             Value<double> received = const Value.absent(),
@@ -6948,6 +6999,7 @@ class $$SplitsTableTableManager extends RootTableManager<
               SplitsCompanion(
             id: id,
             title: title,
+            code: code,
             totalPaid: totalPaid,
             myShare: myShare,
             received: received,
@@ -6961,6 +7013,7 @@ class $$SplitsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String title,
+            Value<String?> code = const Value.absent(),
             required double totalPaid,
             required double myShare,
             Value<double> received = const Value.absent(),
@@ -6974,6 +7027,7 @@ class $$SplitsTableTableManager extends RootTableManager<
               SplitsCompanion.insert(
             id: id,
             title: title,
+            code: code,
             totalPaid: totalPaid,
             myShare: myShare,
             received: received,

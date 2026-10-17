@@ -107,6 +107,9 @@ class Debts extends Table {
 class Splits extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
+  /// Short share code (e.g. `SP-7K2Q`) so the people in the split can be
+  /// named and see the same split. Owner rule 2026-09-27.
+  TextColumn get code => text().nullable()();
   RealColumn get totalPaid => real()();
   RealColumn get myShare => real()();
   RealColumn get received => real().withDefault(const Constant(0))();
@@ -313,6 +316,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 8) {
             await m.addColumn(transactions, transactions.absorbed);
             await m.addColumn(transactions, transactions.person);
+            await m.addColumn(splits, splits.code);
             await m.createTable(recurringRules);
             await m.createTable(groups);
             await m.createTable(groupMembers);
