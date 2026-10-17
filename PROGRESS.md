@@ -210,7 +210,8 @@
 - **Then a line-by-line audit of my own work**, which found bugs the tests had missed and fixed them: the .etbak was silently dropping all five v8 tables; exports fell back to the hidden dir on Android 10+; a name typed with a lend role and switched back to Normal **discarded the entry**; settlement was not atomic; the bucket vocabulary was split (need vs Needs) so entries showed as unfunded; opening balances were guessed onto the wrong account; the wrapped-year card counted borrowed cash as income; month contracts matched by row-typed date; Settlements were built and never rendered; the export month set was frozen. Each fix has a test.
 - Schema v8; new pure-Dart deps `pdf`, `csv`, `excel` (no native plugins, no APK cost). Gotcha: real file I/O inside `testWidgets` deadlocks the fake-async zone — create temp files in `setUp`.
 - Validation: `flutter analyze` clean, `flutter test` **171/171** (127 → +44), debug APK builds.
-- Next: merge to develop → main, tag v0.12.0, publish the APKs.
+- **Released:** PR #13 merged to `main` (ff70b44), tag `v0.12.0`, published `expensetracker-0.12.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Still debug-keyed so it installs over v0.11.0 without touching the vault; the signed build (37.6MB, keystore verified) is saved at `~/signed-v0.12.0/` for the day an encrypted backup exists.
+- Next: phone-test v0.12.0, then the signing-key switch as its own step.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
