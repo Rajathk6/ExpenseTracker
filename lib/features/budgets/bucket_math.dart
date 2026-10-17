@@ -14,23 +14,41 @@ class Bucket {
 }
 
 /// Suggested starting points. Users can edit/ignore all of these.
+///
+/// The labels are the app-wide bucket vocabulary: the entry form's picker, the
+/// month opener's automatic split and these presets all speak the same names,
+/// so an entry tagged `need` can never end up orphaned under a differently
+/// spelled plan.
+const List<Bucket> defaultBuckets = [
+  Bucket(name: 'need', pct: 50),
+  Bucket(name: 'want', pct: 30),
+  Bucket(name: 'invest', pct: 20),
+];
+
 const Map<String, List<Bucket>> bucketPresets = {
   '30/40/30': [
-    Bucket(name: 'Needs', pct: 30),
-    Bucket(name: 'Wants', pct: 40),
-    Bucket(name: 'Invest', pct: 30),
+    Bucket(name: 'need', pct: 30),
+    Bucket(name: 'want', pct: 40),
+    Bucket(name: 'invest', pct: 30),
   ],
-  '50/30/20': [
-    Bucket(name: 'Needs', pct: 50),
-    Bucket(name: 'Wants', pct: 30),
-    Bucket(name: 'Invest', pct: 20),
-  ],
+  '50/30/20': defaultBuckets,
   '60/20/20': [
-    Bucket(name: 'Needs', pct: 60),
-    Bucket(name: 'Wants', pct: 20),
-    Bucket(name: 'Invest', pct: 20),
+    Bucket(name: 'need', pct: 60),
+    Bucket(name: 'want', pct: 20),
+    Bucket(name: 'invest', pct: 20),
   ],
 };
+
+/// Case-insensitive bucket match, so `Need`, `need` and `NEED` are one bucket.
+String? canonicalBucket(String? label, Iterable<Bucket> buckets) {
+  if (label == null) return null;
+  final want = label.trim().toLowerCase();
+  if (want.isEmpty) return null;
+  for (final b in buckets) {
+    if (b.name.trim().toLowerCase() == want) return b.name;
+  }
+  return null;
+}
 
 /// Returns an error message when invalid, null when valid.
 String? validateBuckets(List<Bucket> buckets) {

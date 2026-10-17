@@ -18,6 +18,7 @@ void main() {
         budgetImpact: actual,
         occurredAt: at,
         categoryRaw: 'food staples maggi',
+        absorbed: 0,
         createdAt: at,
       );
 

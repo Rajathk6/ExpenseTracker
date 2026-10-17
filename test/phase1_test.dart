@@ -24,7 +24,7 @@ void main() {
   group('bucket math (pure)', () {
     test('30/40/30 preset allocates', () {
       final alloc = allocate(10000, bucketPresets['30/40/30']!);
-      expect(alloc, {'Needs': 3000, 'Wants': 4000, 'Invest': 3000});
+      expect(alloc, {'need': 3000, 'want': 4000, 'invest': 3000});
     });
 
     test('sum != 100 rejected', () {
@@ -63,8 +63,8 @@ void main() {
       await budgets.save(month: '2026-09', total: 10000, buckets: bucketPresets['30/40/30']!);
       final got = await budgets.get('2026-09');
       expect(got?.total, 10000);
-      expect(got?.buckets.map((b) => b.name), ['Needs', 'Wants', 'Invest']);
-      expect(await budgets.allocation('2026-09'), {'Needs': 3000, 'Wants': 4000, 'Invest': 3000});
+      expect(got?.buckets.map((b) => b.name), ['need', 'want', 'invest']);
+      expect(await budgets.allocation('2026-09'), {'need': 3000, 'want': 4000, 'invest': 3000});
     });
 
     test('bad month and bad ratios rejected, nothing persisted', () async {

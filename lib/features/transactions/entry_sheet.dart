@@ -11,9 +11,24 @@ import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
 import '../../core/ledger.dart';
+import '../../core/months.dart';
 import '../../core/providers.dart';
+import '../budgets/bucket_math.dart';
 import 'category_field.dart';
 import 'entry_logic.dart';
+
+/// What this entry *is*, beyond in/out. Owner rule 2026-09-27: a payment with a
+/// person's name on it should become a lend/borrow/settlement of that
+/// contract, not a note somebody has to read later.
+enum EntryRole {
+  normal('Normal entry'),
+  lend('Lend to person'),
+  borrow('Borrow from person'),
+  settle('Settle / pay back');
+
+  const EntryRole(this.label);
+  final String label;
+}
 
 final _whenFmt = DateFormat('d MMM yyyy, h:mm a');
 
@@ -37,6 +52,8 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   String? _error;
   bool _saving = false;
   bool _accountSeeded = false;
+  EntryRole _role = EntryRole.normal;
+  final _person = TextEditingController();
 
   @override
   void initState() {
@@ -57,6 +74,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     _amount.dispose();
     _category.dispose();
     _note.dispose();
+    _person.dispose();
     super.dispose();
   }
 
@@ -98,6 +116,14 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
       final entry = _kind == 'out' ? spend(amount) : income(amount);
       final repo = ref.read(transactionRepositoryProvider);
       final bucket = (_bucket ?? '').trim().isEmpty ? null : _bucket!.trim();
+      final person = _person.text.trim();
+      // A person only means something for a lend/borrow/settle. Anything else
+      // is a normal entry — silently dropping it used to lose the entry while
+      // the sheet reported success.
+      if (person.isNotEmpty && _role != EntryRole.normal) {
+        await _saveThroughPerson(amount, person, bucket);
+        return;
+      }
       if (widget.existing == null) {
         await repo.add(
           kind: _kind,
@@ -128,6 +154,79 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  /// Lend / borrow / settle with a named person. All three go through
+  /// DebtRepository so the contract, the partials and the neutral ledger stay
+  /// consistent — a front-screen entry must never invent its own contract.
+  Future<void> _saveThroughPerson(double amount, String person, String? bucket) async {
+    final debts = ref.read(debtRepositoryProvider);
+    final note = _note.text.trim();
+    final at = _when;
+    final accountId = _accountId;
+    try {
+      switch (_role) {
+        case EntryRole.lend:
+          await debts.lend(
+            counterparty: person,
+            principal: amount,
+            accountId: accountId,
+            at: at,
+            note: note.isEmpty ? null : note,
+          );
+        case EntryRole.borrow:
+          await debts.borrow(
+            counterparty: person,
+            principal: amount,
+            accountId: accountId,
+            at: at,
+            note: note.isEmpty ? null : note,
+          );
+        case EntryRole.settle:
+          // Pay back / collect back from an existing contract of theirs.
+          final open = (await debts.all()).where(
+            (d) =>
+                d.counterparty.toLowerCase() == person.toLowerCase() &&
+                d.status == 'open' &&
+                (d.principal - d.paid) > 0.005,
+          );
+          if (open.isEmpty) {
+            throw ArgumentError('No open contract with $person — record a lend/borrow first');
+          }
+          // All-or-nothing: check what is due *before* writing anything, so a
+          // half-finished settlement can never be left behind.
+          final due = open.fold<double>(0, (s, d) => s + (d.principal - d.paid));
+          if (amount > due + 0.005) {
+            throw ArgumentError('Only ₹${due.round()} is due with $person right now');
+          }
+          var left = amount;
+          for (final d in open) {
+            if (left <= 0.005) break;
+            final chunk = left > (d.principal - d.paid) ? d.principal - d.paid : left;
+            await debts.pay(debtId: d.id, amount: chunk, accountId: accountId, at: at, note: note.isEmpty ? null : note);
+            left -= chunk;
+          }
+        case EntryRole.normal:
+          break;
+      }
+      ref
+        ..invalidate(recentTransactionsProvider)
+        ..invalidate(openDebtsProvider)
+        ..invalidate(allDebtsProvider)
+          ..invalidate(unabsorbedNeutralProvider)
+        ..invalidate(budgetStatusProvider(monthKey(_when)))
+        ..invalidate(monthSummaryProvider(monthKey(_when)));
+      if (mounted) Navigator.of(context).pop(true);
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString()
+              .replaceFirst('Invalid argument(s): ', '')
+              .replaceFirst('Bad state: ', '');
           _saving = false;
         });
       }
@@ -202,6 +301,28 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ ', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
+            DropdownButtonFormField<EntryRole>(
+              initialValue: _role,
+              decoration: const InputDecoration(labelText: 'This entry is a…', border: OutlineInputBorder()),
+              items: [
+                for (final r in EntryRole.values) DropdownMenuItem(value: r, child: Text(r.label)),
+              ],
+              onChanged: (v) => setState(() => _role = v ?? EntryRole.normal),
+            ),
+            if (_role != EntryRole.normal) ...[
+              const SizedBox(height: 8),
+              PersonField(
+                controller: _person,
+                role: _role,
+                hint: switch (_role) {
+                  EntryRole.lend => 'Who are you lending to?',
+                  EntryRole.borrow => 'Who are you borrowing from?',
+                  EntryRole.settle => 'Who are you settling with?',
+                  EntryRole.normal => '',
+                },
+              ),
+            ],
+            const SizedBox(height: 12),
             CategoryField(
               controller: _category,
               hintText: 'food junk gobi-65',
@@ -275,6 +396,98 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   }
 }
 
+/// Person picker over everyone the owner has ever dealt with. Offers one tap
+/// for a known name instead of hoping they type it exactly right, and shows
+/// what that contract still owes so a settlement cannot overshoot by accident.
+class PersonField extends ConsumerStatefulWidget {
+  final TextEditingController controller;
+  final EntryRole role;
+  final String hint;
+  const PersonField({
+    super.key,
+    required this.controller,
+    required this.role,
+    required this.hint,
+  });
+
+  @override
+  ConsumerState<PersonField> createState() => _PersonFieldState();
+}
+
+class _PersonFieldState extends ConsumerState<PersonField> {
+  final _focus = FocusNode();
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onChanged);
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _focus.canRequestFocus) setState(() => _open = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _onChanged() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final people = ref.watch(peopleProvider);
+    final typed = widget.controller.text.trim().toLowerCase();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: widget.controller,
+          focusNode: _focus,
+          onTap: () => setState(() => _open = true),
+          onChanged: (_) => setState(() => _open = true),
+          decoration: InputDecoration(
+            labelText: widget.hint,
+            helperText: 'Or pick someone you have dealt with before',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        if (_open)
+          people.maybeWhen(
+            data: (names) {
+              final shown = [
+                for (final n in names)
+                  if (typed.isEmpty || n.toLowerCase().contains(typed)) n,
+              ].take(6).toList();
+              if (shown.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final n in shown)
+                      ActionChip(
+                        avatar: const Icon(Icons.person_outline, size: 18),
+                        label: Text(n),
+                        onPressed: () {
+                          widget.controller.text = n;
+                          setState(() => _open = false);
+                        },
+                      ),
+                  ],
+                ),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+      ],
+    );
+  }
+}
+
 /// Bucket options: this month's effective budget buckets, else the default
 /// trio so every entry can still be tagged need/want/invest.
 final _bucketOptionsProvider = FutureProvider<List<String>>((ref) async {
@@ -282,5 +495,5 @@ final _bucketOptionsProvider = FutureProvider<List<String>>((ref) async {
   final key = '${now.year}-${now.month.toString().padLeft(2, '0')}';
   final b = await ref.watch(budgetRepositoryProvider).getEffective(key);
   if (b != null && b.buckets.isNotEmpty) return [for (final x in b.buckets) x.name];
-  return const ['need', 'want', 'invest'];
+  return [for (final b in defaultBuckets) b.name];
 });

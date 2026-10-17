@@ -19,6 +19,26 @@ class TransactionRepository {
   static bool _isNeutral(Transaction r) =>
       r.kind == 'lend' || r.kind == 'borrow' || r.linkType == 'debt';
 
+  /// Neutral, and the owner has NOT yet said it counts. These are the rows the
+  /// "absorb into this month" action applies to (#10).
+  static bool isUnabsorbedNeutral(Transaction r) => _isNeutral(r) && r.absorbed == 0;
+
+  /// What a row contributes to budget planning. An absorbed neutral row counts
+  /// with its *actual* movement, because absorbing means "treat this as a real
+  /// spend/income of that month", not "guess a budget share".
+  static double budgetOf(Transaction r) => r.absorbed == 1 ? r.actual : r.budgetImpact;
+
+  /// Folds a neutral row into its month's budget, or takes it back out. The
+  /// ledger row itself is untouched — absorption is a decision, not an edit.
+  Future<Transaction> setAbsorbed({required String id, required bool absorbed}) async {
+    final row = await db.transactionById(id);
+    if (!_isNeutral(row)) {
+      throw StateError('Only lend/borrow/settlement entries can be absorbed');
+    }
+    await db.updateTransaction(id, TransactionsCompanion(absorbed: Value(absorbed ? 1 : 0)));
+    return db.transactionById(id);
+  }
+
   Future<Transaction> add({
     required String kind,
     required double actual,
@@ -30,6 +50,8 @@ class TransactionRepository {
     String? accountId,
     String? linkId,
     String? linkType,
+    String? person,
+    int absorbed = 0,
   }) async {
     if (kind.trim().isEmpty) throw ArgumentError('kind cannot be empty');
     if (categoryRaw.trim().isEmpty) throw ArgumentError('category cannot be empty');
@@ -53,6 +75,8 @@ class TransactionRepository {
         accountId: Value(accountId),
         linkId: Value(linkId),
         linkType: Value(linkType),
+        person: Value(person),
+        absorbed: Value(absorbed),
       ),
     );
     return (db.select(db.transactions)..where((t) => t.id.equals(id))).getSingle();
@@ -122,6 +146,15 @@ class TransactionRepository {
   /// Empty query returns empty (use allItems() to browse).
   Future<List<Transaction>> search(String query) => db.searchTransactions(query);
 
+  /// Same search inside one window. An empty query with a window lists that
+  /// window's entries, which is how "show me this month" works (#4).
+  Future<List<Transaction>> searchIn(String query, {DateTime? from, DateTime? to}) =>
+      db.searchTransactions(query, from: from, to: to);
+
+  /// Everything in a month or year, newest first.
+  Future<List<Transaction>> within({DateTime? from, DateTime? to}) =>
+      db.searchTransactions('', from: from, to: to);
+
   /// Category autocomplete: past raw categories containing [prefix] (case-insensitive).
   Future<List<String>> suggestions(String prefix) async {
     final all = await db.distinctCategories();
@@ -143,17 +176,19 @@ class TransactionRepository {
     var inActual = 0.0, outActual = 0.0, inBudget = 0.0, outBudget = 0.0;
     var count = 0;
     for (final r in rows) {
-      if (excludeNeutral && _isNeutral(r)) continue;
+      // Absorbed neutral rows always count — the owner said they do.
+      if (excludeNeutral && _isNeutral(r) && r.absorbed == 0) continue;
       count++;
       if (r.actual >= 0) {
         inActual += r.actual;
       } else {
         outActual += r.actual;
       }
-      if (r.budgetImpact >= 0) {
-        inBudget += r.budgetImpact;
+      final budget = budgetOf(r);
+      if (budget >= 0) {
+        inBudget += budget;
       } else {
-        outBudget += r.budgetImpact;
+        outBudget += budget;
       }
     }
     return (inActual: inActual, outActual: outActual, inBudget: inBudget, outBudget: outBudget, count: count);
@@ -165,9 +200,11 @@ class TransactionRepository {
     final rows = await db.transactionsBetween(from, to);
     final out = <String, double>{};
     for (final r in rows) {
-      if (r.budgetImpact >= 0) continue;
+      if (_isNeutral(r) && r.absorbed == 0) continue;
+      final budget = budgetOf(r);
+      if (budget >= 0) continue;
       final key = (r.bucket ?? '').trim();
-      out[key] = (out[key] ?? 0) + r.budgetImpact;
+      out[key] = (out[key] ?? 0) + budget;
     }
     return out;
   }

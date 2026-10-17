@@ -71,19 +71,32 @@ class _InstrumentsScreenState extends ConsumerState<InstrumentsScreen> {
             error: (e, _) => Text('Totals unavailable: $e'),
           ),
           const SizedBox(height: 8),
-          Text('Open', style: Theme.of(context).textTheme.titleSmall),
           open.when(
             data: (list) {
               final hits = _matches(list, _q.text);
               if (hits.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(8),
-                  child: Text(list.isEmpty
-                      ? 'Nothing tracked — tap Add for your first stock / FD / loan / note.'
-                      : 'No matches for "${_q.text.trim()}".',),
+                  child: Text(
+                    list.isEmpty
+                        ? 'Nothing tracked — tap Add for your first stock / FD / loan / note.'
+                        : 'No matches for "${_q.text.trim()}".',
+                  ),
                 );
               }
-              return Column(children: [for (final i in hits) _InstrumentCard(item: i, onChanged: () => _refresh(ref))]);
+              // One highlighted section per kind, each with its own subtotal:
+              // a wall of identical rows with a one-word label was unreadable.
+              final byKind = <String, List<Instrument>>{};
+              for (final i in hits) {
+                byKind.putIfAbsent(i.kind.trim().isEmpty ? 'other' : i.kind.trim().toLowerCase(), () => []).add(i);
+              }
+              final kinds = byKind.keys.toList()..sort();
+              return Column(
+                children: [
+                  for (final kind in kinds)
+                    _KindSection(kind: kind, items: byKind[kind]!, onChanged: () => _refresh(ref)),
+                ],
+              );
             },
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Could not load: $e'),
@@ -133,6 +146,113 @@ class _InstrumentsScreenState extends ConsumerState<InstrumentsScreen> {
         .toList();
   }
 }
+
+/// A whole kind of holding in its own block: colour, icon, count and the
+/// money in it, so stocks never look like an FD.
+class _KindSection extends StatelessWidget {
+  final String kind;
+  final List<Instrument> items;
+  final VoidCallback onChanged;
+
+  const _KindSection({required this.kind, required this.items, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = kindAccent(kind);
+    final invested = items.fold<double>(0, (s, i) => s + i.invested);
+    final current = items.fold<double>(0, (s, i) => s + i.current);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        color: accent.withValues(alpha: 0.06),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            color: accent.withValues(alpha: 0.18),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            child: Row(
+              children: [
+                Icon(kindIcon(kind), size: 20, color: accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    kindLabel(kind),
+                    style: theme.textTheme.titleSmall?.copyWith(color: accent),
+                  ),
+                ),
+                Text(
+                  '${items.length} · ₹${current.round()}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+            child: Column(
+              children: [
+                for (final item in items) _InstrumentCard(item: item, onChanged: onChanged),
+                if (invested > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 6, right: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('In this section', style: theme.textTheme.bodySmall),
+                        Text(
+                          'put in ₹${invested.round()} · now ₹${current.round()} · '
+                          '${current - invested >= 0 ? '+' : ''}₹${(current - invested).round()}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One colour and one icon per kind, so the sections are told apart at a glance.
+Color kindAccent(String kind) => switch (kind.toLowerCase()) {
+      'stock' || 'stocks' || 'equity' => const Color(0xFF1E88E5),
+      'mutual' || 'mf' || 'sip' => const Color(0xFF43A047),
+      'fd' || 'fixed deposit' || 'rd' => const Color(0xFF8E24AA),
+      'loan' || 'lend' => const Color(0xFFE53935),
+      'card' || 'credit card' => const Color(0xFFF4511E),
+      'paper' || 'ppf' || 'bond' => const Color(0xFF00897B),
+      'plan' || 'goal' => const Color(0xFF5E35B1),
+      'gold' || 'silver' => const Color(0xFFB8860B),
+      _ => const Color(0xFF546E7A),
+    };
+
+IconData kindIcon(String kind) => switch (kind.toLowerCase()) {
+      'stock' || 'stocks' || 'equity' => Icons.show_chart,
+      'mutual' || 'mf' || 'sip' => Icons.trending_up,
+      'fd' || 'fixed deposit' || 'rd' => Icons.savings_outlined,
+      'loan' || 'lend' => Icons.request_quote_outlined,
+      'card' || 'credit card' => Icons.credit_card,
+      'paper' || 'ppf' || 'bond' => Icons.description_outlined,
+      'plan' || 'goal' => Icons.flag_outlined,
+      'gold' || 'silver' => Icons.diamond_outlined,
+      _ => Icons.category_outlined,
+    };
+
+/// 'fd' -> 'FD', 'credit card' -> 'Credit card'. Freeform kinds still read well.
+String kindLabel(String kind) => kind
+    .split(RegExp(r'[\s_]+'))
+    .where((w) => w.isNotEmpty)
+    .map((w) => w.length <= 3 ? w.toUpperCase() : '${w[0].toUpperCase()}${w.substring(1)}')
+    .join(' ');
 
 class _TotalsCard extends StatelessWidget {
   final List<({double invested, double current})> holdings;

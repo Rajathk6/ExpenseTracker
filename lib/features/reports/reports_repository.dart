@@ -11,8 +11,15 @@ import 'reports_logic.dart';
 class TrendPoint {
   final String key;
   final double outBudget;
+  /// Income of that month (budget truth) — the second line on the trend chart.
+  final double inBudget;
   final double? budgetTotal;
-  const TrendPoint({required this.key, required this.outBudget, required this.budgetTotal});
+  const TrendPoint({
+    required this.key,
+    required this.outBudget,
+    required this.inBudget,
+    required this.budgetTotal,
+  });
 }
 
 /// Wrapped-style year summary.
@@ -78,8 +85,11 @@ class ReportsRepository {
     final catMoves = <TaggedOut>[];
     final cashMoves = <({String kind, double out})>[];
     for (final t in monthTxns) {
-      if (t.budgetImpact < 0) {
-        final out = -t.budgetImpact;
+      final hit = (t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt') && t.absorbed == 0
+          ? null
+          : (t.absorbed == 1 ? t.actual : t.budgetImpact);
+      if (hit != null && hit < 0) {
+        final out = -hit;
         outBudget += out;
         catMoves.add((tag: t.level0, out: out));
         cashMoves.add((kind: kinds[t.accountId] ?? 'digital', out: out));
@@ -87,22 +97,35 @@ class ReportsRepository {
     }
     final categories = topSlices(sumsByTag(catMoves), topN);
     final split = splitCashDigital(cashMoves);
-    final budgetTotal = (await db.getBudget(month))?.total ?? 0;
+    final budgetTotal = (await db.latestBudgetAtOrBefore(month))?.total ?? 0;
 
     // Trend: trailing window ending at [month], oldest first.
     final startKey = shiftMonthKey(month, -(trendMonths - 1));
     final windowTxns = await db.transactionsBetween(monthStart(startKey), bounds.end);
     final outByMonth = <String, double>{};
+    final inByMonth = <String, double>{};
     for (final t in windowTxns) {
-      if (t.budgetImpact < 0) {
-        final k = monthKey(t.occurredAt);
-        outByMonth[k] = (outByMonth[k] ?? 0) + (-t.budgetImpact);
+      final neutral = t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt';
+      final hit = neutral && t.absorbed == 0 ? null : (t.absorbed == 1 ? t.actual : t.budgetImpact);
+      if (hit == null || hit == 0) continue;
+      final k = monthKey(t.occurredAt);
+      if (hit < 0) {
+        outByMonth[k] = (outByMonth[k] ?? 0) + (-hit);
+      } else {
+        inByMonth[k] = (inByMonth[k] ?? 0) + hit;
       }
     }
     final trend = <TrendPoint>[];
     for (var back = trendMonths - 1; back >= 0; back--) {
       final k = shiftMonthKey(month, -back);
-      trend.add(TrendPoint(key: k, outBudget: outByMonth[k] ?? 0, budgetTotal: (await db.getBudget(k))?.total));
+      trend.add(
+        TrendPoint(
+          key: k,
+          outBudget: outByMonth[k] ?? 0,
+          inBudget: inByMonth[k] ?? 0,
+          budgetTotal: (await db.getBudget(k))?.total,
+        ),
+      );
     }
 
     return DashboardData(
@@ -124,13 +147,22 @@ class ReportsRepository {
     final end = DateTime(year + 1).subtract(const Duration(milliseconds: 1));
     final txns = await db.transactionsBetween(start, end);
     var inActual = 0.0, outBudget = 0.0;
+    var counted = 0;
     final catMoves = <TaggedOut>[];
     final itemMoves = <TaggedOut>[];
     final monthMoves = <TaggedOut>[];
     for (final t in txns) {
-      if (t.actual > 0) inActual += t.actual;
-      if (t.budgetImpact < 0) {
-        final out = -t.budgetImpact;
+      // Same truth as every other card: neutral rows (lend/borrow/payoffs) are
+      // out unless the owner absorbed them, and income is budget truth so an
+      // absorbed borrowing counts as the month's income, not a bank statement
+      // total. Counting every row here made borrowed cash look like a salary.
+      final neutral = t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt';
+      if (neutral && t.absorbed == 0) continue;
+      final hit = t.absorbed == 1 ? t.actual : t.budgetImpact;
+      counted++;
+      if (hit > 0) inActual += hit;
+      if (hit < 0) {
+        final out = -hit;
         outBudget += out;
         catMoves.add((tag: t.level0, out: out));
         if (t.item != null) itemMoves.add((tag: t.item, out: out));
@@ -144,7 +176,7 @@ class ReportsRepository {
       topCategory: pickTop(sumsByTag(catMoves)),
       topItem: pickTop(sumsByTag(itemMoves)),
       biggestMonth: pickTop(sumsByTag(monthMoves)),
-      txnCount: txns.length,
+      txnCount: counted,
     );
   }
 }

@@ -1,7 +1,9 @@
 /// Search + detail: matches raw category, any level, or item
-/// (`food`, `junk`, `gobi-65` all find `food junk gobi-65`).
-/// Exact hyphenated items additionally offer a stats drill-down rolled up by
-/// month and by year. Read-only.
+/// (`food`, `junk`, `gobi-65` all find `food junk gobi-65`), scoped to a period
+/// — **this month by default**, with one-tap filters for last month, any month,
+/// any year, or all time (#4). Clearing the box lists the period itself.
+/// Exact hyphenated items offer a stats drill-down rolled up by month and by
+/// year. Read-only.
 library;
 
 import 'package:flutter/material.dart';
@@ -46,8 +48,33 @@ class ItemSearchScreen extends ConsumerStatefulWidget {
   ConsumerState<ItemSearchScreen> createState() => _ItemSearchScreenState();
 }
 
+/// What the search is looking at. The owner asked for "current month first,
+/// filters for anything else", so [when] is the default and the only thing
+/// that has to be touched to widen it.
+enum SearchWhen {
+  thisMonth('This month'),
+  lastMonth('Last month'),
+  aMonth('Pick a month'),
+  aYear('Pick a year'),
+  allTime('All time');
+
+  const SearchWhen(this.label);
+  final String label;
+}
+
 class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
   final _q = TextEditingController();
+  SearchWhen _when = SearchWhen.thisMonth;
+  DateTime? _month;
+  int? _year;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _month = DateTime(now.year, now.month);
+    _year = now.year;
+  }
 
   @override
   void dispose() {
@@ -55,19 +82,93 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
     super.dispose();
   }
 
+  ({DateTime? from, DateTime? to}) _window() {
+    switch (_when) {
+      case SearchWhen.thisMonth:
+        final now = DateTime.now();
+        return _monthWindow(DateTime(now.year, now.month));
+      case SearchWhen.lastMonth:
+        final now = DateTime.now();
+        return _monthWindow(DateTime(now.year, now.month - 1));
+      case SearchWhen.aMonth:
+        return _month == null ? (from: null, to: null) : _monthWindow(_month!);
+      case SearchWhen.aYear:
+        return _year == null
+            ? (from: null, to: null)
+            : (from: DateTime(_year!), to: DateTime(_year! + 1, 1, 1).subtract(const Duration(milliseconds: 1)));
+      case SearchWhen.allTime:
+        return (from: null, to: null);
+    }
+  }
+
+  ({DateTime? from, DateTime? to}) _monthWindow(DateTime m) => (
+        from: DateTime(m.year, m.month),
+        to: DateTime(m.year, m.month + 1).subtract(const Duration(milliseconds: 1)),
+      );
+
+  String _scopeLabel() {
+    switch (_when) {
+      case SearchWhen.thisMonth:
+        return _monthFmt.format(DateTime.now());
+      case SearchWhen.lastMonth:
+        final now = DateTime.now();
+        return _monthFmt.format(DateTime(now.year, now.month - 1));
+      case SearchWhen.aMonth:
+        return _month == null ? 'Pick a month' : _monthFmt.format(_month!);
+      case SearchWhen.aYear:
+        return _year == null ? 'Pick a year' : '$_year';
+      case SearchWhen.allTime:
+        return 'all time';
+    }
+  }
+
+  Future<void> _pickMonth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _month ?? DateTime(now.year, now.month),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 1, 12),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _month = DateTime(picked.year, picked.month);
+      _when = SearchWhen.aMonth;
+    });
+  }
+
+  Future<void> _pickYear() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(_year ?? now.year),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 1),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _year = picked.year;
+      _when = SearchWhen.aYear;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final window = _window();
+    final query = _q.text.trim();
+    final results = ref.watch(scopedSearchProvider((query: query, from: window.from, to: window.to)));
     final items = ref.watch(allItemsProvider);
-    final q = _q.text.trim();
-    final results = ref.watch(searchProvider(q));
-    // Past categories matching the query — shown ONLY while searching.
-    final sugg = ref.watch(searchSuggestionsProvider(q));
+    final months = ref.watch(monthsWithActivityProvider);
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Search')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: TextField(
               controller: _q,
               autofocus: true,
@@ -79,99 +180,161 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
               ),
             ),
           ),
-          if (q.isNotEmpty)
-            sugg.maybeWhen(
-              data: (options) {
-                if (options.isEmpty) return const SizedBox.shrink();
-                return SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    children: [
-                      for (final o in options.take(8))
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ActionChip(
-                            label: Text(o),
-                            onPressed: () => setState(() => _q.text = o),
-                          ),
-                        ),
-                    ],
-                  ),
+          // Scope chips: current month by default, anything else one tap away.
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final w in SearchWhen.values)
+                  if (w == SearchWhen.aMonth || w == SearchWhen.aYear)
+                    ActionChip(
+                      avatar: Icon(
+                        w == SearchWhen.aMonth ? Icons.calendar_month : Icons.calendar_today,
+                        size: 18,
+                      ),
+                      label: Text(_scopeLabelFor(w)),
+                      onPressed: () => w == SearchWhen.aMonth ? _pickMonth() : _pickYear(),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(w.label),
+                        selected: _when == w,
+                        onSelected: (_) => setState(() => _when = w),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Searching ${_scopeLabel()} · clear the box to list that period',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ),
+          Expanded(
+            child: results.when(
+              data: (rows) {
+                if (rows.isEmpty) {
+                  if (query.isEmpty) {
+                    return _browseAll(context, items, months);
+                  }
+                  return Center(child: Text('No matches for "$query" in ${_scopeLabel()}.'));
+                }
+                final spent = rows.where((r) => r.actual < 0).fold<double>(0, (s, r) => s + r.actual);
+                final income = rows.where((r) => r.actual > 0).fold<double>(0, (s, r) => s + r.actual);
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Text(
+                        '${rows.length} entr${rows.length == 1 ? 'y' : 'ies'} · in ₹${income.toStringAsFixed(0)} · out ₹${spent.abs().toStringAsFixed(0)}',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: rows.length,
+                        itemBuilder: (_, i) {
+                          final row = rows[i];
+                          final isNeutral = row.linkType == 'debt' || row.kind == 'lend' || row.kind == 'borrow';
+                          return ListTile(
+                            leading: Icon(
+                              isNeutral
+                                  ? Icons.handshake_outlined
+                                  : (row.actual < 0 ? Icons.arrow_upward : Icons.arrow_downward),
+                              color: isNeutral ? Colors.blue : (row.actual < 0 ? Colors.red : Colors.green),
+                            ),
+                            title: Text(row.categoryRaw),
+                            subtitle: Text(
+                              '${_dayFmt.format(row.occurredAt)}'
+                              '${isNeutral ? (row.absorbed == 1 ? ' · absorbed into the month' : ' · held out of the month') : ''}',
+                            ),
+                            trailing: Text('₹${row.actual.toStringAsFixed(0)}'),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
-              orElse: () => const SizedBox.shrink(),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Could not load: $e')),
             ),
-          if (q.isEmpty)
-            Expanded(
-              child: items.when(
-                data: (all) {
-                  if (all.isEmpty) {
-                    return const Center(child: Text('No entries yet — tap Add on the home screen.'));
-                  }
-                  return ListView(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: Text('Browse items — tap for stats'),
-                      ),
-                      for (final item in all)
-                        ListTile(
-                          leading: const Icon(Icons.fastfood),
-                          title: Text(item),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Could not load: $e')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _scopeLabelFor(SearchWhen w) => switch (w) {
+        SearchWhen.aMonth => _month == null ? 'Month…' : _monthFmt.format(_month!),
+        SearchWhen.aYear => _year == null ? 'Year…' : '$_year',
+        SearchWhen.thisMonth => _monthFmt.format(DateTime.now()),
+        SearchWhen.lastMonth => _monthFmt.format(DateTime(DateTime.now().year, DateTime.now().month - 1)),
+        SearchWhen.allTime => 'All time',
+      };
+
+  /// Empty query + an empty window (All time) → let the owner browse items
+  /// and pick a month from the ones that actually have data.
+  Widget _browseAll(BuildContext context, AsyncValue<List<String>> items, AsyncValue<List<String>> months) {
+    final theme = Theme.of(context);
+    return items.maybeWhen(
+      data: (all) => ListView(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 0, 12, 4),
+            child: Text('Tap an item for its full history, or pick a period with data:'),
+          ),
+          months.maybeWhen(
+            data: (list) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final m in list.take(12))
+                    ActionChip(
+                      label: Text(m),
+                      onPressed: () {
+                        final parts = m.split('-');
+                        setState(() {
+                          _month = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+                          _when = SearchWhen.aMonth;
+                        });
+                      },
+                    ),
+                ],
               ),
-            )
-          else
-            Expanded(
-              child: results.when(
-                data: (rows) {
-                  if (rows.isEmpty) {
-                    return Center(child: Text('No matches for "$q".'));
-                  }
-                  final spent = rows.where((r) => r.actual < 0).fold<double>(0, (s, r) => s + r.actual);
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: Text(
-                          '${rows.length} entr${rows.length == 1 ? 'y' : 'ies'} · total ₹${spent.abs().toStringAsFixed(0)}',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: rows.length,
-                          itemBuilder: (_, i) => ListTile(
-                            leading: Icon(
-                              rows[i].actual < 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                              color: rows[i].actual < 0 ? Colors.red : Colors.green,
-                            ),
-                            title: Text(rows[i].categoryRaw),
-                            subtitle: Text(_dayFmt.format(rows[i].occurredAt)),
-                            trailing: Text('₹${rows[i].actual.toStringAsFixed(0)}'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Could not load: $e')),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          const Divider(),
+          for (final item in all)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.fastfood),
+              title: Text(item),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
               ),
+            ),
+          if (all.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Nothing recorded yet in ${_scopeLabel()}.', style: theme.textTheme.bodySmall),
             ),
         ],
       ),
+      orElse: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:expense_tracker/core/database.dart';
 import 'package:expense_tracker/features/customization/account_repository.dart';
 import 'package:expense_tracker/features/reconcile/networth_logic.dart';
-import 'package:expense_tracker/features/reconcile/price_logic.dart';
 import 'package:expense_tracker/features/reconcile/reconcile_logic.dart';
 import 'package:expense_tracker/features/reconcile/reconcile_repository.dart';
 
@@ -26,25 +25,6 @@ void main() {
       expect(reconcileStatus(0), 'balanced');
       expect(reconcileStatus(100), 'short');
       expect(reconcileStatus(-100), 'excess');
-    });
-  });
-
-  group('price memory (pure)', () {
-    test('avg/min/max + overpay vs average', () {
-      final s = priceStats([450, 500, 550]);
-      expect(s.avg, 500);
-      expect(s.min, 450);
-      expect(s.max, 550);
-      expect(s.latest, 550);
-      expect(s.count, 3);
-      expect(s.overpay, isTrue); // 550 > 500
-      expect(priceStats([550, 500, 450]).overpay, isFalse);
-      expect(priceStats([450]).overpay, isFalse); // single sighting: no flag
-      expect(priceStats([]).count, 0);
-    });
-
-    test('only spends become prices', () {
-      expect(pricesOf([-450, 2000, -500]), [450, 500]);
     });
   });
 

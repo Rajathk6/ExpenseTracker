@@ -87,7 +87,6 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> with Widg
     // Coming back refreshes the auto-lock countdown; the timer itself
     // fires while away, so the gate is shut after the chosen idle window.
     if (state == AppLifecycleState.resumed) {
-      ref.read(lockProvider.notifier).noteActivity();
       // Entries may have been made from a share or the tile while we were away.
       final key = monthKey(DateTime.now());
       ref
