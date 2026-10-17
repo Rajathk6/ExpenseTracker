@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import 'networth_screen.dart';
-import 'price_screen.dart';
 import 'reconcile_logic.dart';
 import 'reconcile_repository.dart';
 
@@ -56,14 +55,6 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PriceScreen())),
-                  icon: const Icon(Icons.sell_outlined),
-                  label: const Text('Price memory'),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NetWorthScreen())),

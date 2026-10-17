@@ -117,26 +117,21 @@ BudgetStatusReport buildBudgetStatus({
   Map<String, double> bucketSpend = const {},
 }) {
   final planned = budgetTotal <= 0 || buckets.isEmpty ? const <String, double>{} : allocate(budgetTotal, buckets);
-  // Spend with no bucket goes to an explicit "unassigned" line rather than
-  // disappearing — untracked spending is exactly what the owner wants to see.
-  final known = {...planned.keys};
-  final unassigned = <String, double>{};
+  // Planned amounts come from the allocation; actual spend is tracked
+  // separately — folding one into the other silently inflates the plan.
+  final spend = <String, double>{};
   for (final entry in bucketSpend.entries) {
     final label = entry.key.trim().isEmpty ? 'unassigned' : entry.key;
-    final value = entry.value.abs();
-    if (known.contains(label)) {
-      planned[label] = planned[label]! + value;
-    } else {
-      unassigned[label] = (unassigned[label] ?? 0) + value;
-    }
+    spend[label] = (spend[label] ?? 0) + entry.value.abs();
   }
   final statuses = <BucketStatus>[
-    for (final b in buckets) BucketStatus(b.name, planned[b.name] ?? 0, bucketSpend[b.name]?.abs() ?? 0),
+    for (final b in buckets) BucketStatus(b.name, planned[b.name] ?? 0, spend[b.name] ?? 0),
   ];
-  if (unassigned.isNotEmpty) {
-    for (final entry in unassigned.entries) {
-      statuses.add(BucketStatus(entry.key, 0, entry.value));
-    }
+  // Spend in a bucket with no plan (or in no bucket at all) gets its own line
+  // rather than disappearing — untracked spending is what the owner wants to see.
+  for (final entry in spend.entries) {
+    if (planned.containsKey(entry.key)) continue;
+    statuses.add(BucketStatus(entry.key, 0, entry.value));
   }
   return BudgetStatusReport(
     income: income,

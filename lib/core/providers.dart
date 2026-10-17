@@ -23,6 +23,7 @@ import '../features/reconcile/reconcile_logic.dart';
 import '../features/reconcile/reconcile_repository.dart';
 import '../features/reports/reports_repository.dart';
 import '../features/splits/split_repository.dart';
+import '../features/transactions/recurring_service.dart';
 import '../features/transactions/transaction_repository.dart';
 
 /// File handles opened once in main(). Tests override [databaseProvider]
@@ -111,6 +112,16 @@ final itemRowsProvider =
 final searchProvider =
     FutureProvider.family((ref, String query) => ref.watch(transactionRepositoryProvider).search(query));
 
+/// Search inside a window: `{query, from, to}`. Defaults to the current month
+/// so the first thing the owner sees is this month, not all of history.
+typedef SearchScope = ({String query, DateTime? from, DateTime? to});
+
+final scopedSearchProvider = FutureProvider.family<List<Transaction>, SearchScope>((ref, scope) {
+  return ref
+      .watch(transactionRepositoryProvider)
+      .searchIn(scope.query, from: scope.from, to: scope.to);
+});
+
 /// Suggestion options while searching: past categories containing the query.
 /// Empty query → empty (suggestions appear only once you type).
 final searchSuggestionsProvider = FutureProvider.family<List<String>, String>((ref, query) async {
@@ -160,6 +171,14 @@ final unabsorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async 
       if (TransactionRepository.isUnabsorbedNeutral(r)) r,
   ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 });
+
+final recurringServiceProvider = Provider((ref) => RecurringService(ref.watch(databaseProvider)));
+
+/// Repeating entries the owner set up (salary and friends).
+final recurringRulesProvider = FutureProvider((ref) => ref.watch(recurringServiceProvider).all());
+
+/// Months with any activity, newest first — search and report filters.
+final monthsWithActivityProvider = FutureProvider((ref) => ref.watch(databaseProvider).monthsWithActivity());
 
 /// Every counterparty the owner has ever dealt with, so the entry form can
 /// offer "Ravi — lend / borrow / settle" instead of a free-text note (#8).

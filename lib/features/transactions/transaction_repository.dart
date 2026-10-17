@@ -146,6 +146,15 @@ class TransactionRepository {
   /// Empty query returns empty (use allItems() to browse).
   Future<List<Transaction>> search(String query) => db.searchTransactions(query);
 
+  /// Same search inside one window. An empty query with a window lists that
+  /// window's entries, which is how "show me this month" works (#4).
+  Future<List<Transaction>> searchIn(String query, {DateTime? from, DateTime? to}) =>
+      db.searchTransactions(query, from: from, to: to);
+
+  /// Everything in a month or year, newest first.
+  Future<List<Transaction>> within({DateTime? from, DateTime? to}) =>
+      db.searchTransactions('', from: from, to: to);
+
   /// Category autocomplete: past raw categories containing [prefix] (case-insensitive).
   Future<List<String>> suggestions(String prefix) async {
     final all = await db.distinctCategories();

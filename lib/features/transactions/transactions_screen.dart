@@ -217,6 +217,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             orElse: () => const SizedBox.shrink(),
           ),
           _MonthSetupCard(monthKey: key),
+          const _RecurringRulesCard(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
@@ -319,6 +320,87 @@ class _SummaryCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Repeating entries (#4): what the owner set up to fill in automatically, and
+/// a button to fill the pending months now. Applying writes real entries, so
+/// nothing appears in the ledger that the owner did not consciously add.
+class _RecurringRulesCard extends ConsumerWidget {
+  const _RecurringRulesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rules = ref.watch(recurringRulesProvider);
+    return rules.maybeWhen(
+      data: (list) {
+        if (list.isEmpty) return const SizedBox.shrink();
+        final service = ref.read(recurringServiceProvider);
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Repeating entries', style: Theme.of(context).textTheme.titleSmall),
+                for (final rule in list) ...[
+                  const SizedBox(height: 4),
+                  Builder(
+                    builder: (context) {
+                      final pending = service.pending(rule);
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${rule.kind == 'in' ? '+' : '−'} ₹${rule.amount.round()} · ${rule.categoryRaw}'),
+                        subtitle: Text(
+                          'day ${rule.dayOfMonth} · ${rule.months} month(s) from ${rule.startMonth}'
+                          '${pending.isEmpty ? ' · all filled' : ' · ${pending.length} to fill'}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (pending.isNotEmpty)
+                              TextButton(
+                                onPressed: () async {
+                                  final written = await service.applyAll(rule);
+                                  ref
+                                    ..invalidate(recurringRulesProvider)
+                                    ..invalidate(recentTransactionsProvider)
+                                    ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())));
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Added $written entr${written == 1 ? 'y' : 'ies'} — edit them like any entry',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('Fill in'),
+                              ),
+                            IconButton(
+                              tooltip: 'Stop repeating',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                await service.delete(rule.id);
+                                ref.invalidate(recurringRulesProvider);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }

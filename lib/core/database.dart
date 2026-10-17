@@ -368,9 +368,22 @@ class AppDatabase extends _$AppDatabase {
 
   /// Full-text-ish search across raw category, levels and item.
   /// Matches substrings, case-insensitive for ASCII. `%`/`_` stripped.
-  Future<List<Transaction>> searchTransactions(String query) {
+  /// [from]/[to] narrow the window so the owner can search one month, one
+  /// year or everything (#4); null means no bound on that side.
+  Future<List<Transaction>> searchTransactions(String query, {DateTime? from, DateTime? to}) {
     final clean = query.trim().toLowerCase().replaceAll(RegExp(r'[%_]'), '');
-    if (clean.isEmpty) return Future.value(const <Transaction>[]);
+    bool inRange(Transaction t) =>
+        (from == null || !t.occurredAt.isBefore(from)) && (to == null || !t.occurredAt.isAfter(to));
+    if (clean.isEmpty) {
+      // No query + a window = "show me this month", which is what the owner
+      // expects to land on.
+      if (from == null && to == null) return Future.value(const <Transaction>[]);
+      return (select(transactions)
+            ..where((t) => t.occurredAt.isBetweenValues(from ?? DateTime(1970), to ?? DateTime(2100)))
+            ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
+            ..limit(200))
+          .get();
+    }
     final pattern = '%$clean%';
     return (select(transactions)
           ..where(
@@ -382,8 +395,9 @@ class AppDatabase extends _$AppDatabase {
                 t.item.lower().like(pattern),
           )
           ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
-          ..limit(200))
-        .get();
+          ..limit(400))
+        .get()
+        .then((rows) => [for (final r in rows) if (inRange(r)) r].take(200).toList());
   }
 
   /// Every raw category string ever typed, for autocomplete suggestions.
@@ -515,6 +529,12 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertRecurringRule(RecurringRulesCompanion entry) =>
       into(recurringRules).insertOnConflictUpdate(entry);
+
+  /// Progress marker only. Insert-or-replace would have to repeat every NOT NULL
+  /// column, and would blank the ones it left out.
+  Future<void> markRecurringApplied({required String id, required String month}) =>
+      (update(recurringRules)..where((r) => r.id.equals(id)))
+          .write(RecurringRulesCompanion(lastAppliedMonth: Value(month)));
 
   Future<int> deleteRecurringRule(String id) => (delete(recurringRules)..where((r) => r.id.equals(id))).go();
 
