@@ -7,8 +7,10 @@ lib/
     database.dart            // Drift DB singleton, schema versions, migrations. Only place with SQL.
     ledger.dart              // Dual-amount math: actual vs budgetImpact. Pure functions, tested.
     category_parser.dart     // Freeform parser: space=level, '-'=item. Pure function, tested.
-    auth/ lock_service.dart  // PIN verify (hashed) + biometric + decoy PIN + auto-lock timer.
-                             // pin_service.dart owns hashes/storage; the gate swaps real/demo DB handles.
+    auth/ lock_service.dart  // The gate itself: PIN/decoy verdicts, manual lock, demo-vault flag.
+                             // pin_service.dart owns hashes; secret_store.dart puts them in the
+                             // OS keychain; biometric_service.dart wraps local_auth (never throws,
+                             // and a biometric can only ever open the real vault).
     backup/ codec.dart       // Encrypted ZIP export/import (JSON+sqlite). No network.
                              // backup_service.dart dumps/restores all tables; Drive stays manual.
     intake/ share_parser.dart// Offline regex extractors for shared text/OCR output. Pure, tested.
@@ -23,15 +25,19 @@ lib/
     neutral/       // Debts + partials + aging/nudge dates. budgetImpact always 0.
     splits/        // Split group + receivables + settles + absorbed flag.
     instruments/   // Accounts/cards/stocks/paper/notes + P/L% + interest pure fns.
-    reconcile/     // Month open/close: bank open/close + cash count + card spend vs budget.
-                   // + price memory (stats over item history) + net-worth timeline.
-    reports/       // Read-only dashboards + drill queries. Never writes.
+    reconcile/     // Month open/close: bank open/close + cash count + card spend vs budget,
+                   // + net-worth timeline + month_start_service (the month-start form actually
+                   // applies: budget row, opening balances, repeating income).
+    reports/       // Read-only dashboards + drill queries, plus core/report/ (one month-report
+                   // model + CSV/xlsx/PDF writers). Never writes to the ledger.
                    // Spend figures use budget truth; drill screens take row
                    // lists directly (no extra providers). Month keys shared
                    // via core/months.dart (re-exported by reconcile_logic).
     intake/       // Confirm screen (mandatory human checkpoint), the Android share target
                    // (our own manifest filter + two channels, no plugin) and on-device OCR.
     settings/      // PIN/biometric/decoy, encrypted backup, about. Drive upload is manual.
+    shared/        // The merged Shared-money screen: Lent / Borrowed / Splits / Groups tabs.
+    groups/        // Splitwise-style groups (code, members, expenses, pay-ups) + balances.
 ```
 
 ## Why decoupled this way
@@ -41,16 +47,19 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v7, codegen + tests green — 109/109 as of 2026-09-16)
-- `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, note, accountId, linkId, linkType)` — append-only; corrections are reversals.
+## Data model (Drift v8, codegen + tests green — 171/171 as of 2026-10-17)
+- `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, bucket, absorbed, person, note, accountId, linkId, linkType)` — append-only; corrections are reversals. `absorbed` is the owner's "count this neutral row in the month" decision (0 by default) and `person` names the counterparty.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
 - `debts(...)` (v2) + `splits(...)` (v3) — contracts with money trails in transactions.
 - `instruments(id, name, kind freeform, invested, current, note, status, createdAt)` (v4) — vault, tracking-only, never writes transactions. P/L% + interest in instruments/instrument_logic.dart.
 - `snapshots(month, accountId, openBalance, countedClose, hasClose, createdAt)` (v5, PK = month+account) — reconcile inputs. Report reads ledger via transactionsBetween; price memory reads item history (no table); net-worth timeline derives bank/cash from openings + all actuals.
-- `settings(key, value)` (v6) — non-secret settings only: auto-lock minutes, the biometric toggle and the recovery question. PIN/decoy/recovery hashes live in the OS keychain (`core/auth/secret_store.dart`), namespaced per vault and migrated out of this table on first read. `month_open(month, budgetIn, budgetOut, bankBalance, cashBalance, cardLimit)` (v7) — the optional month-start form.
+- `settings(key, value)` (v6) — non-secret settings only: the biometric toggle and the recovery question text. PIN/decoy/recovery hashes live in the OS keychain (`core/auth/secret_store.dart`), namespaced per vault and migrated out of this table on first read. `month_open(...)` (v7) — the optional month-start form.
+- v8 adds `splits.code` (share code), `recurring_rules(id, kind, amount, categoryRaw, bucket, accountId, dayOfMonth, months, startMonth, lastAppliedMonth)`, and the groups quartet: `groups(id, name, code, monthKey, status)`, `group_members`, `group_expenses(groupId, title, amount, paidBy, occurredAt)`, `group_payments(groupId, paidBy, paidTo, amount, occurredAt)`. Applying a repeating rule writes *real* transactions, so the ledger never contains a row nobody confirmed.
 - Later: `prices(item, amount, date, place)` only if derived history proves too slow.
-- `core/backup/backup_service.dart` walks the single `backupTables` list — a new table must be added there or it silently misses every .etbak.
+- `core/backup/backup_service.dart` walks the single `backupTables` list (14 tables) — a new table must be added there or it silently misses every .etbak. A round-trip test asserts the list and the dump agree, so this cannot regress silently again.
+- Exports (backups and reports) are written to **public** Downloads/ExpenseTracker through `core/export/export_paths.dart`, which uses MainActivity's MediaStore channel — `getExternalStorageDirectory()` would land in a folder no file manager shows.
+- One bucket vocabulary (`bucket_math.dart:defaultBuckets`) is shared by the month opener, the Budget presets and the entry picker; `canonicalBucket` matches case-insensitively.
 - Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.
 
 ## SQLCipher evaluation (2026-09-27, decision: not now)
@@ -76,7 +85,7 @@ history. Right now the file is a plain SQLite database.
    (they both provide the `sqlite3` native library), which is another
    dependency to keep building against the pinned compileSdk.
 4. **It duplicates a control that already exists.** The app already has a PIN
-   gate, keychain-held secrets, biometric unlock, auto-lock and a
+   gate, keychain-held secrets, biometric unlock, a manual lock and a
    password-encrypted export that is tested end to end. SQLCipher protects a
    different threat (off-device file access) with a much bigger blast radius.
 

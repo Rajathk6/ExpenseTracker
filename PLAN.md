@@ -1,7 +1,10 @@
 # PLAN — ExpenseTracker build order
 
 Stack: **Flutter 3.x + Dart + Drift(SQLite) + Riverpod + go_router + local_auth + fl_chart**.
-All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Drive upload. No auto-sync.
+All data local. Backup = encrypted ZIP (JSON) via file copy or manual Drive upload. No auto-sync.
+Reports also export as **CSV / .xlsx / PDF** into public Downloads.
+Money the owner owes or is owed stays **out of every month total until it is
+absorbed** — the neutral ledger is tracked, not budgeted, until they say so.
 
 ## Approved scope (incl. latest additions)
 1. In/Out with date/time/category picker.
@@ -12,7 +15,7 @@ All data local. Backup = encrypted ZIP (JSON+SQLite) via file copy or manual Dri
 6. Instruments vault: banks/cards/statements/loans/stocks/paper-trades/plans + notes. Manual P/L% + interest calc.
 7. Reconciliation: month-start **bank close + cash count + card spend + budget** → true spent / missing / end status. Cash counted physically, same formula as bank.
 8. Reports: per-module graphs + drill to txn list.
-9. **Price memory:** per-item price history (avg/min/max, overpay alert vs average).
+9. ~~**Price memory:** per-item price history~~ — **withdrawn 2026-10-17** (owner removed the section).
 10. **Net-worth timeline:** `(banks + cash + investments) − debts` per month-end, one graph.
 11. Intake: Android share-target ✅ (own manifest filter; **no iOS Share Extension — there is no `ios/` project**), offline regex + on-device OCR ✅, always confirm-screen before save ✅. Manual entry never blocked.
 12. Cash wallets: opening count, quick buttons, physical-count reconciliation, Cash-vs-Digital filter.
