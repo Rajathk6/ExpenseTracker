@@ -1,4 +1,4 @@
-/// Settings: PIN + decoy, biometric, auto-lock, encrypted backup, about.
+/// Settings: PIN + decoy, biometric, encrypted backup, exports, about.
 /// Everything here works offline. Drive upload stays a manual Files-app
 /// step per PLAN (export shows the exact file path); restore picks the
 /// .etbak with the system file browser.
@@ -242,51 +242,6 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _autoLock(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final current = await ref.read(pinServiceProvider).lockMinutes();
-    if (!context.mounted) return;
-    int picked = current;
-    final done = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Auto-lock'),
-          content: RadioGroup<int>(
-            groupValue: picked,
-            onChanged: (int? v) => setDialog(() => picked = v ?? picked),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final m in const [0, 1, 5, 15])
-                  Row(
-                    children: [
-                      Radio<int>(value: m),
-                      Text(m == 0 ? 'Never (manual)' : '$m min idle'),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                await ref.read(pinServiceProvider).setLockMinutes(picked);
-                ref.read(lockProvider.notifier).setTimeout(picked == 0 ? null : Duration(minutes: picked));
-                if (ctx.mounted) Navigator.of(ctx).pop(true);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (done ?? false) {
-      messenger.showSnackBar(const SnackBar(content: Text('Auto-lock updated.')));
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pin = ref.watch(pinServiceProvider);
@@ -314,11 +269,11 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => _decoy(context, ref),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.timer_outlined),
-            title: const Text('Auto-lock'),
-            subtitle: const Text('Locks after idle time'),
-            onTap: () => _autoLock(context, ref),
+          const ListTile(
+            leading: Icon(Icons.lock_outline),
+            title: Text('Locking'),
+            subtitle: Text('Manual only — it no longer locks while you are typing. '
+                'Biometric unlock makes coming back one tap.'),
           ),
           ListTile(
             leading: const Icon(Icons.fingerprint),

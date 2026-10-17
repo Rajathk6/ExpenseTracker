@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -16,28 +17,41 @@ class SplitRepository {
   final AppDatabase db;
   const SplitRepository(this.db);
 
+  /// Creates a split. The owner's share is **derived** from the number of
+  /// people (including themselves) — there is no share field to mistype (#13).
+  /// Names are required (#14) and the contract gets a share code so the others
+  /// in it can be identified.
   Future<Split> create({
     required String title,
     required double total,
-    required double myShare,
+    required int people,
     List<String> members = const [],
     String? accountId,
     DateTime? at,
     String? note,
     String? categoryRaw,
+    String? code,
   }) async {
     final clean = title.trim();
     if (clean.isEmpty) throw ArgumentError('Title cannot be empty');
+    final names = [for (final m in members) m.trim()].where((m) => m.isNotEmpty).toList();
+    final memberError = validateMembers(names);
+    if (memberError != null) throw ArgumentError(memberError);
+    if (people < 1) throw ArgumentError('How many people is this split between?');
+    final headcount = people < names.length ? names.length : people;
+    final myShare = myShareFor(total: total, people: headcount);
     final err = validateSplit(total: total, myShare: myShare);
     if (err != null) throw ArgumentError(err);
     final id = const Uuid().v4();
+    final random = Random.secure();
     await db.insertSplit(
       SplitsCompanion(
         id: Value(id),
         title: Value(clean),
+        code: Value(code ?? newCode('SP', (max) => random.nextInt(max))),
         totalPaid: Value(total),
         myShare: Value(myShare),
-        membersJson: Value(jsonEncode(members.map((m) => m.trim()).where((m) => m.isNotEmpty).toList())),
+        membersJson: Value(jsonEncode(names)),
       ),
     );
     if (note != null && note.trim().isNotEmpty) {
@@ -140,4 +154,7 @@ class SplitRepository {
 
   List<String> membersOf(Split split) =>
       (jsonDecode(split.membersJson) as List).map((e) => e.toString()).toList();
+
+  /// How many people the contract is divided between (names are the floor).
+  int peopleOf(Split split) => membersOf(split).length;
 }

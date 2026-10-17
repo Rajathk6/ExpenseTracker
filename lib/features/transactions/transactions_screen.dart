@@ -8,19 +8,17 @@ import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
 import '../../core/providers.dart';
+import '../budgets/budget_status.dart';
 import '../budgets/budget_screen.dart';
-import '../cash/quickadd_sheet.dart';
 import '../cash/transfer_sheet.dart';
 import '../customization/accounts_screen.dart';
 import '../instruments/instruments_screen.dart';
 import '../intake/intake_screen.dart';
-import '../neutral/debts_screen.dart';
+import '../shared/shared_screen.dart';
 import '../reconcile/networth_screen.dart';
-import '../reconcile/price_screen.dart';
 import '../reconcile/reconcile_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/settings_screen.dart';
-import '../splits/splits_screen.dart';
 import 'entry_sheet.dart';
 import 'item_search_screen.dart';
 
@@ -59,6 +57,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ..invalidate(recentTransactionsProvider)
       ..invalidate(monthSummaryProvider(key))
       ..invalidate(bucketSpendProvider(key))
+      ..invalidate(budgetStatusProvider(key))
+      ..invalidate(unabsorbedNeutralProvider)
       ..invalidate(monthOpenProvider(key));
   }
 
@@ -104,15 +104,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
-  Future<void> _openQuickAdd() async {
-    final saved = await openQuickAdd(context);
-    if (saved) {
-      ref
-        ..invalidate(recentTransactionsProvider)
-        ..invalidate(monthSummaryProvider(_monthKey(_month)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final key = _monthKey(_month);
@@ -148,14 +139,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
           ),
           IconButton(
-            tooltip: 'Lending & loans',
+            tooltip: 'Lent, borrowed, splits & groups',
             icon: const Icon(Icons.handshake_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DebtsScreen())),
-          ),
-          IconButton(
-            tooltip: 'Splits',
-            icon: const Icon(Icons.group_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SplitsScreen())),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SharedScreen())),
           ),
           IconButton(
             tooltip: 'Instruments',
@@ -170,13 +156,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 _openTransfer();
                 return;
               }
-              if (v == 'quickadd') {
-                _openQuickAdd();
-                return;
-              }
               final dest = switch (v) {
                 'reconcile' => const ReconcileScreen(),
-                'prices' => const PriceScreen(),
                 'networth' => const NetWorthScreen(),
                 'reports' => const ReportsScreen(),
                 'intake' => const IntakeScreen(),
@@ -187,12 +168,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'reconcile', child: Text('Reconcile')),
-              PopupMenuItem(value: 'prices', child: Text('Price memory')),
               PopupMenuItem(value: 'networth', child: Text('Net worth')),
-              PopupMenuItem(value: 'reports', child: Text('Reports')),
+              PopupMenuItem(value: 'reports', child: Text('Reports & export')),
               PopupMenuItem(value: 'intake', child: Text('Intake confirm')),
               PopupMenuItem(value: 'transfer', child: Text('Move between accounts')),
-              PopupMenuItem(value: 'quickadd', child: Text('Quick cash spend')),
               PopupMenuItem(value: 'settings', child: Text('Settings & backup')),
             ],
           ),
@@ -218,6 +197,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Summary unavailable: $e'),
           ),
+          _BudgetPulseCard(monthKey: key),
+          _NeutralHoldCard(monthKey: key),
+          const _AbsorbedNeutralCard(),
           accounts.maybeWhen(
             data: (l) => l.isEmpty
                 ? _NoAccountBanner(
@@ -230,6 +212,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             orElse: () => const SizedBox.shrink(),
           ),
           _MonthSetupCard(monthKey: key),
+          const _RecurringRulesCard(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
@@ -309,6 +292,8 @@ class _MonthBar extends StatelessWidget {
   }
 }
 
+String _money(double v) => '₹${v.abs().round()}';
+
 class _SummaryCard extends StatelessWidget {
   final double inflow;
   final double outflow;
@@ -330,6 +315,309 @@ class _SummaryCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Repeating entries (#4): what the owner set up to fill in automatically, and
+/// a button to fill the pending months now. Applying writes real entries, so
+/// nothing appears in the ledger that the owner did not consciously add.
+class _RecurringRulesCard extends ConsumerWidget {
+  const _RecurringRulesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rules = ref.watch(recurringRulesProvider);
+    return rules.maybeWhen(
+      data: (list) {
+        if (list.isEmpty) return const SizedBox.shrink();
+        final service = ref.read(recurringServiceProvider);
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Repeating entries', style: Theme.of(context).textTheme.titleSmall),
+                for (final rule in list) ...[
+                  const SizedBox(height: 4),
+                  Builder(
+                    builder: (context) {
+                      final pending = service.pending(rule);
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${rule.kind == 'in' ? '+' : '−'} ₹${rule.amount.round()} · ${rule.categoryRaw}'),
+                        subtitle: Text(
+                          'day ${rule.dayOfMonth} · ${rule.months} month(s) from ${rule.startMonth}'
+                          '${pending.isEmpty ? ' · all filled' : ' · ${pending.length} to fill'}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (pending.isNotEmpty)
+                              TextButton(
+                                onPressed: () async {
+                                  final written = await service.applyAll(rule);
+                                  ref
+                                    ..invalidate(recurringRulesProvider)
+                                    ..invalidate(recentTransactionsProvider)
+                                    ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())));
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Added $written entr${written == 1 ? 'y' : 'ies'} — edit them like any entry',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('Fill in'),
+                              ),
+                            IconButton(
+                              tooltip: 'Stop repeating',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                await service.delete(rule.id);
+                                ref.invalidate(recurringRulesProvider);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Budget pulse (#7): income is the yardstick, the bucket split carries
+/// forward, and anything worth knowing is a line of text — a chart the owner
+/// cannot read is worse than a sentence.
+class _BudgetPulseCard extends ConsumerWidget {
+  final String monthKey;
+  const _BudgetPulseCard({required this.monthKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(budgetStatusProvider(monthKey));
+    return status.maybeWhen(
+      data: (report) {
+        if (report.budgetTotal <= 0 && report.spent <= 0) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        final colour = switch (report.level) {
+          BudgetLevel.over => theme.colorScheme.error,
+          BudgetLevel.low => Colors.orange.shade700,
+          _ => Colors.teal.shade400,
+        };
+        final carried = report.sourceMonth != monthKey ? ' (split from ${report.sourceMonth})' : '';
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Budget · ${_money(report.budgetTotal)} planned', style: theme.textTheme.titleSmall),
+                    Text('${_money(report.income)} in', style: theme.textTheme.bodySmall),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: report.budgetTotal <= 0 ? 0 : (report.spent / report.budgetTotal).clamp(0.0, 1.0),
+                    minHeight: 8,
+                    color: colour,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_money(report.spent)} spent · ${_money(report.left)} left$carried',
+                  style: theme.textTheme.bodySmall,
+                ),
+                for (final b in report.buckets)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 96, child: Text(b.name, style: theme.textTheme.bodySmall)),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: b.usedFraction.clamp(0.0, 1.0),
+                              minHeight: 6,
+                              color: switch (b.level) {
+                                BudgetLevel.over => theme.colorScheme.error,
+                                BudgetLevel.low => Colors.orange.shade700,
+                                _ => Colors.teal.shade400,
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 150,
+                          child: Text(
+                            b.planned > 0 ? '${_money(b.spent)} / ${_money(b.planned)}' : '${_money(b.spent)} · no budget',
+                            style: theme.textTheme.bodySmall,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                for (final line in report.alerts)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.error_outline, size: 16, color: colour),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(line, style: theme.textTheme.bodySmall)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Neutral rows already absorbed into a month — listed so the choice can be
+/// taken back (#10: absorbing is a decision, not an edit).
+class _AbsorbedNeutralCard extends ConsumerWidget {
+  const _AbsorbedNeutralCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(absorbedNeutralProvider);
+    return rows.maybeWhen(
+      data: (all) {
+        if (all.isEmpty) return const SizedBox.shrink();
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Counting toward a month (${all.length})', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  'These lend/borrow rows were absorbed into their month. Undo any of them here.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (final r in all.take(4))
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(r.categoryRaw),
+                    subtitle: Text(
+                      '${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: false);
+                        ref
+                          ..invalidate(absorbedNeutralProvider)
+                          ..invalidate(unabsorbedNeutralProvider)
+                          ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())))
+                          ..invalidate(monthSummaryProvider(_monthKey(DateTime.now())));
+                      },
+                      child: const Text('Undo'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Neutral ledger held out of the month until the owner absorbs it (#10).
+class _NeutralHoldCard extends ConsumerWidget {
+  final String monthKey;
+  const _NeutralHoldCard({required this.monthKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(unabsorbedNeutralProvider);
+    return rows.maybeWhen(
+      data: (all) {
+        if (all.isEmpty) return const SizedBox.shrink();
+        final inMonth = all
+            .where((r) => '${r.occurredAt.year}-${r.occurredAt.month.toString().padLeft(2, '0')}' == monthKey)
+            .toList();
+        final shown = (inMonth.isEmpty ? all : inMonth).take(3).toList();
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Lend / borrow held out of the month (${all.length})',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'These do not touch any month total until you absorb them.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (final r in shown)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(r.categoryRaw),
+                    subtitle: Text('${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}'),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: true);
+                        ref
+                          ..invalidate(unabsorbedNeutralProvider)
+                          ..invalidate(monthSummaryProvider(monthKey))
+                          ..invalidate(budgetStatusProvider(monthKey));
+                      },
+                      child: const Text('Absorb'),
+                    ),
+                  ),
+                if (inMonth.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'None in $monthKey — showing the latest.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }
@@ -367,9 +655,10 @@ class _NoAccountBanner extends StatelessWidget {
   }
 }
 
-/// Month-start opener (#8): when the viewed month has no entries and no
-/// saved opener, ask for the optional month-start details. Editable later
-/// from the same card (compact form once saved).
+/// Month-start opener: the one place that sets a month up. Saving it now
+/// actually writes the budget row (auto-split across your buckets), the
+/// opening bank/cash balances and any repeating income — and says so, because
+/// a form that silently discards what you typed is worse than no form.
 class _MonthSetupCard extends ConsumerWidget {
   final String monthKey;
   const _MonthSetupCard({required this.monthKey});
@@ -377,6 +666,7 @@ class _MonthSetupCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final open = ref.watch(monthOpenProvider(monthKey));
+    final budget = ref.watch(effectiveBudgetProvider(monthKey));
     final recent = ref.watch(recentTransactionsProvider);
     return open.when(
       data: (saved) {
@@ -389,20 +679,18 @@ class _MonthSetupCard extends ConsumerWidget {
         );
         if (saved != null || monthRows > 0) {
           if (saved == null) return const SizedBox.shrink();
+          final carried = budget.maybeWhen(
+            data: (b) => b == null ? '' : b.sourceMonth == monthKey ? '' : ' (from ${b.sourceMonth})',
+            orElse: () => '',
+          );
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: ListTile(
               dense: true,
               leading: const Icon(Icons.calendar_month_outlined),
-              title: Text(_describe(saved)),
+              title: Text(_describe(saved, carried)),
               trailing: TextButton(
-                onPressed: () async {
-                  await showDialog<void>(
-                    context: context,
-                    builder: (_) => _MonthOpenDialog(monthKey: monthKey, existing: saved),
-                  );
-                  ref.invalidate(monthOpenProvider(monthKey));
-                },
+                onPressed: () => _edit(context, ref, saved),
                 child: const Text('Edit'),
               ),
             ),
@@ -413,15 +701,9 @@ class _MonthSetupCard extends ConsumerWidget {
           child: ListTile(
             leading: const Icon(Icons.calendar_month_outlined),
             title: const Text('New month — set it up? (all optional)'),
-            subtitle: const Text('Budget, bank + cash balances, card limit. Skippable, editable later.'),
+            subtitle: const Text('Sets your budget split, opening balances and repeating salary.'),
             trailing: FilledButton.tonal(
-              onPressed: () async {
-                await showDialog<void>(
-                  context: context,
-                  builder: (_) => _MonthOpenDialog(monthKey: monthKey, existing: null),
-                );
-                ref.invalidate(monthOpenProvider(monthKey));
-              },
+              onPressed: () => _edit(context, ref, null),
               child: const Text('Set up'),
             ),
           ),
@@ -432,13 +714,30 @@ class _MonthSetupCard extends ConsumerWidget {
     );
   }
 
-  static String _describe(MonthOpenData m) {
+  Future<void> _edit(BuildContext context, WidgetRef ref, MonthOpenData? saved) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _MonthOpenDialog(monthKey: monthKey, existing: saved),
+    );
+    final key = _monthKey(DateTime.now());
+    ref
+      ..invalidate(monthOpenProvider(monthKey))
+      ..invalidate(effectiveBudgetProvider(monthKey))
+      ..invalidate(bucketSpendProvider(monthKey))
+      ..invalidate(budgetStatusProvider(monthKey))
+      // A salary rule created there has to appear in its own card at once.
+      ..invalidate(recurringRulesProvider)
+      ..invalidate(monthSummaryProvider(key))
+      ..invalidate(budgetStatusProvider(key));
+  }
+
+  static String _describe(MonthOpenData m, String carried) {
     final parts = <String>[];
-    if (m.budgetOut != null) parts.add('budget ₹${m.budgetOut!.toStringAsFixed(0)}');
+    if (m.budgetOut != null) parts.add('budget ₹${m.budgetOut!.toStringAsFixed(0)}$carried');
+    if (m.budgetIn != null) parts.add('expected in ₹${m.budgetIn!.toStringAsFixed(0)}');
     if (m.bankBalance != null) parts.add('bank ₹${m.bankBalance!.toStringAsFixed(0)}');
     if (m.cashBalance != null) parts.add('cash ₹${m.cashBalance!.toStringAsFixed(0)}');
     if (m.cardLimit != null) parts.add('card limit ₹${m.cardLimit!.toStringAsFixed(0)}');
-    if (m.budgetIn != null) parts.add('in ₹${m.budgetIn!.toStringAsFixed(0)}');
     return parts.isEmpty ? 'Month opener saved (all blank)' : 'Month start · ${parts.join(' · ')}';
   }
 }
@@ -453,84 +752,217 @@ class _MonthOpenDialog extends ConsumerStatefulWidget {
 }
 
 class _MonthOpenDialogState extends ConsumerState<_MonthOpenDialog> {
-  late final TextEditingController _in;
   late final TextEditingController _out;
+  late final TextEditingController _in;
   late final TextEditingController _bank;
   late final TextEditingController _cash;
   late final TextEditingController _limit;
+  late final TextEditingController _salaryAmount;
+  late final TextEditingController _salaryCategory;
+  late final TextEditingController _salaryMonths;
+  int _salaryDay = 1;
+  String? _salaryAccountId;
+  String? _error;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
     String fmt(double? v) => v == null ? '' : v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2);
-    _in = TextEditingController(text: fmt(e?.budgetIn));
     _out = TextEditingController(text: fmt(e?.budgetOut));
+    _in = TextEditingController(text: fmt(e?.budgetIn));
     _bank = TextEditingController(text: fmt(e?.bankBalance));
     _cash = TextEditingController(text: fmt(e?.cashBalance));
     _limit = TextEditingController(text: fmt(e?.cardLimit));
+    _salaryAmount = TextEditingController();
+    _salaryCategory = TextEditingController(text: 'salary');
+    _salaryMonths = TextEditingController();
   }
 
   @override
   void dispose() {
-    _in.dispose();
     _out.dispose();
+    _in.dispose();
     _bank.dispose();
     _cash.dispose();
     _limit.dispose();
+    _salaryAmount.dispose();
+    _salaryCategory.dispose();
+    _salaryMonths.dispose();
     super.dispose();
   }
 
   double? _num(TextEditingController c) {
     final t = c.text.trim();
     if (t.isEmpty) return null;
-    return double.tryParse(t);
+    return double.tryParse(t.replaceAll(',', ''));
+  }
+
+  bool _valid(List<TextEditingController> controllers) {
+    for (final c in controllers) {
+      if (c.text.trim().isEmpty) continue;
+      if (double.tryParse(c.text.trim().replaceAll(',', '')) == null) return false;
+    }
+    return true;
+  }
+
+  Future<void> _save() async {
+    if (!_valid([_out, _in, _bank, _cash, _limit, _salaryAmount])) {
+      setState(() => _error = 'Numbers only — or leave blank');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      final result = await ref.read(monthStartServiceProvider).apply(
+            month: widget.monthKey,
+            budgetOut: _num(_out),
+            budgetIn: _num(_in),
+            bankBalance: _num(_bank),
+            cashBalance: _num(_cash),
+            cardLimit: _num(_limit),
+            salaryAmount: _num(_salaryAmount),
+            salaryCategory: _salaryCategory.text,
+            salaryAccountId: _salaryAccountId,
+            salaryMonths: _num(_salaryMonths)?.round() ?? 0,
+            salaryDayOfMonth: _salaryDay,
+          );
+      if (!mounted) return;
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(content: Text('Month set up · ${result.summary}')));
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Invalid argument(s): ', '');
+          _saving = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final accounts = ref.watch(accountsProvider);
+    final carried = ref.watch(effectiveBudgetProvider(widget.monthKey));
+    final buckets = carried.maybeWhen(
+      data: (b) => b?.buckets ?? const [],
+      orElse: () => const [],
+    );
     return AlertDialog(
       title: Text('Month start — ${widget.monthKey}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('All optional. Fill what you know; change anytime.'),
-            const SizedBox(height: 8),
-            TextField(controller: _out, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Out budget ₹ (optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            TextField(controller: _in, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'In budget ₹ (optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            TextField(controller: _bank, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Bank balance ₹ (optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            TextField(controller: _cash, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Cash in hand ₹ (optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            TextField(controller: _limit, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Credit card limit ₹ (optional)', border: OutlineInputBorder())),
-          ],
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                buckets.isEmpty
+                    ? 'Leave a field blank to skip it. Your budget split stays 50/30/20 until you change it on the Budgets screen.'
+                    : 'Your budget is split ${buckets.map((b) => '${b.name} ${b.pct.round()}%').join(' · ')} — carried from ${carried.value?.sourceMonth ?? 'earlier'}. Change it there, and earlier months stay as they were.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _out,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Budget for the month ₹ (split across your buckets)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _bank,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Bank balance right now ₹', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _cash,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Cash in hand ₹', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _limit,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Credit card limit ₹ (optional)', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 14),
+              Text('Repeating income (optional)', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text(
+                'Type the salary once and it can fill this month and the next few — entries stay normal entries you can edit.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _salaryAmount,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Salary ₹', border: OutlineInputBorder()),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _salaryCategory,
+                      decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _salaryMonths,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Months to fill (e.g. 4)', border: OutlineInputBorder()),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButtonFormField<int>(
+                    initialValue: _salaryDay,
+                    decoration: const InputDecoration(labelText: 'Day', border: OutlineInputBorder()),
+                    items: [for (final d in const [1, 5, 10, 15, 20, 25, 28]) DropdownMenuItem(value: d, child: Text('$d'))],
+                    onChanged: (v) => setState(() => _salaryDay = v ?? 1),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              accounts.maybeWhen(
+                data: (list) => list.isEmpty
+                    ? const Text('No accounts yet — the salary needs a source account.', style: TextStyle(fontSize: 12))
+                    : DropdownButtonFormField<String>(
+                        initialValue: _salaryAccountId ?? list.first.id,
+                        decoration: const InputDecoration(labelText: 'Salary lands in', border: OutlineInputBorder()),
+                        items: [for (final a in list) DropdownMenuItem(value: a.id, child: Text('${a.name} (${a.kind})'))],
+                        onChanged: (v) => setState(() => _salaryAccountId = v),
+                      ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ],
+            ],
+          ),
         ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Skip')),
-        FilledButton(
-          onPressed: () async {
-            for (final c in [_in, _out, _bank, _cash, _limit]) {
-              if (c.text.trim().isNotEmpty && double.tryParse(c.text.trim()) == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Numbers only — or leave blank')));
-                return;
-              }
-            }
-            await ref.read(monthOpenRepositoryProvider).save(
-                  month: widget.monthKey,
-                  budgetIn: _num(_in),
-                  budgetOut: _num(_out),
-                  bankBalance: _num(_bank),
-                  cashBalance: _num(_cash),
-                  cardLimit: _num(_limit),
-                );
-            if (context.mounted) Navigator.of(context).pop();
-          },
-          child: const Text('Save'),
-        ),
+        FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ],
     );
   }

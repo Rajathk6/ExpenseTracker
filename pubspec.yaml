@@ -1,7 +1,7 @@
 name: expense_tracker
 description: Offline-first personal expense tracker with budgeting, lending, splits, and net-worth.
 publish_to: "none"
-version: 0.11.0+11
+version: 0.12.0+12
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -37,6 +37,9 @@ dependencies:
   # on the pinned compileSdk 36 with jvmTarget 11; recognition is offline
   # (Latin script model bundled in the APK).
   google_mlkit_text_recognition: ^0.17.1
+  pdf: ^3.12.0
+  csv: ^8.0.0
+  excel: ^4.0.6
 
 dev_dependencies:
   flutter_test:

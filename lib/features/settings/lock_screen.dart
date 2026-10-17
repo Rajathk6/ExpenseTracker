@@ -53,11 +53,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     }
   }
 
-  Future<void> _armTimer() async {
-    final minutes = await ref.read(pinServiceProvider).lockMinutes();
-    ref.read(lockProvider.notifier).setTimeout(minutes == 0 ? null : Duration(minutes: minutes));
-  }
-
   /// Biometric path. A success opens the REAL vault — a fingerprint must never
   /// be able to land in the decoy.
   Future<void> _biometric() async {
@@ -71,7 +66,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         );
     if (!mounted) return;
     if (outcome == BiometricOutcome.success) {
-      await _armTimer();
       ref.read(lockProvider.notifier).unlock(ok: true);
       return;
     }
@@ -102,7 +96,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         }
         return;
       }
-      await _armTimer();
       ref.read(lockProvider.notifier).unlock(ok: true, isDecoyPin: verdict == 'decoy');
     } on Object catch (e) {
       if (mounted) {
@@ -129,7 +122,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       builder: (_) => const _ForgotPinDialog(),
     );
     if (ok ?? false) {
-      await _armTimer();
       ref.read(lockProvider.notifier).unlock(ok: true);
     }
   }
@@ -175,10 +167,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           child: const Text('Set PIN'),
         ),
         TextButton(
-          onPressed: () {
-            ref.read(lockProvider.notifier).setTimeout(null);
-            ref.read(lockProvider.notifier).unlock(ok: true);
-          },
+          onPressed: () => ref.read(lockProvider.notifier).unlock(ok: true),
           child: const Text('Continue without PIN'),
         ),
       ],
@@ -328,6 +317,11 @@ class _ForgotPinDialogState extends ConsumerState<_ForgotPinDialog> {
 
 /// PIN create/change sheet, reused by first-run and Settings.
 /// Also captures the security question + answer used by Forgot PIN.
+///
+/// When a PIN already exists, changing it is a two-step gate: the owner must
+/// prove it is them first, with the **current PIN** or, if they cannot
+/// remember it, with the **security answer** they set alongside it. Before
+/// this, "Change PIN" asked nothing and just overwrote the lock.
 class PinSetupScreen extends ConsumerStatefulWidget {
   final bool firstRun;
   const PinSetupScreen({super.key, this.firstRun = false});
@@ -341,8 +335,14 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _again = TextEditingController();
   final _question = TextEditingController();
   final _answer = TextEditingController();
+  final _currentPin = TextEditingController();
+  final _recoveryAnswer = TextEditingController();
   String? _error;
   bool _saving = false;
+
+  /// null = not checked yet. True once the owner proved it is them.
+  bool? _unlocked;
+  bool _checking = false;
 
   @override
   void dispose() {
@@ -350,10 +350,50 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     _again.dispose();
     _question.dispose();
     _answer.dispose();
+    _currentPin.dispose();
+    _recoveryAnswer.dispose();
     super.dispose();
   }
 
+  /// Proves ownership before a PIN can be replaced: the current PIN, or the
+  /// security answer when the PIN is forgotten. A decoy PIN is accepted too —
+  /// the owner set it, so it is theirs to change.
+  Future<bool> _verifyOwner() async {
+    final pins = ref.read(pinServiceProvider);
+    final entered = _currentPin.text.trim();
+    if (entered.length == 6) {
+      final verdict = await pins.verify(entered);
+      if (verdict != null) return true;
+      setState(() => _error = 'That is not your current PIN');
+      return false;
+    }
+    if (await pins.hasRecovery) {
+      if (await pins.verifyRecoveryAnswer(_recoveryAnswer.text)) return true;
+      setState(() => _error = 'Wrong security answer');
+      return false;
+    }
+    setState(() => _error = 'Enter your current 6-digit PIN to change it');
+    return false;
+  }
+
+  Future<void> _checkIdentity() async {
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    final ok = await _verifyOwner();
+    if (!mounted) return;
+    setState(() {
+      _unlocked = ok;
+      _checking = false;
+    });
+  }
+
   Future<void> _save() async {
+    if (_unlocked != true) {
+      await _checkIdentity();
+      return;
+    }
     if (_pin.text != _again.text) {
       setState(() => _error = 'PINs do not match');
       return;
@@ -370,7 +410,7 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       }
       if (!mounted) return;
       if (widget.firstRun) {
-        await _armAndUnlock(real: true);
+        _armAndUnlock(real: true);
         if (mounted) Navigator.of(context).pop();
       } else {
         if (mounted) Navigator.of(context).pop(true);
@@ -385,56 +425,129 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     }
   }
 
-  Future<void> _armAndUnlock({required bool real}) async {
-    final minutes = await ref.read(pinServiceProvider).lockMinutes();
-    ref.read(lockProvider.notifier).setTimeout(minutes == 0 ? null : Duration(minutes: minutes));
+  void _armAndUnlock({required bool real}) {
     ref.read(lockProvider.notifier).unlock(ok: true, isDecoyPin: !real);
   }
 
   @override
   Widget build(BuildContext context) {
+    final svc = ref.watch(pinServiceProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Set PIN')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _pin,
-              autofocus: true,
-              obscureText: true,
-              maxLength: 6,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'New 6-digit PIN', border: OutlineInputBorder()),
+      appBar: AppBar(title: Text(widget.firstRun ? 'Set PIN' : 'Change PIN')),
+      body: FutureBuilder<bool>(
+        future: svc.hasPin,
+        builder: (context, snap) {
+          final existingPin = snap.data ?? false;
+          if (!existingPin) return _form(firstRun: true);
+          if (_unlocked != true) return _identityGate(svc.hasRecovery);
+          return _form(firstRun: false);
+        },
+      ),
+    );
+  }
+
+  /// Step 1 for an existing PIN: prove you are the owner.
+  Widget _identityGate(Future<bool> hasRecovery) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Confirm it is you before the PIN changes.'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _currentPin,
+            autofocus: true,
+            obscureText: true,
+            maxLength: 6,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Your current 6-digit PIN',
+              helperText: 'Leave this empty if you cannot remember it',
+              border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 8),
+          FutureBuilder<bool>(
+            future: hasRecovery,
+            builder: (context, rec) => rec.data == true
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text('…or answer your security question:'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _recoveryAnswer,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Security answer', border: OutlineInputBorder()),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+          if (_error != null) ...[
             const SizedBox(height: 8),
-            TextField(
-              controller: _again,
-              obscureText: true,
-              maxLength: 6,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Repeat PIN', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            const Text('Recovery question — only way back in if you forget the PIN.'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _question,
-              decoration: const InputDecoration(labelText: 'Question (e.g. first school?)', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _answer,
-              decoration: const InputDecoration(labelText: 'Answer', border: OutlineInputBorder()),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ],
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save PIN')),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
-        ),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: _checking ? null : _checkIdentity, child: Text(_checking ? 'Checking…' : 'Continue')),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Step 2 (or the whole flow on first run): the new PIN + recovery Q&A.
+  Widget _form({required bool firstRun}) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!firstRun)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('Identity confirmed. Set your new PIN.'),
+            ),
+          TextField(
+            controller: _pin,
+            autofocus: true,
+            obscureText: true,
+            maxLength: 6,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'New 6-digit PIN', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _again,
+            obscureText: true,
+            maxLength: 6,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Repeat PIN', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          const Text('Recovery question — the way back in if you forget the PIN.'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _question,
+            decoration: const InputDecoration(labelText: 'Question (e.g. first school?)', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _answer,
+            decoration: const InputDecoration(labelText: 'Answer', border: OutlineInputBorder()),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+          const SizedBox(height: 12),
+          FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save PIN')),
+        ],
       ),
     );
   }

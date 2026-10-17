@@ -6,6 +6,8 @@
 ///
 /// The field itself stays a plain freeform TextField: suggestions are a
 /// shortcut, never a constraint. A category with no history is saved as typed.
+/// It behaves like a search and nothing more — when nothing matches, the list
+/// simply stays empty (no "that's new" nagging; the owner asked for that).
 library;
 
 import 'dart:async';
@@ -141,21 +143,12 @@ class _Suggestions extends ConsumerWidget {
     final options = ref.watch(categorySuggestProvider(query));
     return options.maybeWhen(
       data: (list) {
-        // What you already typed is never worth a tap.
-        final known = list.any((s) => s.value.toLowerCase() == query.toLowerCase());
+        // Search behaviour: only real matches, and never the text already typed.
         final shown = [
           for (final s in list)
             if (s.value.toLowerCase() != query.toLowerCase()) s,
         ].take(maxSuggestions).toList();
-        if (shown.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              known ? 'Saved as typed — start a new level or item after a space' : 'New category — saved exactly as you type',
-              style: theme.textTheme.bodySmall,
-            ),
-          );
-        }
+        if (shown.isEmpty) return const SizedBox.shrink();
         return Container(
           margin: const EdgeInsets.only(top: 6),
           constraints: BoxConstraints(maxHeight: height),
@@ -164,30 +157,14 @@ class _Suggestions extends ConsumerWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: height),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: shown.length,
-                  itemBuilder: (_, i) => CategorySuggestionRow(suggestion: shown[i], onTap: () => onPick(shown[i].value)),
-                ),
-              ),
-              if (!known)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '“$query” is new — tap a row above or keep typing',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                ),
-            ],
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: shown.length,
+            itemBuilder: (_, i) => CategorySuggestionRow(
+              suggestion: shown[i],
+              onTap: () => onPick(shown[i].value),
+            ),
           ),
         );
       },
@@ -196,8 +173,6 @@ class _Suggestions extends ConsumerWidget {
   }
 }
 
-/// One tappable past category. Public so widget tests can address a row
-/// without matching the field's own text.
 class CategorySuggestionRow extends StatelessWidget {
   final CategorySuggestion suggestion;
   final VoidCallback onTap;

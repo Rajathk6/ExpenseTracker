@@ -11,16 +11,20 @@ import 'auth/pin_service.dart';
 import 'backup/backup_service.dart';
 import 'category_suggest.dart';
 import '../features/budgets/bucket_math.dart';
+import '../features/budgets/budget_status.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
+import '../features/groups/group_repository.dart';
 import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
 import '../features/reconcile/month_open_repository.dart';
+import '../features/reconcile/month_start_service.dart';
 import '../features/reconcile/networth_logic.dart';
 import '../features/reconcile/reconcile_logic.dart';
 import '../features/reconcile/reconcile_repository.dart';
 import '../features/reports/reports_repository.dart';
 import '../features/splits/split_repository.dart';
+import '../features/transactions/recurring_service.dart';
 import '../features/transactions/transaction_repository.dart';
 
 /// File handles opened once in main(). Tests override [databaseProvider]
@@ -73,6 +77,10 @@ final effectiveBudgetProvider =
 final monthOpenProvider = FutureProvider.family<MonthOpenData?, String>(
     (ref, month) => ref.watch(monthOpenRepositoryProvider).get(month),);
 
+/// Turns what the owner typed at month start into the budget row, opening
+/// balances and repeating income the rest of the app actually reads.
+final monthStartServiceProvider = Provider((ref) => MonthStartService(ref.watch(databaseProvider)));
+
 // --- Transactions UI ---
 
 final recentTransactionsProvider =
@@ -101,15 +109,14 @@ final allItemsProvider = FutureProvider((ref) => ref.watch(transactionRepository
 final itemRowsProvider =
     FutureProvider.family((ref, String item) => ref.watch(transactionRepositoryProvider).forItem(item));
 
-/// Live search across raw category / levels / item.
-final searchProvider =
-    FutureProvider.family((ref, String query) => ref.watch(transactionRepositoryProvider).search(query));
+/// Search inside a window: `{query, from, to}`. Defaults to the current month
+/// so the first thing the owner sees is this month, not all of history.
+typedef SearchScope = ({String query, DateTime? from, DateTime? to});
 
-/// Suggestion options while searching: past categories containing the query.
-/// Empty query → empty (suggestions appear only once you type).
-final searchSuggestionsProvider = FutureProvider.family<List<String>, String>((ref, query) async {
-  if (query.trim().isEmpty) return const [];
-  return ref.watch(transactionRepositoryProvider).suggestions(query);
+final scopedSearchProvider = FutureProvider.family<List<Transaction>, SearchScope>((ref, scope) {
+  return ref
+      .watch(transactionRepositoryProvider)
+      .searchIn(scope.query, from: scope.from, to: scope.to);
 });
 
 /// Ranked category completions for the entry / intake / quick-add fields, so
@@ -124,6 +131,83 @@ final categorySuggestProvider =
   return suggestCategories(past, query: query, uses: uses);
 });
 
+/// Month budget as the owner framed it: income is the scale, the bucket split
+/// is carried forward, and spending is measured against the planned amounts.
+/// One pure function (budget_status.dart) so the card, the budget screen and
+/// the alerts can never tell different stories.
+final budgetStatusProvider = FutureProvider.family<BudgetStatusReport, String>((ref, month) async {
+  final parts = month.split('-');
+  final start = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+  final sums = await ref.watch(transactionRepositoryProvider).sumsBetween(start, end, excludeNeutral: true);
+  final spendByBucket = await ref.watch(transactionRepositoryProvider).bucketSpend(start, end);
+  final budget = await ref.watch(budgetRepositoryProvider).getEffective(month);
+  return buildBudgetStatus(
+    income: sums.inBudget.abs(),
+    budgetTotal: budget?.total ?? 0,
+    spent: sums.outBudget.abs(),
+    sourceMonth: budget?.sourceMonth ?? month,
+    buckets: budget?.buckets ?? const [],
+    bucketSpend: spendByBucket,
+  );
+});
+
+/// Neutral rows the owner has not absorbed yet — the "does not count for the
+/// month until you say so" list, with the button to change that (#10).
+final unabsorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async {
+  final rows = await ref.watch(transactionRepositoryProvider).all();
+  return [
+    for (final r in rows)
+      if (TransactionRepository.isUnabsorbedNeutral(r)) r,
+  ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+});
+
+/// …and the ones already absorbed, so the decision can be undone from the same
+/// place. Absorbing is never a one-way door.
+final absorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async {
+  final rows = await ref.watch(transactionRepositoryProvider).all();
+  return [
+    for (final r in rows)
+      if (TransactionRepository.isNeutral(r) && r.absorbed == 1) r,
+  ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+});
+
+final recurringServiceProvider = Provider((ref) => RecurringService(ref.watch(databaseProvider)));
+
+final groupRepositoryProvider = Provider((ref) => GroupRepository(ref.watch(databaseProvider)));
+
+/// Every group, newest first (#9).
+final groupsProvider = FutureProvider((ref) => ref.watch(groupRepositoryProvider).all());
+
+/// Live balances for one group — the Splitwise-style "who owes whom".
+final groupBalancesProvider = FutureProvider.family<GroupBalances?, String>(
+    (ref, groupId) => ref.watch(groupRepositoryProvider).balances(groupId),);
+
+final debtByIdProvider = FutureProvider.family<Debt?, String>(
+    (ref, id) => ref.watch(debtRepositoryProvider).db.getDebt(id),);
+
+final splitByIdProvider = FutureProvider.family<Split?, String>(
+    (ref, id) => ref.watch(splitRepositoryProvider).db.getSplit(id),);
+
+/// Repeating entries the owner set up (salary and friends).
+final recurringRulesProvider = FutureProvider((ref) => ref.watch(recurringServiceProvider).all());
+
+/// Months with any activity, newest first — search and report filters.
+final monthsWithActivityProvider = FutureProvider((ref) => ref.watch(databaseProvider).monthsWithActivity());
+
+/// Every counterparty the owner has ever dealt with, so the entry form can
+/// offer "Ravi — lend / borrow / settle" instead of a free-text note (#8).
+final peopleProvider = FutureProvider<List<String>>((ref) async {
+  final debts = await ref.watch(debtRepositoryProvider).all();
+  final names = <String>{for (final d in debts) d.counterparty.trim()};
+  for (final group in await ref.watch(databaseProvider).allGroups()) {
+    for (final m in await ref.watch(databaseProvider).membersOf(group.id)) {
+      names.add(m.name.trim());
+    }
+  }
+  return [for (final n in names.where((n) => n.isNotEmpty)) n]..sort();
+});
+
 // --- Debts UI ---
 
 final openDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvider).open());
@@ -132,15 +216,6 @@ final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvide
 
 final debtHistoryProvider =
     FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
-
-/// Every debt-linked payoff across all contracts, newest first.
-/// Powers the Settlements tab: lending/borrowing/settlement stay separate.
-final debtSettlementsProvider = FutureProvider((ref) async {
-  final txns = await ref.watch(transactionRepositoryProvider).recent(limit: 2000);
-  final rows = txns.where((t) => t.linkType == 'debt' && t.kind == 'settle').toList();
-  rows.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-  return rows;
-});
 
 // --- Splits UI ---
 
@@ -191,6 +266,8 @@ final netWorthProvider = FutureProvider(
       investBasis += i.invested;
     }
     // Neutral money (lend/borrow/debt payoffs) never counts as wealth moves.
+    // Absorbing a lend does NOT make the money wealth you have — the money is
+    // with the other person. Net worth stays honest; only the month budget moves.
     final moves = [
       for (final t in txns)
         if (!TransactionRepository.isNeutral(t)) (at: t.occurredAt, actual: t.actual),

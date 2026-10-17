@@ -16,11 +16,34 @@ double equalShare(double total, int people) {
   return total / people;
 }
 
+/// My share of a split that is simply divided between the people in it
+/// (#13: the owner picks how many, the maths does the rest).
+double myShareFor({required double total, required int people}) => equalShare(total, people);
+
+/// Share codes: four unambiguous characters, prefixed so a code says what it
+/// is when it is read out over the phone.
+String newCode(String prefix, int Function(int length) randomIndex) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+  return '$prefix-${List.generate(4, (_) => alphabet[randomIndex(alphabet.length)]).join()}';
+}
+
 /// Validates a new split. Returns error text, null when valid.
+/// [myShare] is derived from [people] now, but is still checked so a custom
+/// share can never break the contract math.
 String? validateSplit({required double total, required double myShare}) {
   if (total <= 0) return 'Total paid must be above zero';
   if (myShare < 0) return 'My share cannot be negative';
   if (myShare > total + 0.005) return 'My share cannot exceed the total paid';
+  return null;
+}
+
+/// A split needs its people named — an unlabelled share cannot be settled
+/// honestly (#14).
+String? validateMembers(List<String> names) {
+  final clean = [for (final n in names) n.trim()].where((n) => n.isNotEmpty).toList();
+  if (clean.isEmpty) return 'Add at least one person (your own name too)';
+  final lowered = [for (final n in clean) n.toLowerCase()];
+  if (lowered.toSet().length != lowered.length) return 'The same name is listed twice';
   return null;
 }
 
