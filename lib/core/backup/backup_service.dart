@@ -8,10 +8,8 @@ library;
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-
 import '../database.dart';
+import '../export/export_paths.dart';
 import 'codec.dart';
 
 /// Every table an .etbak carries. Dump, restore and the row-count report all
@@ -85,14 +83,13 @@ class BackupService {
     };
   }
 
-  /// Dumps, encrypts and writes `expensetracker-<date>.etbak`. Returns path.
-  /// Upload the file to Drive with the Files app (manual step per PLAN).
+  /// Dumps, encrypts and writes `expensetracker-<date>-<time>.etbak` into
+  /// Downloads/ExpenseTracker — a place the Files app can actually see, so
+  /// "where did my backup go?" is answerable. Returns the path.
   Future<String> exportToFile(String password) async {
     final packed = await encryptBackup(await dumpTables(), password);
-    final dir = await getApplicationDocumentsDirectory();
-    final now = DateTime.now();
-    final name = 'expensetracker-${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.etbak';
-    final file = File(p.join(dir.path, name));
+    final paths = await ExportPaths.resolve();
+    final file = paths.stamped('etbak');
     await file.writeAsBytes(packed, flush: true);
     return file.path;
   }

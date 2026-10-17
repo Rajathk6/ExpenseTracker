@@ -16,6 +16,7 @@ import '../features/customization/account_repository.dart';
 import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
 import '../features/reconcile/month_open_repository.dart';
+import '../features/reconcile/month_start_service.dart';
 import '../features/reconcile/networth_logic.dart';
 import '../features/reconcile/reconcile_logic.dart';
 import '../features/reconcile/reconcile_repository.dart';
@@ -72,6 +73,10 @@ final effectiveBudgetProvider =
 
 final monthOpenProvider = FutureProvider.family<MonthOpenData?, String>(
     (ref, month) => ref.watch(monthOpenRepositoryProvider).get(month),);
+
+/// Turns what the owner typed at month start into the budget row, opening
+/// balances and repeating income the rest of the app actually reads.
+final monthStartServiceProvider = Provider((ref) => MonthStartService(ref.watch(databaseProvider)));
 
 // --- Transactions UI ---
 

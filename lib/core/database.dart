@@ -51,6 +51,13 @@ class Transactions extends Table {
   /// Budget bucket this entry belongs to (need/want/invest or custom).
   /// Freeform text, null = unassigned. UX-feedback batch.
   TextColumn get bucket => text().nullable()();
+  /// 1 when the owner chose to absorb this neutral row (a lend/borrow or its
+  /// payoff) into the month's budget. Neutral rows stay out of month math
+  /// until this flips — owner rule 2026-09-27.
+  IntColumn get absorbed => integer().withDefault(const Constant(0))();
+  /// Counterparty on lend/borrow/settle rows, so a plain front-screen entry
+  /// can be routed to the right person's contract. Owner rule 2026-09-27.
+  TextColumn get person => text().nullable()();
   TextColumn get note => text().nullable()();
   /// Owning account id. Plain text, no DB-level FK (keeps drift codegen
   /// robust across analyzer versions; repositories own the discipline).
@@ -166,6 +173,91 @@ class MonthOpen extends Table {
   Set<Column> get primaryKey => {month};
 }
 
+/// A recurring entry the owner repeats every month (salary, rent, SIP…). Kept
+/// as a rule, not as rows: applying it creates real transactions, so history
+/// stays honest and the rule can be edited or retired. Owner rule 2026-09-27.
+class RecurringRules extends Table {
+  TextColumn get id => text()();
+  /// 'in' or 'out'.
+  TextColumn get kind => text()();
+  RealColumn get amount => real()();
+  TextColumn get categoryRaw => text()();
+  TextColumn get bucket => text().nullable()();
+  TextColumn get accountId => text().nullable()();
+  /// Day of month the entry lands on (1–28 keeps it month-safe).
+  IntColumn get dayOfMonth => integer().withDefault(const Constant(1))();
+  /// How many months to apply, counting from [startMonth].
+  IntColumn get months => integer().withDefault(const Constant(1))();
+  /// `YYYY-MM` the rule counts forward from.
+  TextColumn get startMonth => text()();
+  /// `YYYY-MM` of the last month this rule filled in (null = not applied yet).
+  TextColumn get lastAppliedMonth => text().nullable()();
+  /// Freeform note on the rule itself.
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Splitwise-style group: a named set of people for one period, joined by a
+/// share code. Offline-first — a code identifies the group on both devices,
+/// but syncing rows between phones needs a server (see ARCHITECTURE.md).
+class Groups extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  /// Short code the other party types to join, e.g. `ET-4KQ2`.
+  TextColumn get code => text()();
+  /// `YYYY-MM` the group covers (owner asked for a month per group).
+  TextColumn get monthKey => text()();
+  TextColumn get note => text().nullable()();
+  /// 'open' or 'closed'.
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Who is in a group. Names are required — an unlabelled participant makes a
+/// balance impossible to read (owner rule 2026-09-27).
+class GroupMembers extends Table {
+  TextColumn get id => text()();
+  TextColumn get groupId => text()();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Money spent for a group, and who fronted it.
+class GroupExpenses extends Table {
+  TextColumn get id => text()();
+  TextColumn get groupId => text()();
+  TextColumn get title => text()();
+  RealColumn get amount => real()();
+  /// Participant name who paid.
+  TextColumn get paidBy => text()();
+  DateTimeColumn get occurredAt => dateTime()();
+  TextColumn get note => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// A pay-up: somebody returned money to somebody. Recorded once per side, so
+/// both phones show the same pay-up when they share the group code.
+class GroupPayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get groupId => text()();
+  /// Who paid back.
+  TextColumn get paidBy => text()();
+  /// Who received it (empty string = into the pot, e.g. me).
+  TextColumn get paidTo => text()();
+  RealColumn get amount => real()();
+  DateTimeColumn get occurredAt => dateTime()();
+  TextColumn get note => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// App settings as plain key/value rows (PIN hashes, auto-lock timeout…).
 /// Phase 10. Values are opaque strings owned by feature code; the only
 /// secrets stored are salted hashes, never raw PINs. (A move to
@@ -177,7 +269,22 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Accounts, Transactions, Budgets, Debts, Splits, Instruments, Snapshots, Settings, MonthOpen])
+@DriftDatabase(tables: [
+  Accounts,
+  Transactions,
+  Budgets,
+  Debts,
+  Splits,
+  Instruments,
+  Snapshots,
+  Settings,
+  MonthOpen,
+  RecurringRules,
+  Groups,
+  GroupMembers,
+  GroupExpenses,
+  GroupPayments,
+],)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -188,7 +295,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -202,6 +309,15 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             await m.addColumn(transactions, transactions.bucket);
             await m.createTable(monthOpen);
+          }
+          if (from < 8) {
+            await m.addColumn(transactions, transactions.absorbed);
+            await m.addColumn(transactions, transactions.person);
+            await m.createTable(recurringRules);
+            await m.createTable(groups);
+            await m.createTable(groupMembers);
+            await m.createTable(groupExpenses);
+            await m.createTable(groupPayments);
           }
         },
       );
@@ -393,6 +509,49 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertSnapshot(SnapshotsCompanion entry) => into(snapshots).insertOnConflictUpdate(entry);
 
+  // --- Recurring rules (v8) ---
+
+  Future<List<RecurringRule>> allRecurringRules() => select(recurringRules).get();
+
+  Future<void> upsertRecurringRule(RecurringRulesCompanion entry) =>
+      into(recurringRules).insertOnConflictUpdate(entry);
+
+  Future<int> deleteRecurringRule(String id) => (delete(recurringRules)..where((r) => r.id.equals(id))).go();
+
+  // --- Groups (v8) ---
+
+  Future<List<Group>> allGroups() => (select(groups)..orderBy([(g) => OrderingTerm.desc(g.createdAt)])).get();
+
+  Future<Group?> getGroup(String id) => (select(groups)..where((g) => g.id.equals(id))).getSingleOrNull();
+
+  Future<Group?> groupByCode(String code) =>
+      (select(groups)..where((g) => g.code.equals(code.trim().toUpperCase()))).getSingleOrNull();
+
+  Future<List<GroupMember>> membersOf(String groupId) =>
+      (select(groupMembers)..where((m) => m.groupId.equals(groupId))..orderBy([(m) => OrderingTerm.asc(m.createdAt)])).get();
+
+  Future<void> upsertGroup(GroupsCompanion entry) => into(groups).insertOnConflictUpdate(entry);
+
+  Future<void> insertMember(GroupMembersCompanion entry) => into(groupMembers).insert(entry);
+
+  Future<int> deleteMember(String id) => (delete(groupMembers)..where((m) => m.id.equals(id))).go();
+
+  Future<List<GroupExpense>> expensesOf(String groupId) =>
+      (select(groupExpenses)..where((e) => e.groupId.equals(groupId))..orderBy([(e) => OrderingTerm.desc(e.occurredAt)])).get();
+
+  Future<void> insertGroupExpense(GroupExpensesCompanion entry) => into(groupExpenses).insert(entry);
+
+  Future<List<GroupPayment>> paymentsOf(String groupId) =>
+      (select(groupPayments)..where((p) => p.groupId.equals(groupId))..orderBy([(p) => OrderingTerm.desc(p.occurredAt)])).get();
+
+  Future<void> insertGroupPayment(GroupPaymentsCompanion entry) => into(groupPayments).insert(entry);
+
+  Future<List<GroupMember>> allMembers() => select(groupMembers).get();
+
+  Future<List<GroupExpense>> allGroupExpenses() => select(groupExpenses).get();
+
+  Future<List<GroupPayment>> allGroupPayments() => select(groupPayments).get();
+
   // --- Settings (Phase 10, PIN hashes etc.) ---
 
   Future<String?> getSetting(String key) async =>
@@ -410,6 +569,23 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Snapshot>> allSnapshots() => select(snapshots).get();
 
   Future<List<MonthOpenData>> allMonthOpens() => select(monthOpen).get();
+
+  Future<List<RecurringRule>> allRecurring() => select(recurringRules).get();
+
+  Future<List<Group>> allGroupsFlat() => select(groups).get();
+
+  /// Month keys that have any transaction, newest first — powers the search
+  /// and report month filters.
+  Future<List<String>> monthsWithActivity() async {
+    final q = selectOnly(transactions, distinct: true)..addColumns([transactions.occurredAt]);
+    final keys = <String>{};
+    for (final r in await q.get()) {
+      final at = r.read(transactions.occurredAt)!;
+      keys.add('${at.year}-${at.month.toString().padLeft(2, '0')}');
+    }
+    final sorted = keys.toList()..sort();
+    return sorted.reversed.toList();
+  }
 
   Future<List<Transaction>> allTransactions() =>
       (select(transactions)..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();

@@ -80,17 +80,18 @@ void main() {
     expect(rowWith('food junk gobi-65'), findsOneWidget);
   });
 
-  testWidgets('empty field stays quiet, and a brand-new category is never blocked', (tester) async {
+  testWidgets('no match = no list and no nagging (search behaviour)', (tester) async {
     await seed('food junk gobi-65');
     await pumpField(tester);
 
-    expect(find.textContaining('New category', findRichText: true), findsNothing);
     expect(find.byType(CategorySuggestionRow), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'gym membership');
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pumpAndSettle();
-    expect(find.textContaining('New category', findRichText: true), findsOneWidget);
+    expect(find.byType(CategorySuggestionRow), findsNothing);
+    expect(find.textContaining('New category', findRichText: true), findsNothing);
+    // The value is untouched and still saves as typed.
     expect(controller.text, 'gym membership');
   });
 
