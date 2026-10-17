@@ -11,8 +11,15 @@ import 'reports_logic.dart';
 class TrendPoint {
   final String key;
   final double outBudget;
+  /// Income of that month (budget truth) — the second line on the trend chart.
+  final double inBudget;
   final double? budgetTotal;
-  const TrendPoint({required this.key, required this.outBudget, required this.budgetTotal});
+  const TrendPoint({
+    required this.key,
+    required this.outBudget,
+    required this.inBudget,
+    required this.budgetTotal,
+  });
 }
 
 /// Wrapped-style year summary.
@@ -78,8 +85,11 @@ class ReportsRepository {
     final catMoves = <TaggedOut>[];
     final cashMoves = <({String kind, double out})>[];
     for (final t in monthTxns) {
-      if (t.budgetImpact < 0) {
-        final out = -t.budgetImpact;
+      final hit = (t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt') && t.absorbed == 0
+          ? null
+          : (t.absorbed == 1 ? t.actual : t.budgetImpact);
+      if (hit != null && hit < 0) {
+        final out = -hit;
         outBudget += out;
         catMoves.add((tag: t.level0, out: out));
         cashMoves.add((kind: kinds[t.accountId] ?? 'digital', out: out));
@@ -93,16 +103,29 @@ class ReportsRepository {
     final startKey = shiftMonthKey(month, -(trendMonths - 1));
     final windowTxns = await db.transactionsBetween(monthStart(startKey), bounds.end);
     final outByMonth = <String, double>{};
+    final inByMonth = <String, double>{};
     for (final t in windowTxns) {
-      if (t.budgetImpact < 0) {
-        final k = monthKey(t.occurredAt);
-        outByMonth[k] = (outByMonth[k] ?? 0) + (-t.budgetImpact);
+      final neutral = t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt';
+      final hit = neutral && t.absorbed == 0 ? null : (t.absorbed == 1 ? t.actual : t.budgetImpact);
+      if (hit == null || hit == 0) continue;
+      final k = monthKey(t.occurredAt);
+      if (hit < 0) {
+        outByMonth[k] = (outByMonth[k] ?? 0) + (-hit);
+      } else {
+        inByMonth[k] = (inByMonth[k] ?? 0) + hit;
       }
     }
     final trend = <TrendPoint>[];
     for (var back = trendMonths - 1; back >= 0; back--) {
       final k = shiftMonthKey(month, -back);
-      trend.add(TrendPoint(key: k, outBudget: outByMonth[k] ?? 0, budgetTotal: (await db.getBudget(k))?.total));
+      trend.add(
+        TrendPoint(
+          key: k,
+          outBudget: outByMonth[k] ?? 0,
+          inBudget: inByMonth[k] ?? 0,
+          budgetTotal: (await db.getBudget(k))?.total,
+        ),
+      );
     }
 
     return DashboardData(
