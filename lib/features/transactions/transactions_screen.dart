@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
 import '../../core/providers.dart';
+import '../budgets/budget_status.dart';
 import '../budgets/budget_screen.dart';
 import '../cash/transfer_sheet.dart';
 import '../customization/accounts_screen.dart';
@@ -57,6 +58,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ..invalidate(recentTransactionsProvider)
       ..invalidate(monthSummaryProvider(key))
       ..invalidate(bucketSpendProvider(key))
+      ..invalidate(budgetStatusProvider(key))
+      ..invalidate(unabsorbedNeutralProvider)
       ..invalidate(monthOpenProvider(key));
   }
 
@@ -200,6 +203,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Summary unavailable: $e'),
           ),
+          _BudgetPulseCard(monthKey: key),
+          _NeutralHoldCard(monthKey: key),
           accounts.maybeWhen(
             data: (l) => l.isEmpty
                 ? _NoAccountBanner(
@@ -291,6 +296,8 @@ class _MonthBar extends StatelessWidget {
   }
 }
 
+String _money(double v) => '₹${v.abs().round()}';
+
 class _SummaryCard extends StatelessWidget {
   final double inflow;
   final double outflow;
@@ -312,6 +319,174 @@ class _SummaryCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Budget pulse (#7): income is the yardstick, the bucket split carries
+/// forward, and anything worth knowing is a line of text — a chart the owner
+/// cannot read is worse than a sentence.
+class _BudgetPulseCard extends ConsumerWidget {
+  final String monthKey;
+  const _BudgetPulseCard({required this.monthKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(budgetStatusProvider(monthKey));
+    return status.maybeWhen(
+      data: (report) {
+        if (report.budgetTotal <= 0 && report.spent <= 0) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        final colour = switch (report.level) {
+          BudgetLevel.over => theme.colorScheme.error,
+          BudgetLevel.low => Colors.orange.shade700,
+          _ => Colors.teal.shade400,
+        };
+        final carried = report.sourceMonth != monthKey ? ' (split from ${report.sourceMonth})' : '';
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Budget · ${_money(report.budgetTotal)} planned', style: theme.textTheme.titleSmall),
+                    Text('${_money(report.income)} in', style: theme.textTheme.bodySmall),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: report.budgetTotal <= 0 ? 0 : (report.spent / report.budgetTotal).clamp(0.0, 1.0),
+                    minHeight: 8,
+                    color: colour,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_money(report.spent)} spent · ${_money(report.left)} left$carried',
+                  style: theme.textTheme.bodySmall,
+                ),
+                for (final b in report.buckets)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 96, child: Text(b.name, style: theme.textTheme.bodySmall)),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: b.usedFraction.clamp(0.0, 1.0),
+                              minHeight: 6,
+                              color: switch (b.level) {
+                                BudgetLevel.over => theme.colorScheme.error,
+                                BudgetLevel.low => Colors.orange.shade700,
+                                _ => Colors.teal.shade400,
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 150,
+                          child: Text(
+                            b.planned > 0 ? '${_money(b.spent)} / ${_money(b.planned)}' : '${_money(b.spent)} · no budget',
+                            style: theme.textTheme.bodySmall,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                for (final line in report.alerts)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.error_outline, size: 16, color: colour),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(line, style: theme.textTheme.bodySmall)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Neutral ledger held out of the month until the owner absorbs it (#10).
+class _NeutralHoldCard extends ConsumerWidget {
+  final String monthKey;
+  const _NeutralHoldCard({required this.monthKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(unabsorbedNeutralProvider);
+    return rows.maybeWhen(
+      data: (all) {
+        if (all.isEmpty) return const SizedBox.shrink();
+        final inMonth = all
+            .where((r) => '${r.occurredAt.year}-${r.occurredAt.month.toString().padLeft(2, '0')}' == monthKey)
+            .toList();
+        final shown = (inMonth.isEmpty ? all : inMonth).take(3).toList();
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Lend / borrow held out of the month (${all.length})',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'These do not touch any month total until you absorb them.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (final r in shown)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(r.categoryRaw),
+                    subtitle: Text('${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}'),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: true);
+                        ref
+                          ..invalidate(unabsorbedNeutralProvider)
+                          ..invalidate(monthSummaryProvider(monthKey))
+                          ..invalidate(budgetStatusProvider(monthKey));
+                      },
+                      child: const Text('Absorb'),
+                    ),
+                  ),
+                if (inMonth.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'None in $monthKey — showing the latest.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }

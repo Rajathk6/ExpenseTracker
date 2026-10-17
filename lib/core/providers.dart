@@ -11,6 +11,7 @@ import 'auth/pin_service.dart';
 import 'backup/backup_service.dart';
 import 'category_suggest.dart';
 import '../features/budgets/bucket_math.dart';
+import '../features/budgets/budget_status.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
 import '../features/instruments/instrument_repository.dart';
@@ -129,6 +130,50 @@ final categorySuggestProvider =
   return suggestCategories(past, query: query, uses: uses);
 });
 
+/// Month budget as the owner framed it: income is the scale, the bucket split
+/// is carried forward, and spending is measured against the planned amounts.
+/// One pure function (budget_status.dart) so the card, the budget screen and
+/// the alerts can never tell different stories.
+final budgetStatusProvider = FutureProvider.family<BudgetStatusReport, String>((ref, month) async {
+  final parts = month.split('-');
+  final start = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+  final sums = await ref.watch(transactionRepositoryProvider).sumsBetween(start, end, excludeNeutral: true);
+  final spendByBucket = await ref.watch(transactionRepositoryProvider).bucketSpend(start, end);
+  final budget = await ref.watch(budgetRepositoryProvider).getEffective(month);
+  return buildBudgetStatus(
+    income: sums.inBudget.abs(),
+    budgetTotal: budget?.total ?? 0,
+    spent: sums.outBudget.abs(),
+    sourceMonth: budget?.sourceMonth ?? month,
+    buckets: budget?.buckets ?? const [],
+    bucketSpend: spendByBucket,
+  );
+});
+
+/// Neutral rows the owner has not absorbed yet — the "does not count for the
+/// month until you say so" list, with the button to change that (#10).
+final unabsorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async {
+  final rows = await ref.watch(transactionRepositoryProvider).all();
+  return [
+    for (final r in rows)
+      if (TransactionRepository.isUnabsorbedNeutral(r)) r,
+  ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+});
+
+/// Every counterparty the owner has ever dealt with, so the entry form can
+/// offer "Ravi — lend / borrow / settle" instead of a free-text note (#8).
+final peopleProvider = FutureProvider<List<String>>((ref) async {
+  final debts = await ref.watch(debtRepositoryProvider).all();
+  final names = <String>{for (final d in debts) d.counterparty.trim()};
+  for (final group in await ref.watch(databaseProvider).allGroups()) {
+    for (final m in await ref.watch(databaseProvider).membersOf(group.id)) {
+      names.add(m.name.trim());
+    }
+  }
+  return [for (final n in names.where((n) => n.isNotEmpty)) n]..sort();
+});
+
 // --- Debts UI ---
 
 final openDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvider).open());
@@ -196,6 +241,8 @@ final netWorthProvider = FutureProvider(
       investBasis += i.invested;
     }
     // Neutral money (lend/borrow/debt payoffs) never counts as wealth moves.
+    // Absorbing a lend does NOT make the money wealth you have — the money is
+    // with the other person. Net worth stays honest; only the month budget moves.
     final moves = [
       for (final t in txns)
         if (!TransactionRepository.isNeutral(t)) (at: t.occurredAt, actual: t.actual),
