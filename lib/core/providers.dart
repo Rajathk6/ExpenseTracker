@@ -257,57 +257,128 @@ final reconcileRepositoryProvider = Provider((ref) => ReconcileRepository(ref.wa
 final monthReportProvider =
     FutureProvider.family<MonthReport, String>((ref, month) => ref.watch(reconcileRepositoryProvider).report(month));
 
-/// Trailing-12-month net-worth timeline ending at the current month, plus
-/// the current breakdown. Definition (owner rule): bank + cash + investments
-/// (+ their gains, inside current values). Borrowings, future settlements
-/// and lent receivables are NOT wealth — excluded entirely.
+/// Net worth: what the owner holds minus what the owner owes.
+///
+/// The formula (networth_logic.dart): cash in the accounts + investments +
+/// money others owe me − money I owe others. Lends and borrows are *not*
+/// plain movements here — the cash that left for a lend is balanced by the
+/// receivable, and borrowed cash is balanced by the liability, so nothing is
+/// counted twice and nothing is left out.
 final netWorthProvider = FutureProvider(
   (ref) async {
     final accounts = await ref.watch(accountRepositoryProvider).list();
     final instruments = await ref.watch(instrumentRepositoryProvider).open();
     final txns = await ref.watch(transactionRepositoryProvider).all();
-    var openings = 0.0;
-    for (final a in accounts) {
-      openings += a.openingBalance;
-    }
+    final debts = await ref.watch(debtRepositoryProvider).all();
+    final splits = await ref.watch(splitRepositoryProvider).all();
     var investCurrent = 0.0;
     var investBasis = 0.0;
     for (final i in instruments) {
       investCurrent += i.current;
       investBasis += i.invested;
     }
-    // Neutral money (lend/borrow/debt payoffs) never counts as wealth moves.
-    // Absorbing a lend does NOT make the money wealth you have — the money is
-    // with the other person. Net worth stays honest; only the month budget moves.
+
+    // Plain movements only: a lend/borrow moves cash, but the other side of
+    // it is a receivable/liability, which is counted below.
     final moves = [
       for (final t in txns)
-        if (!TransactionRepository.isNeutral(t)) (at: t.occurredAt, actual: t.actual),
+        if (!TransactionRepository.isNeutral(t) && t.kind != 'transfer')
+          NetMove(t.occurredAt, t.actual),
     ];
+
+    // Cash starts from the accounts' opening balances.
+    var openingCash = 0.0;
+    for (final a in accounts) {
+      openingCash += a.openingBalance;
+    }
+
+    // Obligations at each month end: what is owed to the owner, what the owner
+    // owes, and the split shares still to come back.
+    final obligationSnapshots = <({String monthKey, Obligations obligations})>[];
     final now = DateTime.now();
-    final endKey = monthKey(DateTime(now.year, now.month));
+    for (var back = 11; back >= 0; back--) {
+      final month = DateTime(now.year, now.month - back);
+      final key = monthKey(month);
+      final end = DateTime(month.year, month.month + 1).subtract(const Duration(milliseconds: 1));
+      var lent = 0.0;
+      var borrowed = 0.0;
+      for (final d in debts) {
+        if (d.createdAt.isAfter(end)) continue;
+        final paid = _paidBy(d.id, txns, end);
+        final open = (d.principal - paid).clamp(0, double.infinity);
+        if (d.direction == 'lent') {
+          lent += open;
+        } else {
+          borrowed += open;
+        }
+      }
+      var receivable = 0.0;
+      for (final s in splits) {
+        final front = txns.where((t) => t.linkType == 'split' && t.linkId == s.id).firstOrNull;
+        if (front == null || front.occurredAt.isAfter(end)) continue;
+        final back2 = _receivedBy(s.id, txns, end);
+        final open = (s.totalPaid - s.myShare - back2.received - back2.absorbed).clamp(0, double.infinity);
+        receivable += open;
+      }
+      obligationSnapshots.add((monthKey: key, obligations: Obligations(lent: lent, splitReceivable: receivable, borrowed: borrowed)));
+    }
+
+    final endKey = monthKey(now);
     final points = netWorthTimeline(
-      openings: openings,
       moves: moves,
-      investCurrent: investCurrent,
-      debtNetValue: 0,
-      endKey: endKey,
+      obligationsByMonth: obligationSnapshots,
+      investments: investCurrent,
+      endMonthKey: endKey,
     );
-    final bankNow = points.isEmpty
-        ? openings
-        : bankAt(
-            openings: openings,
-            moves: moves,
-            monthEnd: DateTime(now.year, now.month + 1).subtract(const Duration(milliseconds: 1)),
-          );
+    // The cash the timeline starts from is the accounts' opening balances.
+    final withOpening = [
+      for (final p in points)
+        NetWorthPoint(
+          monthKey: p.monthKey,
+          cash: p.cash + openingCash,
+          investments: p.investments,
+          owedToYou: p.owedToYou,
+          youOwe: p.youOwe,
+        ),
+    ];
+    final last = withOpening.isEmpty
+        ? NetWorthPoint(monthKey: endKey, cash: 0, investments: 0, owedToYou: 0, youOwe: 0)
+        : withOpening.last;
     return (
-      points: points,
-      bankNow: bankNow,
+      points: withOpening,
+      cash: last.cash,
       investNow: investCurrent,
       investGains: investCurrent - investBasis,
-      debtNetValue: 0.0,
+      owedToYou: last.owedToYou,
+      youOwe: last.youOwe,
+      net: last.net,
     );
   },
 );
+
+/// How much of a debt contract had been paid back by [end].
+double _paidBy(String debtId, List<Transaction> txns, DateTime end) {
+  var paid = 0.0;
+  for (final t in txns) {
+    if (t.linkType != 'debt' || t.linkId != debtId) continue;
+    if (t.kind != 'settle' || t.occurredAt.isAfter(end)) continue;
+    paid += t.actual.abs();
+  }
+  return paid;
+}
+
+/// How much of a split had come back (and how much was written off) by [end].
+({double received, double absorbed}) _receivedBy(String splitId, List<Transaction> txns, DateTime end) {
+  var received = 0.0;
+  var absorbed = 0.0;
+  for (final t in txns) {
+    if (t.linkType != 'split' || t.linkId != splitId) continue;
+    if (t.occurredAt.isAfter(end)) continue;
+    if (t.kind == 'settle') received += t.actual.abs();
+    if (t.kind == 'absorb') absorbed += t.budgetImpact.abs();
+  }
+  return (received: received, absorbed: absorbed);
+}
 
 String _shiftedKey(int year, int month, int back) {
   var y = year, m = month - back;
