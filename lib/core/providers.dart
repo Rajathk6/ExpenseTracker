@@ -336,12 +336,14 @@ final netWorthProvider = FutureProvider(
       investBasis += i.invested;
     }
 
-    // Plain movements only: a lend/borrow moves cash, but the other side of
-    // it is a receivable/liability, which is counted below.
+    // Every real movement of money, including lends and borrows: the cash
+    // genuinely leaves the account when you lend it, and the receivable (or
+    // the liability) is counted beside it — so the cash line here is the same
+    // number the accounts screen shows. Transfers are excluded because they
+    // are your own money moving between your own accounts.
     final moves = [
       for (final t in txns)
-        if (!TransactionRepository.isNeutral(t) && t.kind != 'transfer')
-          NetMove(t.occurredAt, t.actual),
+        if (t.kind != 'transfer') NetMove(t.occurredAt, t.actual),
     ];
 
     // Cash starts from the accounts' opening balances — the same number the

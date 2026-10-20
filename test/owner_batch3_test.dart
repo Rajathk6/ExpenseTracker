@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:expense_tracker/core/database.dart';
 import 'package:expense_tracker/features/customization/account_repository.dart';
 import 'package:expense_tracker/features/neutral/debt_repository.dart';
+import 'package:expense_tracker/features/reconcile/networth_logic.dart';
 import 'package:expense_tracker/features/splits/split_logic.dart';
 import 'package:expense_tracker/features/splits/split_repository.dart';
 import 'package:expense_tracker/features/transactions/transaction_repository.dart';
@@ -172,6 +173,45 @@ void main() {
       expect(total, 1500, reason: 'a transfer is your own money moving');
       expect(balances.firstWhere((b) => b.name == 'Cash').balance, 700);
       expect(balances.firstWhere((b) => b.name == 'Bank').balance, 800);
+    });
+  });
+
+  group('net worth and the accounts agree (#4)', () {
+    late AppDatabase db;
+    late AccountRepository accounts;
+    late TransactionRepository txns;
+    late DebtRepository debts;
+
+    setUp(() async {
+      db = AppDatabase.memory();
+      accounts = AccountRepository(db);
+      txns = TransactionRepository(db);
+      debts = DebtRepository(db);
+    });
+
+    tearDown(() => db.close());
+
+    test('lending moves the cash out of the account, and the receivable replaces it', () async {
+      final cash = await accounts.create(name: 'Cash', kind: 'cash', openingBalance: 10000);
+      await debts.lend(counterparty: 'Karthik', principal: 5000, accountId: cash.id);
+
+      // The account really holds 5000 now.
+      final balance = (await accounts.balances()).single.balance;
+      expect(balance, 5000);
+
+      // And the owner is still whole: 5000 in hand + 5000 owed to them.
+      final points = netWorthTimeline(
+        moves: [NetMove(DateTime(2026, 9, 5), -5000)],
+        obligationsByMonth: const [
+          (monthKey: '2026-09', obligations: Obligations(lent: 5000, splitReceivable: 0, borrowed: 0)),
+        ],
+        investments: 0,
+        endMonthKey: '2026-09',
+        months: 1,
+      );
+      expect(points.single.cash, -5000);
+      expect(points.single.owedToYou, 5000);
+      expect(points.single.net, 0, reason: 'lending is not a loss');
     });
   });
 }
