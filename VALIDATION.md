@@ -30,6 +30,10 @@
 | Owner7 | BudgetInsight | The month explained: pace, month-end estimate, each bucket vs plan and vs your usual spend, plain-language lines | ✅ 2026-10-20 (`budget_insight.dart` + Budgets screen, tested) |
 | Owner15 | GroupInsight | Group money insights: total, per person, per what, biggest item, evenness, settle-up + the group's own CSV report | ✅ 2026-10-20 (`group_insight.dart` + `group_report.dart`, tested) |
 | Owner17 | ReadyToFill | Entries missing a category, bucket or account are listed on the front page with a one-tap form prefilled with money and time | ✅ 2026-10-20 (`readyToFillProvider` + card) |
+| Owner4 | NetWorth | Net worth = what you hold − what you owe, and the cash line equals the balance the accounts screen shows | ✅ 2026-10-20 / `feature/owner-batch-3` (pure `networth_logic.dart` + provider, 198/198 green) |
+| Owner2 | OneContract | The same person is one contract: lending to "karthik" twice adds to the existing card, with both hand-overs on its trail | ✅ 2026-10-20 (`lendTo`/`borrowFrom` + loose name matching, tested) |
+| Owner4b | AccountBalance | Every account shows the money actually in it (opening + movements) and the opening amount is editable | ✅ 2026-10-20 (`AccountRepository.balances()`, tested) |
+| Owner8 | PayLimits | No over-payment anywhere (debt, split, group), no paying yourself, no duplicate name in a split, no lending to yourself | ✅ 2026-10-20 (validated in the repositories, tested) |
 | Cat | CategorySearch | Typing part of a past category — level, item or mid-word — offers it; tap fills the full string; a never-seen category is still saved as typed | ✅ 2026-09-16 / `develop` (pure `category_suggest` ranking + shared `CategoryField` in entry/intake/quick-add, 109/109 green, analyze clean) |
 
 Mark `✅ date/branch` when green. Merge rule: row green + `flutter test` green.

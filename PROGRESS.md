@@ -225,5 +225,19 @@
 - **Released:** PR #14 merged to `main` (24db45f), tag `v0.13.0`, published `expensetracker-0.13.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed, so it installs over v0.12.0 without touching the vault; the signed build is still waiting for the day an encrypted backup exists.
 - Next: phone-test v0.13.0 — especially the five fixed things and the new front page.
 
+## 2026-10-20 — Owner batch 3: the money has to add up / `feature/owner-batch-3` → v0.14.0
+- Planned: the owner's third list — the points where the app's numbers did not add up to each other.
+- **#4 accounts are wallets now.** Each account shows the money really in it (opening + everything that moved through it) and the opening amount is editable (#6). The net-worth screen is built from the same numbers, so "net worth says a number but the accounts show none" cannot happen: the cash line *is* the account balance, and a lend shows as cash out **and** a receivable beside it — lending is neither a loss nor a gain.
+- **#2 one contract per person.** Names are matched loosely ("karthik" = "Karthik"), so lending to the same person twice adds to the card that exists, with both hand-overs on its trail. A lend and a borrow with one person stay separate.
+- **#3 the trail is "What happened"** — every movement in order with a running balance of what is still out, paybacks included.
+- **#5 the split asks for names only**; the names are the count and the share is shown live.
+- **#7 every month asks for its budget** on the dashboard, using the accounts already set up; first run asks only for your name and your accounts.
+- **#8 nothing can be over-paid, anywhere** — debts, splits, group pay-ups — and you cannot pay yourself, be in a split twice, or lend to yourself.
+- **#9 the net-worth graph shows a dip below zero** instead of clipping it, with a dashed zero line.
+- **#10 a restored backup refreshes every month, budget, insight and dashboard** — the data was there, the screen was stale.
+- **#1 the OCR now says what actually went wrong** instead of "no text found", resolves `content://` images to real files, and rejects a file that is not a picture with a clear message.
+- Tests: 198/198 (184 → +14). Schema unchanged (v8).
+- Next: merge → main → tag v0.14.0 → publish.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

@@ -179,13 +179,11 @@ void main() {
   group('net worth and the accounts agree (#4)', () {
     late AppDatabase db;
     late AccountRepository accounts;
-    late TransactionRepository txns;
     late DebtRepository debts;
 
     setUp(() async {
       db = AppDatabase.memory();
       accounts = AccountRepository(db);
-      txns = TransactionRepository(db);
       debts = DebtRepository(db);
     });
 
