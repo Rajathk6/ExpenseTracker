@@ -8,9 +8,26 @@ import 'package:uuid/uuid.dart';
 import '../../core/database.dart';
 import 'debt_logic.dart';
 
+/// People are matched by their name, loosely: case and extra spaces do not
+/// make a new person. "karthik", "Karthik" and " Karthik " are one contract.
+String normaliseName(String name) => name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
 class DebtRepository {
   final AppDatabase db;
   const DebtRepository(this.db);
+
+  /// The open contract with this person, if there is one. Names are matched
+  /// loosely (case and spaces do not matter) so "karthik", "Karthik" and
+  /// " Karthik " are one person and one contract — not three.
+  Future<Debt?> openContractFor(String counterparty) async {
+    final want = normaliseName(counterparty);
+    if (want.isEmpty) return null;
+    for (final d in await db.openDebts()) {
+      if (d.direction != 'lent' && d.direction != 'borrowed') continue;
+      if (normaliseName(d.counterparty) == want) return d;
+    }
+    return null;
+  }
 
   Future<Debt> _create({
     required String counterparty,
@@ -100,6 +117,97 @@ class DebtRepository {
         dueDate: dueDate,
         nudgeDate: nudgeDate,
       );
+
+  /// Adds to the existing contract with this person when there is one, so
+  /// lending to Karthik twice does not create two cards (#2). The person's
+  /// name is matched loosely, and the second amount lands on the first
+  /// contract's trail.
+  Future<Debt> lendTo({
+    required String counterparty,
+    required double principal,
+    String? accountId,
+    DateTime? at,
+    String? note,
+    DateTime? dueDate,
+    DateTime? nudgeDate,
+    String? ownerName,
+  }) async {
+    if (ownerName != null && normaliseName(ownerName) == normaliseName(counterparty)) {
+      throw ArgumentError('You cannot lend money to yourself');
+    }
+    final existing = await openContractFor(counterparty);
+    if (existing != null && existing.direction == 'lent') {
+      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
+      return db.getDebt(existing.id);
+    }
+    return lend(
+      counterparty: counterparty,
+      principal: principal,
+      accountId: accountId,
+      at: at,
+      note: note,
+      dueDate: dueDate,
+      nudgeDate: nudgeDate,
+    );
+  }
+
+  /// The same for borrowing.
+  Future<Debt> borrowFrom({
+    required String counterparty,
+    required double principal,
+    String? accountId,
+    DateTime? at,
+    String? note,
+    DateTime? dueDate,
+    DateTime? nudgeDate,
+    String? ownerName,
+  }) async {
+    if (ownerName != null && normaliseName(ownerName) == normaliseName(counterparty)) {
+      throw ArgumentError('You cannot borrow money from yourself');
+    }
+    final existing = await openContractFor(counterparty);
+    if (existing != null && existing.direction == 'borrowed') {
+      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
+      return db.getDebt(existing.id);
+    }
+    return borrow(
+      counterparty: counterparty,
+      principal: principal,
+      accountId: accountId,
+      at: at,
+      note: note,
+      dueDate: dueDate,
+      nudgeDate: nudgeDate,
+    );
+  }
+
+  /// Adds money to an existing contract: the principal grows and a new row
+  /// lands on the trail, so the history shows both hand-overs.
+  Future<void> _addTo(Debt debt, double amount, {String? accountId, DateTime? at, String? note}) async {
+    if (amount <= 0) throw ArgumentError('Amount must be above zero');
+    await db.updateDebt(
+      debt.id,
+      DebtsCompanion(principal: Value(debt.principal + amount)),
+    );
+    await db.insertTransaction(
+      TransactionsCompanion(
+        id: Value(const Uuid().v4()),
+        kind: Value(debt.direction == 'lent' ? 'lend' : 'borrow'),
+        actual: Value(debt.direction == 'lent' ? -amount : amount),
+        budgetImpact: const Value(0),
+        occurredAt: Value(at ?? DateTime.now()),
+        categoryRaw: Value(
+          debt.direction == 'lent' ? 'lend ${debt.counterparty}' : 'borrow ${debt.counterparty}',
+        ),
+        level0: Value(debt.direction == 'lent' ? 'lend' : 'borrow'),
+        level1: Value(debt.counterparty.toLowerCase()),
+        note: Value(note),
+        accountId: Value(accountId),
+        linkId: Value(debt.id),
+        linkType: const Value('debt'),
+      ),
+    );
+  }
 
   /// Records one payoff chunk. Auto-flips to `settled` on full payoff.
   Future<Debt> pay({

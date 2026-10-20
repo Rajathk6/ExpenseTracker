@@ -65,11 +65,24 @@ class NetWorthScreen extends ConsumerWidget {
                         height: 180,
                         child: LineChart(
                           LineChartData(
-                            minY: 0,
+                            // A net worth below zero is real (you owe more
+                            // than you hold) — the chart must show it, not
+                            // clip it away at the floor.
+                            minY: null,
                             gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
                               getDrawingHorizontalLine: (_) => const FlLine(color: Colors.black12),
+                            ),
+                            extraLinesData: ExtraLinesData(
+                              horizontalLines: [
+                                HorizontalLine(
+                                  y: 0,
+                                  color: Colors.grey,
+                                  strokeWidth: 1,
+                                  dashArray: const [4, 4],
+                                ),
+                              ],
                             ),
                             titlesData: const FlTitlesData(show: false),
                             borderData: FlBorderData(show: false),

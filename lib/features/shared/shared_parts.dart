@@ -17,6 +17,15 @@ import '../splits/split_logic.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
 
+/// What each row on a trail was, in the owner's words.
+String _labelFor(String kind, bool lent) => switch (kind) {
+      'lend' => 'Handed over',
+      'borrow' => 'Taken',
+      'settle' => lent ? 'Came back' : 'Paid back',
+      'absorb' => 'Written off',
+      _ => kind,
+    };
+
 /// One lend/borrow contract, everything on the card: the amount, what has
 /// come back, how old it is, the money trail and the payoff button. There is
 /// no separate screen to open — the card *is* the contract (#9).
@@ -108,37 +117,53 @@ class DebtCard extends ConsumerWidget {
               ),
             // --- The money trail, right here (#8) ---
             const SizedBox(height: 10),
-            Text('Money trail', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'What happened',
+              style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
             history.when(
-              data: (rows) => Column(
-                children: [
-                  for (final t in rows)
-                    ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        switch (t.kind) {
-                          'lend' || 'borrow' => Icons.arrow_outward,
-                          'settle' => Icons.south_west,
-                          _ => Icons.circle_outlined,
-                        },
-                        size: 18,
-                        color: t.kind == 'settle' ? Colors.green : null,
+              data: (rows) {
+                // Oldest first, with a running balance: handed over −5000,
+                // came back +2000 → ₹3000 still out. Every movement is here,
+                // paybacks included (#3).
+                final ordered = [...rows]..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+                var running = 0.0;
+                final entries = <(String, DateTime, double, double)>[];
+                for (final t in ordered) {
+                  running += t.actual;
+                  entries.add((_labelFor(t.kind, lent), t.occurredAt, t.actual, running));
+                }
+                return Column(
+                  children: [
+                    for (final e in entries)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          e.$3 < 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                          size: 18,
+                          color: e.$3 < 0 ? Colors.red : Colors.green,
+                        ),
+                        title: Text(e.$1),
+                        subtitle: Text(_dayFmt.format(e.$2)),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${e.$3 < 0 ? '−' : '+'}₹${e.$3.abs().round()}',
+                              style: TextStyle(
+                                color: e.$3 < 0 ? Colors.red : Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text('left ₹${e.$4.abs().round()}', style: theme.textTheme.bodySmall),
+                          ],
+                        ),
                       ),
-                      title: Text(switch (t.kind) {
-                        'lend' => 'Handed over',
-                        'borrow' => 'Taken',
-                        'settle' => lent ? 'Came back' : 'Paid back',
-                        _ => t.kind,
-                      },),
-                      subtitle: Text(
-                        '${_dayFmt.format(t.occurredAt)}'
-                        '${t.note != null && t.note!.isNotEmpty ? ' · ${t.note}' : ''}',
-                      ),
-                      trailing: Text('₹${t.actual.abs().round()}'),
-                    ),
-                ],
-              ),
+                  ],
+                );
+              },
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Could not load: $e'),
             ),
@@ -504,7 +529,6 @@ class SplitDialog extends ConsumerStatefulWidget {
 class SplitDialogState extends ConsumerState<SplitDialog> {
   final _title = TextEditingController();
   final _total = TextEditingController();
-  final _people = TextEditingController(text: '2');
   final _members = TextEditingController();
   String? _accountId;
   String? _error;
@@ -516,25 +540,25 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
   void dispose() {
     _title.dispose();
     _total.dispose();
-    _people.dispose();
     _members.dispose();
     super.dispose();
   }
 
-  int? get _count => int.tryParse(_people.text.trim());
+  /// The people, as a list — that is the only count there is (#5).
+  List<String> get _names =>
+      [for (final n in _members.text.split(RegExp(r'[,，]'))) n.trim()].where((n) => n.isNotEmpty).toList();
 
   /// Live read-out of the division, so nobody has to do it in their head.
   double? get _share {
     final total = double.tryParse(_total.text.trim());
-    final count = _count;
-    if (total == null || count == null || total <= 0 || count < 1) return null;
+    final count = _names.length;
+    if (total == null || total <= 0 || count < 1) return null;
     return total / count;
   }
 
   Future<void> _save() async {
     final total = double.tryParse(_total.text.trim());
-    final count = _count;
-    final names = _members.text.split(RegExp(r'[,，]'));
+    final names = _names;
     if (_title.text.trim().isEmpty) {
       setState(() => _error = 'What was this for?');
       return;
@@ -543,8 +567,8 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
       setState(() => _error = 'Enter what you paid in total');
       return;
     }
-    if (count == null || count < 1) {
-      setState(() => _error = 'How many people is this split between?');
+    if (names.isEmpty) {
+      setState(() => _error = 'Who is it split between? Name everyone, including yourself.');
       return;
     }
     final memberError = validateMembers(names);
@@ -560,7 +584,7 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
       await ref.read(splitRepositoryProvider).create(
             title: _title.text,
             total: total,
-            people: count,
+            people: names.length,
             members: names,
             accountId: _accountId,
           );
@@ -604,46 +628,21 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
             ),
             const SizedBox(height: 10),
             TextField(
-              controller: _people,
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Split between how many people?',
-                helperText: 'Include yourself — the rest is owed to you',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
               controller: _members,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Who is in it (names, comma separated)',
+                labelText: 'Who is it split between? (names, comma separated)',
                 hintText: '$owner, Ravi, Asha',
-                helperText: 'Names are required — a split nobody can name cannot be settled',
+                helperText: 'Include yourself — the number of names is the number of shares',
                 border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    share == null
-                        ? 'Your share appears here'
-                        : 'Your share ₹${share.toStringAsFixed(2)} · each pays the same',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                for (final n in const [2, 3, 4, 5, 6])
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => _people.text = '$n'),
-                      child: Text('$n'),
-                    ),
-                  ),
-              ],
+            Text(
+              share == null
+                  ? 'Your share appears here once the names are in'
+                  : '${_names.length} people · your share ₹${share.toStringAsFixed(2)} · each pays the same',
+              style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 10),
             Consumer(

@@ -79,6 +79,11 @@ class SplitRepository {
   /// Records money coming back from the group.
   Future<Split> settle({required String splitId, required double amount, String? who, String? accountId, DateTime? at}) async {
     final split = await db.getSplit(splitId);
+    // You cannot pay yourself back (#8).
+    if (who != null && who.trim().isNotEmpty) {
+      final selfPay = validatePayBetween(from: who, to: 'me');
+      if (selfPay != null) throw ArgumentError(selfPay);
+    }
     if (split.status != 'open') throw StateError('Split is already closed');
     final err = validateSettlement(
       amount: amount,

@@ -601,7 +601,6 @@ class _MonthSetupCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final open = ref.watch(monthOpenProvider(monthKey));
-    final budget = ref.watch(effectiveBudgetProvider(monthKey));
     final recent = ref.watch(recentTransactionsProvider);
     return open.when(
       data: (saved) {
@@ -612,6 +611,27 @@ class _MonthSetupCard extends ConsumerWidget {
           }).length,
           orElse: () => 1,
         );
+        // A month with no budget of its own asks for one — with the accounts
+        // already set up, the owner only has to say the number (#7).
+        final budget = ref.watch(effectiveBudgetProvider(monthKey));
+        final hasOwnBudget = budget.maybeWhen(
+          data: (b) => b != null && b.sourceMonth == monthKey,
+          orElse: () => false,
+        );
+        if (!hasOwnBudget && saved == null && monthRows == 0) {
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: ListTile(
+              leading: const Icon(Icons.pie_chart_outline),
+              title: const Text('Set this month\'s budget'),
+              subtitle: const Text('Your bucket split carries over — say the total and it is divided for you.'),
+              trailing: FilledButton.tonal(
+                onPressed: () => _edit(context, ref, null),
+                child: const Text('Set'),
+              ),
+            ),
+          );
+        }
         if (saved != null || monthRows > 0) {
           if (saved == null) return const SizedBox.shrink();
           final carried = budget.maybeWhen(

@@ -63,6 +63,9 @@ final instrumentRepositoryProvider = Provider((ref) => InstrumentRepository(ref.
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
+/// Every account with its real balance (opening + everything that moved).
+final accountBalancesProvider = FutureProvider((ref) => ref.watch(accountRepositoryProvider).balances());
+
 final budgetProvider = FutureProvider.family<({double total, List<Bucket> buckets})?, String>((ref, month) async {
   final b = await ref.watch(budgetRepositoryProvider).get(month);
   if (b == null) return null;
@@ -341,7 +344,8 @@ final netWorthProvider = FutureProvider(
           NetMove(t.occurredAt, t.actual),
     ];
 
-    // Cash starts from the accounts' opening balances.
+    // Cash starts from the accounts' opening balances — the same number the
+    // accounts screen shows, so the two can never disagree.
     var openingCash = 0.0;
     for (final a in accounts) {
       openingCash += a.openingBalance;

@@ -96,30 +96,37 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
     });
     final buffer = StringBuffer();
     var failed = 0;
+    String? reason;
     for (final path in readable) {
       try {
         final text = await widget.reader.read(path);
         if (text.trim().isEmpty) {
           failed++;
+          reason ??= 'No text was found in the picture. If it is a photo, try a screenshot of the payment message.';
         } else {
           if (buffer.isNotEmpty) buffer.writeln();
           buffer.write(text.trim());
         }
-      } on Object {
+      } on Object catch (error) {
         failed++;
+        // Say what actually went wrong — "no text found" hid a real error.
+        reason ??= '$error';
       }
     }
     if (!mounted) return;
     if (buffer.isEmpty) {
       setState(() {
         _reading = false;
-        _error = 'No text found in the screenshot — paste the message instead.';
+        _error = reason ?? 'No text found in the screenshot — paste the message instead.';
       });
       return;
     }
     setState(() {
       _reading = false;
-      if (failed > 0) _error = 'Read ${buffer.toString().split('\n').length} line(s); $failed screenshot(s) unreadable.';
+      if (failed > 0) {
+        _error = 'Read ${buffer.toString().split('\n').length} line(s). '
+            '${reason ?? '$failed screenshot(s) could not be read.'}';
+      }
     });
     _raw.text = buffer.toString();
     _reparse();

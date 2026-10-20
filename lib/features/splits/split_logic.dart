@@ -38,12 +38,22 @@ String? validateSplit({required double total, required double myShare}) {
 }
 
 /// A split needs its people named — an unlabelled share cannot be settled
-/// honestly (#14).
+/// honestly (#14). The same person cannot be in it twice: you cannot be in a
+/// split with yourself twice (#8).
 String? validateMembers(List<String> names) {
   final clean = [for (final n in names) n.trim()].where((n) => n.isNotEmpty).toList();
   if (clean.isEmpty) return 'Add at least one person (your own name too)';
   final lowered = [for (final n in clean) n.toLowerCase()];
   if (lowered.toSet().length != lowered.length) return 'The same name is listed twice';
+  return null;
+}
+
+/// A payment between two of the same name is a payment to yourself, which
+/// would move no money and hide a mistake (#8).
+String? validatePayBetween({required String from, required String to}) {
+  if (from.trim().toLowerCase() == to.trim().toLowerCase()) {
+    return 'That would be paying yourself';
+  }
   return null;
 }
 
