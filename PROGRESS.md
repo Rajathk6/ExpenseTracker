@@ -237,7 +237,8 @@
 - **#10 a restored backup refreshes every month, budget, insight and dashboard** — the data was there, the screen was stale.
 - **#1 the OCR now says what actually went wrong** instead of "no text found", resolves `content://` images to real files, and rejects a file that is not a picture with a clear message.
 - Tests: 198/198 (184 → +14). Schema unchanged (v8).
-- Next: merge → main → tag v0.14.0 → publish.
+- **Released:** PR #15 merged to `main` (5cdeb9b), tag `v0.14.0`, published `expensetracker-0.14.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.13.0 without touching the vault.
+- Next: phone-test v0.14.0. If the OCR still cannot read a screenshot, the screen now shows the recogniser's own error — that message is the next thing to send me.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
