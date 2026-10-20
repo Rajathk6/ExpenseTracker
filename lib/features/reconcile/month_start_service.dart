@@ -52,6 +52,8 @@ class MonthStartService {
   MonthOpenRepository get _open => MonthOpenRepository(db);
 
   /// Applies everything in [values]; null fields are skipped, never zeroed.
+  /// The budget is applied to the accounts the owner already has — the month
+  /// card never asks them to set up accounts again (#7).
   Future<MonthStartResult> apply({
     required String month,
     double? budgetIn,

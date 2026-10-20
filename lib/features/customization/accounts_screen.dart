@@ -24,7 +24,7 @@ class AccountsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
-          title: Text(existing == null ? 'Add account' : 'Rename account'),
+          title: Text(existing == null ? 'Add account' : 'Edit account'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -41,14 +41,17 @@ class AccountsScreen extends ConsumerWidget {
                   helperText: 'bank · cash · card · wallet · upi · …',
                 ),
               ),
-              if (existing == null) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: opening,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Opening balance (optional)'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: opening,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Opening balance ₹ (what was in it to begin with)',
+                  helperText: existing == null
+                      ? 'Optional — you can set it later'
+                      : 'Changing this corrects what the account started with',
                 ),
-              ],
+              ),
               const SizedBox(height: 4),
               Wrap(
                 spacing: 6,
@@ -74,6 +77,11 @@ class AccountsScreen extends ConsumerWidget {
                     );
                   } else {
                     await repo.rename(existing.id, name.text);
+                    // The amount is editable too, not just the name.
+                    final amount = double.tryParse(opening.text.trim());
+                    if (amount != null) {
+                      await repo.setOpeningBalance(existing.id, amount);
+                    }
                   }
                   if (ctx.mounted) Navigator.of(ctx).pop(true);
                 } on Object catch (e) {
@@ -90,7 +98,12 @@ class AccountsScreen extends ConsumerWidget {
         ),
       ),
     );
-    if (saved ?? false) ref.invalidate(accountsProvider);
+    if (saved ?? false) {
+      ref
+        ..invalidate(accountsProvider)
+        ..invalidate(accountBalancesProvider)
+        ..invalidate(netWorthProvider);
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Account account) async {
@@ -129,28 +142,39 @@ class AccountsScreen extends ConsumerWidget {
           if (list.isEmpty) {
             return const Center(child: Text('No accounts yet — tap Add to create your first.'));
           }
+          final balances = ref.watch(accountBalancesProvider);
           return ListView.builder(
             itemCount: list.length,
-            itemBuilder: (_, i) => ListTile(
-              leading: const Icon(Icons.account_balance_wallet),
-              title: Text(list[i].name),
-              subtitle: Text('${list[i].kind} · opening ₹${list[i].openingBalance.toStringAsFixed(0)}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Rename',
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => _showEditor(context, ref, existing: list[i]),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmDelete(context, ref, list[i]),
-                  ),
-                ],
-              ),
-            ),
+            itemBuilder: (_, i) {
+              final account = list[i];
+              final balance = balances.maybeWhen(
+                data: (all) => all.where((b) => b.account.id == account.id).firstOrNull,
+                orElse: () => null,
+              );
+              return ListTile(
+                leading: const Icon(Icons.account_balance_wallet),
+                title: Text(account.name),
+                subtitle: Text(
+                  '${account.kind} · opening ₹${account.openingBalance.toStringAsFixed(0)}'
+                  '${balance == null ? '' : ' · moved ₹${balance.moved.toStringAsFixed(0)} · balance ₹${balance.balance.toStringAsFixed(0)}'}',
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit',
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showEditor(context, ref, existing: account),
+                    ),
+                    IconButton(
+                      tooltip: 'Delete',
+                      icon: const Icon(Icons.delete_outlined),
+                      onPressed: () => _confirmDelete(context, ref, account),
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

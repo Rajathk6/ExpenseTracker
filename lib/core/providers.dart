@@ -63,6 +63,9 @@ final instrumentRepositoryProvider = Provider((ref) => InstrumentRepository(ref.
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
 
+/// Every account with its real balance (opening + everything that moved).
+final accountBalancesProvider = FutureProvider((ref) => ref.watch(accountRepositoryProvider).balances());
+
 final budgetProvider = FutureProvider.family<({double total, List<Bucket> buckets})?, String>((ref, month) async {
   final b = await ref.watch(budgetRepositoryProvider).get(month);
   if (b == null) return null;
@@ -333,15 +336,18 @@ final netWorthProvider = FutureProvider(
       investBasis += i.invested;
     }
 
-    // Plain movements only: a lend/borrow moves cash, but the other side of
-    // it is a receivable/liability, which is counted below.
+    // Every real movement of money, including lends and borrows: the cash
+    // genuinely leaves the account when you lend it, and the receivable (or
+    // the liability) is counted beside it — so the cash line here is the same
+    // number the accounts screen shows. Transfers are excluded because they
+    // are your own money moving between your own accounts.
     final moves = [
       for (final t in txns)
-        if (!TransactionRepository.isNeutral(t) && t.kind != 'transfer')
-          NetMove(t.occurredAt, t.actual),
+        if (t.kind != 'transfer') NetMove(t.occurredAt, t.actual),
     ];
 
-    // Cash starts from the accounts' opening balances.
+    // Cash starts from the accounts' opening balances — the same number the
+    // accounts screen shows, so the two can never disagree.
     var openingCash = 0.0;
     for (final a in accounts) {
       openingCash += a.openingBalance;

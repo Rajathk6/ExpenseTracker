@@ -234,6 +234,10 @@ class GroupRepository {
     final members = {for (final m in await db.membersOf(groupId)) m.name};
     if (!members.contains(paidBy.trim())) throw ArgumentError('$paidBy is not in this group');
     if (!members.contains(paidTo.trim())) throw ArgumentError('$paidTo is not in this group');
+    // A pay-up to yourself moves nothing (#8).
+    if (paidBy.trim().toLowerCase() == paidTo.trim().toLowerCase()) {
+      throw ArgumentError('That would be paying yourself');
+    }
     final id = const Uuid().v4();
     await db.insertGroupPayment(
       GroupPaymentsCompanion(

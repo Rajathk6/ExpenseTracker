@@ -65,6 +65,22 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
                 }
+                // Turn any image path or content:// uri into a real file in
+                // our cache, so the OCR always gets something it can open.
+                "resolveImage" -> {
+                    val path = call.argument<String>("path")
+                    if (path == null) {
+                        result.error("bad_args", "path is required", null)
+                    } else {
+                        try {
+                            val uri = Uri.parse(path)
+                            val copied = copyToCache(uri) ?: path
+                            result.success(copied)
+                        } catch (error: Exception) {
+                            result.error("resolve_failed", error.message, null)
+                        }
+                    }
+                }
                 // Send text out — a split or a group shared to WhatsApp, SMS,
                 // anywhere. The app could receive shares for a long time but
                 // could never send one.

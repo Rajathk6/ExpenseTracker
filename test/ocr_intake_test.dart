@@ -88,13 +88,14 @@ void main() {
   testWidgets('a screenshot with no text says so instead of opening blank', (tester) async {
     await pumpIntake(tester, reader: _FakeReader('   '), images: [screenshot]);
     await tester.pumpAndSettle();
-    expect(find.textContaining('No text found'), findsOneWidget);
+    expect(find.textContaining('No text was found'), findsOneWidget);
   });
 
-  testWidgets('a broken reader is reported, not thrown', (tester) async {
+  testWidgets('a broken reader is reported with its reason, not thrown', (tester) async {
     await pumpIntake(tester, reader: _FakeReader('BOOM'), images: [screenshot, blank]);
     await tester.pumpAndSettle();
-    expect(find.textContaining('No text found'), findsOneWidget);
+    // The actual reason is shown — "no text found" used to hide it.
+    expect(find.textContaining('unreadable'), findsOneWidget);
   });
 
   testWidgets('confirming saves the OCR-read entry against the account', (tester) async {

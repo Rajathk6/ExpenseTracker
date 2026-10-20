@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../../core/database.dart';
 import '../../core/ledger.dart';
 import '../../core/months.dart';
+import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
 import '../budgets/bucket_math.dart';
 import 'category_field.dart';
@@ -171,20 +172,24 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     try {
       switch (_role) {
         case EntryRole.lend:
-          await debts.lend(
+          // The same person is the same contract: the amount is added to the
+          // card that already exists, with both hand-overs on its trail.
+          await debts.lendTo(
             counterparty: person,
             principal: amount,
             accountId: accountId,
             at: at,
             note: note.isEmpty ? null : note,
+            ownerName: await ref.read(ownerProfileProvider).name(),
           );
         case EntryRole.borrow:
-          await debts.borrow(
+          await debts.borrowFrom(
             counterparty: person,
             principal: amount,
             accountId: accountId,
             at: at,
             note: note.isEmpty ? null : note,
+            ownerName: await ref.read(ownerProfileProvider).name(),
           );
         case EntryRole.settle:
           // Pay back / collect back from an existing contract of theirs.

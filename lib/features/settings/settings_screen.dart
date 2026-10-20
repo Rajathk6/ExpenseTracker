@@ -19,16 +19,49 @@ import 'lock_screen.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  /// Everything that reads the ledger. A restore replaces all of it, so every
+  /// one of these has to be refreshed — otherwise the app still shows the
+  /// old (empty) month, including "no budget set" for a month whose budget
+  /// was just restored (#10).
   Future<void> _refreshAll(WidgetRef ref) async {
+    final months = await ref.read(databaseProvider).monthsWithActivity();
     ref
       ..invalidate(accountsProvider)
+      ..invalidate(accountBalancesProvider)
       ..invalidate(recentTransactionsProvider)
       ..invalidate(openDebtsProvider)
       ..invalidate(allDebtsProvider)
       ..invalidate(openSplitsProvider)
       ..invalidate(allSplitsProvider)
       ..invalidate(openInstrumentsProvider)
-      ..invalidate(allInstrumentsProvider);
+      ..invalidate(allInstrumentsProvider)
+      ..invalidate(groupsProvider)
+      ..invalidate(groupBalancesProvider)
+      ..invalidate(recurringRulesProvider)
+      ..invalidate(readyToFillProvider)
+      ..invalidate(netWorthProvider)
+      ..invalidate(budgetProvider)
+      ..invalidate(effectiveBudgetProvider)
+      ..invalidate(bucketSpendProvider)
+      ..invalidate(budgetStatusProvider)
+      ..invalidate(budgetInsightProvider)
+      ..invalidate(budgetUsualProvider)
+      ..invalidate(monthSummaryProvider)
+      ..invalidate(monthOpenProvider)
+      ..invalidate(dashboardProvider);
+    // Every month that now has data needs its own numbers refreshed.
+    for (final month in months) {
+      ref
+        ..invalidate(budgetProvider(month))
+        ..invalidate(effectiveBudgetProvider(month))
+        ..invalidate(bucketSpendProvider(month))
+        ..invalidate(budgetStatusProvider(month))
+        ..invalidate(budgetInsightProvider(month))
+        ..invalidate(budgetUsualProvider(month))
+        ..invalidate(monthSummaryProvider(month))
+        ..invalidate(monthOpenProvider(month))
+        ..invalidate(dashboardProvider(month));
+    }
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
