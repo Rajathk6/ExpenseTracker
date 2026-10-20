@@ -55,6 +55,8 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             error: (e, _) => Text('Summary unavailable: $e'),
           ),
           const SizedBox(height: 8),
+          const _BudgetInsightsCard(),
+          const SizedBox(height: 8),
           saved.when(
             data: (b) => _BudgetForm(
               key: ValueKey('$key-${b?.total}-${b?.buckets.length}'),
@@ -145,6 +147,95 @@ class _BucketRow {
     name.dispose();
     pct.dispose();
   }
+}
+
+/// The month's story: pace, where it is heading, and what stands out
+/// against what the owner normally spends (#7).
+class _BudgetInsightsCard extends ConsumerWidget {
+  const _BudgetInsightsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final insight = ref.watch(budgetInsightProvider(_monthKey(DateTime.now())));
+    return insight.maybeWhen(
+      data: (i) {
+        final theme = Theme.of(context);
+        if (i.budgetTotal <= 0 && i.spent <= 0) return const SizedBox.shrink();
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('How this month is going', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 8),
+                if (i.budgetTotal > 0)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${i.dayOfMonth} of ${i.daysInMonth} days', style: theme.textTheme.bodySmall),
+                      Text(
+                        'on this pace: ₹${i.projected.round()}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: i.projected > i.budgetTotal ? theme.colorScheme.error : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (i.buckets.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  for (final b in i.buckets)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: Text(b.name, style: theme.textTheme.bodyMedium)),
+                              Text(
+                                b.planned > 0
+                                    ? '${_money(b.spent)} / ${_money(b.planned)}'
+                                    : '${_money(b.spent)} · no plan',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          if (b.usual > 0)
+                            Text(
+                              'usually ${_money(b.usual)} a month',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: b.spent > b.usual ? theme.colorScheme.error : null,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+                for (final line in i.lines)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.lightbulb_outline, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(line, style: theme.textTheme.bodySmall)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  static String _money(double v) => '₹${v.abs().round()}';
 }
 
 class _BudgetForm extends ConsumerStatefulWidget {

@@ -263,10 +263,28 @@ class _GroupsTab extends ConsumerWidget {
             ),
           );
         }
+        final open = [for (final g in list) if (g.status == 'open') g];
+        final closed = [for (final g in list) if (g.status != 'open') g];
         return ListView(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
           children: [
-            for (final g in list) GroupCard(group: g),
+            if (open.isNotEmpty) ...[
+              Text('Open', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              for (final g in open) GroupCard(group: g),
+            ] else
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('No open groups. Tap "New group" to start one.'),
+              ),
+            // Closed groups live in their own section — and the section only
+            // appears once there is one.
+            if (closed.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Closed', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              for (final g in closed) GroupCard(group: g),
+            ],
             const SizedBox(height: 8),
             const Text(
               'Joining by code works on this phone. Two phones see each other\'s entries '

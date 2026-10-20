@@ -11,6 +11,7 @@ import 'auth/pin_service.dart';
 import 'backup/backup_service.dart';
 import 'category_suggest.dart';
 import '../features/budgets/bucket_math.dart';
+import '../features/budgets/budget_insight.dart';
 import '../features/budgets/budget_status.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
@@ -149,6 +150,60 @@ final budgetStatusProvider = FutureProvider.family<BudgetStatusReport, String>((
     sourceMonth: budget?.sourceMonth ?? month,
     buckets: budget?.buckets ?? const [],
     bucketSpend: spendByBucket,
+  );
+});
+
+/// Average spend per bucket over the months *before* [month] — the "what you
+/// normally do" number the budget insights compare against (#7).
+final budgetUsualProvider = FutureProvider.family<Map<String, double>, String>((ref, month) async {
+  final parts = month.split('-');
+  final start = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+  final repo = ref.watch(transactionRepositoryProvider);
+  // Six months back, so a seasonal change is visible but not a fluke.
+  final from = DateTime(start.year, start.month - 6);
+  final rows = await repo.db.transactionsBetween(from, end);
+  final totals = <String, double>{};
+  final counts = <String, int>{};
+  for (final t in rows) {
+    final key = (t.bucket ?? '').trim();
+    if (key.isEmpty) continue;
+    if (t.kind == 'lend' || t.kind == 'borrow' || t.linkType == 'debt') continue;
+    final impact = t.absorbed == 1 ? t.actual : t.budgetImpact;
+    if (impact >= 0) continue;
+    totals[key] = (totals[key] ?? 0) + impact.abs();
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return {
+    for (final key in totals.keys)
+      // Average per month over the months that had this bucket.
+      key: totals[key]! / (counts[key]! > 6 ? 6 : counts[key]!),
+  };
+});
+
+/// The month's story: pace, estimate and the lines worth saying (#7).
+final budgetInsightProvider = FutureProvider.family<BudgetInsight, String>((ref, month) async {
+  final parts = month.split('-');
+  final start = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+  final end = DateTime(start.year, start.month + 1).subtract(const Duration(milliseconds: 1));
+  final repo = ref.watch(transactionRepositoryProvider);
+  final sums = await repo.sumsBetween(start, end, excludeNeutral: true);
+  final spendByBucket = await repo.bucketSpend(start, end);
+  final usual = await ref.watch(budgetUsualProvider(month).future);
+  final budget = await ref.watch(budgetRepositoryProvider).getEffective(month);
+  final planned = budget == null || budget.total <= 0
+      ? const <String, double>{}
+      : allocate(budget.total, budget.buckets);
+  return buildBudgetInsight(
+    monthKey: month,
+    at: DateTime.now(),
+    income: sums.inBudget.abs(),
+    budgetTotal: budget?.total ?? 0,
+    spent: sums.outBudget.abs(),
+    buckets: budget?.buckets ?? const [],
+    spentByBucket: {for (final e in spendByBucket.entries) e.key: e.value.abs()},
+    usualByBucket: usual,
+    plannedByBucket: planned,
   );
 });
 
