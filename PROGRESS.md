@@ -222,7 +222,8 @@
 - **Shared money:** the lend/borrow card *is* the contract (amount, back so far, age, money trail, payoff) — no second screen; the split's code now **shares** the split to WhatsApp; groups gained money insights, a CSV report, a share button, a green tick when everyone is settled, an edit dialog and a closed section.
 - **Search** gained a month picker, a year picker and a range picker. **Budgets** gained pace, a month-end estimate and "you spent ₹1.2k more on food than usual". **Reconcile** and the dead "Locking" setting are gone.
 - Tests: 184/184 (174 → +10). Docs updated; schema unchanged (v8).
-- Next: merge → main → tag v0.13.0 → publish the APKs.
+- **Released:** PR #14 merged to `main` (24db45f), tag `v0.13.0`, published `expensetracker-0.13.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed, so it installs over v0.12.0 without touching the vault; the signed build is still waiting for the day an encrypted backup exists.
+- Next: phone-test v0.13.0 — especially the five fixed things and the new front page.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
