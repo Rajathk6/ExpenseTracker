@@ -28,33 +28,73 @@ void main() {
     });
   });
 
-  group('net worth (pure)', () {
-    test('lent adds, borrowed subtracts', () {
-      expect(
-        debtNet([
-          (direction: 'lent', principal: 5000, paid: 2000),
-          (direction: 'borrowed', principal: 10000, paid: 1000),
-        ]),
-        (3000 - 9000),
+  group('net worth (pure) — what you hold minus what you owe', () {
+    test('a lend is neither a loss nor a gain: the cash left, the receivable stayed', () {
+      final pts = netWorthTimeline(
+        moves: const [],
+        obligationsByMonth: const [
+          (monthKey: '2026-09', obligations: Obligations(lent: 5000, splitReceivable: 0, borrowed: 0)),
+        ],
+        investments: 0,
+        endMonthKey: '2026-09',
+        months: 1,
       );
+      final p = pts.single;
+      expect(p.cash, 0);
+      expect(p.owedToYou, 5000);
+      expect(p.liabilities, 0);
+      expect(p.net, 5000, reason: 'the money is still mine — it is just in the other pocket');
     });
 
-    test('timeline rises and falls with the ledger', () {
+    test('borrowed money is a liability, not wealth', () {
       final pts = netWorthTimeline(
-        openings: 10000,
-        moves: [
-          (at: DateTime(2026, 7, 5), actual: -2000),
-          (at: DateTime(2026, 8, 5), actual: 5000),
+        moves: [NetMove(DateTime(2026, 9, 1), 10000)],
+        obligationsByMonth: const [
+          (monthKey: '2026-09', obligations: Obligations(lent: 0, splitReceivable: 0, borrowed: 10000)),
         ],
-        investCurrent: 20000,
-        debtNetValue: 0,
-        endKey: '2026-09',
+        investments: 0,
+        endMonthKey: '2026-09',
+        months: 1,
+      );
+      final p = pts.single;
+      expect(p.cash, 10000);
+      expect(p.liabilities, 10000);
+      expect(p.net, 0, reason: 'borrowed cash is not mine');
+    });
+
+    test('a split receivable counts; my own share does not', () {
+      final pts = netWorthTimeline(
+        moves: const [],
+        obligationsByMonth: const [
+          (monthKey: '2026-09', obligations: Obligations(lent: 0, splitReceivable: 900, borrowed: 0)),
+        ],
+        investments: 0,
+        endMonthKey: '2026-09',
+        months: 1,
+      );
+      expect(pts.single.net, 900);
+    });
+
+    test('the timeline walks month by month and picks up each snapshot in force', () {
+      final pts = netWorthTimeline(
+        moves: [
+          NetMove(DateTime(2026, 7, 5), -2000),
+          NetMove(DateTime(2026, 8, 5), 5000),
+        ],
+        obligationsByMonth: const [
+          (monthKey: '2026-08', obligations: Obligations(lent: 0, splitReceivable: 0, borrowed: 1000)),
+          (monthKey: '2026-09', obligations: Obligations(lent: 0, splitReceivable: 0, borrowed: 0)),
+        ],
+        investments: 20000,
+        endMonthKey: '2026-09',
         months: 3,
       );
-      expect([for (final p in pts) p.key], ['2026-07', '2026-08', '2026-09']);
-      expect(pts[0].value, 10000 - 2000 + 20000); // Jul end
-      expect(pts[1].value, 10000 - 2000 + 5000 + 20000); // Aug end
-      expect(pts[2].value, pts[1].value); // Sep: no moves
+      expect([for (final p in pts) p.monthKey], ['2026-07', '2026-08', '2026-09']);
+      expect(pts[0].cash, -2000);
+      expect(pts[0].net, -2000 + 20000);
+      expect(pts[1].cash, 3000);
+      expect(pts[1].net, 3000 + 20000 - 1000, reason: 'August still had the borrowing');
+      expect(pts[2].net, 3000 + 20000, reason: 'September it was repaid');
     });
   });
 

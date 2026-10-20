@@ -59,14 +59,11 @@ class SplitDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _Figure('You paid', '₹${s.totalPaid.round()}'),
-                    _Figure('Your share', '₹${s.myShare.round()}'),
-                    _Figure('Back', '₹${s.received.round()}'),
-                    _Figure('Left', '₹${left.round()}'),
-                  ],
+                // The numbers are on the card already — no second column of
+                // figures here.
+                Text(
+                  'Your share ₹${s.myShare.round()} · ₹${left.round()} still to come back',
+                  style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 10),
                 if (s.absorbed > 0)
@@ -147,22 +144,6 @@ class SplitDetailScreen extends ConsumerWidget {
           loading: () => const LinearProgressIndicator(),
           error: (e, _) => Text('Could not load: $e'),
         ),
-      ],
-    );
-  }
-}
-
-class _Figure extends StatelessWidget {
-  final String label;
-  final String value;
-  const _Figure(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }

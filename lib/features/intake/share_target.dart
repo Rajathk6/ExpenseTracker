@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/lock_service.dart' show lockProvider;
+import '../../core/router.dart';
 import 'intake_screen.dart';
 
 /// What a share carried: text, screenshots, or both. Null when the share held
@@ -121,16 +122,11 @@ class _ShareTargetListenerState extends ConsumerState<ShareTargetListener> {
     _pending = null;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final navigator = Navigator.of(context);
       _opening = false;
-      await navigator.push(
-        MaterialPageRoute(
-          builder: (_) => IntakeScreen(
-            initialText: payload.text,
-            initialImages: payload.images,
-          ),
-        ),
-      );
+      // The app's router: this widget sits above MaterialApp's Navigator, so
+      // there is no Navigator ancestor to find here, and pushing onto the
+      // router is what survives a lock-state change.
+      ref.read(routerProvider).push('/intake', extra: payload);
     });
   }
 

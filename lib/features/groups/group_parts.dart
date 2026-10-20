@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database.dart';
 import '../../core/months.dart';
+import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
 import 'group_detail_screen.dart';
 
@@ -16,10 +17,19 @@ class GroupCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balances = ref.watch(groupBalancesProvider(group.id));
+    // The tick means something now: green when nobody owes anybody (#23).
+    final settled = balances.maybeWhen(
+      data: (b) => b == null || b.balances.every((x) => !x.owes && !x.isOwed),
+      orElse: () => false,
+    );
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        leading: Icon(
+          settled ? Icons.check_circle : Icons.circle_outlined,
+          color: settled ? Colors.green : Colors.grey,
+        ),
         title: Text(group.name),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +56,18 @@ class GroupCard extends ConsumerWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (group.status == 'open')
+            if (group.status == 'open') ...[
+              IconButton(
+                tooltip: 'Edit this group',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () async {
+                  await showDialog<bool>(
+                    context: context,
+                    builder: (_) => GroupEditDialog(group: group),
+                  );
+                  ref.invalidate(groupsProvider);
+                },
+              ),
               IconButton(
                 tooltip: 'Close this group',
                 icon: const Icon(Icons.check_circle_outline),
@@ -55,6 +76,7 @@ class GroupCard extends ConsumerWidget {
                   ref.invalidate(groupsProvider);
                 },
               ),
+            ],
             const Icon(Icons.chevron_right),
           ],
         ),
@@ -62,6 +84,87 @@ class GroupCard extends ConsumerWidget {
           MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id)),
         ),
       ),
+    );
+  }
+}
+
+/// Edit a group's name, month and people.
+class GroupEditDialog extends ConsumerStatefulWidget {
+  final Group group;
+  const GroupEditDialog({super.key, required this.group});
+
+  @override
+  ConsumerState<GroupEditDialog> createState() => _GroupEditDialogState();
+}
+
+class _GroupEditDialogState extends ConsumerState<GroupEditDialog> {
+  late final TextEditingController _name = TextEditingController(text: widget.group.name);
+  late final TextEditingController _month = TextEditingController(text: widget.group.monthKey);
+  late final TextEditingController _people = TextEditingController();
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPeople();
+  }
+
+  Future<void> _loadPeople() async {
+    final people = await ref.read(groupRepositoryProvider).people(widget.group.id);
+    if (mounted) _people.text = [for (final p in people) p.name].join(', ');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _month.dispose();
+    _people.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    try {
+      await ref.read(groupRepositoryProvider).update(
+            groupId: widget.group.id,
+            name: _name.text,
+            monthKey: _month.text.trim(),
+            people: _people.text.split(RegExp(r'[,،]')),
+          );
+      ref.invalidate(groupsProvider);
+      if (mounted) Navigator.of(context).pop(true);
+    } on Object catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Invalid argument(s): ', ''));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit group'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
+          const SizedBox(height: 8),
+          TextField(controller: _month, decoration: const InputDecoration(labelText: 'Month (YYYY-MM)', border: OutlineInputBorder())),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _people,
+            decoration: const InputDecoration(
+              labelText: 'People (names, comma separated)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
     );
   }
 }
@@ -82,6 +185,7 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
   late final _month = TextEditingController(text: monthKey(DateTime.now()));
   String _mode = 'new';
   String? _error;
+  bool _named = false;
 
   @override
   void dispose() {
@@ -120,6 +224,11 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final owner = ref.watch(ownerDisplayNameProvider).valueOrNull ?? 'Me';
+    if (!_named && _people.text.trim().isEmpty) {
+      _named = true;
+      _people.text = owner;
+    }
     return AlertDialog(
       title: const Text('Groups'),
       content: SingleChildScrollView(
@@ -152,11 +261,11 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
               const SizedBox(height: 8),
               TextField(
                 controller: _people,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'People (names, comma separated)',
-                  hintText: 'Me, Ravi, Asha',
+                  hintText: '$owner, Ravi, Asha',
                   helperText: 'Names are required — balances need names to mean anything',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 8),

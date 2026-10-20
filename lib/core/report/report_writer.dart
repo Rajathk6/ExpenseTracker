@@ -6,9 +6,10 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:csv/csv.dart';
+import 'package:csv/csv.dart' show csv;
 import 'package:excel/excel.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -48,7 +49,13 @@ Future<String> writeReport({
     ReportFormat.xlsx => renderXlsx(months),
     ReportFormat.pdf => await renderPdf(months),
   };
-  return ExportPaths.save(name, bytes, paths.directory);
+  final written = await ExportPaths.save(name, bytes, paths.directory);
+  // A zero-byte file is worse than no file: it looks like a broken export.
+  final size = await File(written).exists().then((e) async => e ? (await File(written).length()) : 0);
+  if (size == 0) {
+    throw StateError('The file was written empty — nothing to open');
+  }
+  return written;
 }
 
 String renderCsv(List<ReportMonth> months) {
@@ -94,9 +101,9 @@ String renderCsv(List<ReportMonth> months) {
     rows.add([]);
     rows.add([]);
   }
-  // `csv` is the package's default codec instance; Excel's quoting rules keep
-  // rupee amounts and commas intact when the file is opened.
-  return excel.encode(rows);
+  // The default codec separates with commas and quotes where needed — the
+  // Excel codec uses ';', which several viewers refuse to open.
+  return csv.encode(rows);
 }
 
 Uint8List renderXlsx(List<ReportMonth> months) {
@@ -160,7 +167,9 @@ Uint8List renderXlsx(List<ReportMonth> months) {
 
 Future<Uint8List> renderPdf(List<ReportMonth> months) async {
   final doc = pw.Document();
-  String money(double v) => '₹${v.abs().round()}';
+  // The built-in PDF font has no rupee glyph, so the PDF says "Rs" and the
+  // on-screen copy keeps the symbol.
+  String money(double v) => 'Rs ${v.abs().round()}';
 
   for (final m in months) {
     doc.addPage(

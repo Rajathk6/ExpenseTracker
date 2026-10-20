@@ -57,8 +57,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         months: await MonthReportBuilder(ref.read(databaseProvider)).build(months),
         format: format,
       );
-      messenger.showSnackBar(SnackBar(content: Text('Saved to $path')));
-    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Saved: $path')));
+    } catch (e, stack) {
+      // An export must never take the app down with it.
+      debugPrint('Export failed: $e\n$stack');
       messenger.showSnackBar(SnackBar(content: Text('Could not write the file: $e')));
     }
   }

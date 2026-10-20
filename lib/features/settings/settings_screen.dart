@@ -269,12 +269,6 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => _decoy(context, ref),
             ),
           ),
-          const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Locking'),
-            subtitle: Text('Manual only — it no longer locks while you are typing. '
-                'Biometric unlock makes coming back one tap.'),
-          ),
           ListTile(
             leading: const Icon(Icons.fingerprint),
             title: const Text('Biometric unlock'),
