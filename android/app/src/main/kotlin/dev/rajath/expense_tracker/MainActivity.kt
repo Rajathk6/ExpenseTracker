@@ -65,6 +65,28 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
                 }
+                // Send text out — a split or a group shared to WhatsApp, SMS,
+                // anywhere. The app could receive shares for a long time but
+                // could never send one.
+                "shareText" -> {
+                    val text = call.argument<String>("text")
+                    val subject = call.argument<String>("subject")
+                    if (text == null) {
+                        result.error("bad_args", "text is required", null)
+                    } else {
+                        try {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                                if (subject != null) putExtra(Intent.EXTRA_SUBJECT, subject)
+                            }
+                            startActivity(Intent.createChooser(intent, subject ?: "Share"))
+                            result.success(true)
+                        } catch (error: Exception) {
+                            result.error("share_failed", error.message, null)
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

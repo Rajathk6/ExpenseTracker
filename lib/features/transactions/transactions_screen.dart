@@ -17,7 +17,6 @@ import '../instruments/instruments_screen.dart';
 import '../intake/intake_screen.dart';
 import '../shared/shared_screen.dart';
 import '../reconcile/networth_screen.dart';
-import '../reconcile/reconcile_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/settings_screen.dart';
 import 'entry_sheet.dart';
@@ -157,7 +156,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 return;
               }
               final dest = switch (v) {
-                'reconcile' => const ReconcileScreen(),
                 'networth' => const NetWorthScreen(),
                 'reports' => const ReportsScreen(),
                 'intake' => const IntakeScreen(),
@@ -167,7 +165,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               if (dest != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => dest));
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'reconcile', child: Text('Reconcile')),
               PopupMenuItem(value: 'networth', child: Text('Net worth')),
               PopupMenuItem(value: 'reports', child: Text('Reports & export')),
               PopupMenuItem(value: 'intake', child: Text('Intake confirm')),

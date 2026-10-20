@@ -14,7 +14,6 @@ import 'package:flutter/material.dart' hide Split;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/months.dart';
 import '../../core/providers.dart';
-import '../neutral/debt_detail_screen.dart';
 import '../splits/split_detail_screen.dart';
 import '../groups/group_parts.dart';
 import 'shared_logic.dart';
@@ -173,9 +172,7 @@ class _DebtList extends ConsumerWidget {
                   '${direction == 'lent' ? 'Lent' : 'Borrowed'} ₹${d.principal.round()} · back ₹${d.paid.round()}'
                   '${d.note != null && d.note!.isNotEmpty ? ' · ${d.note}' : ''}',
                 ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => DebtDetailScreen(debtId: d.id, onChanged: onChanged)),
-                ),
+                onTap: () {}, // the list already shows everything
               ),
           ],
         );
