@@ -192,6 +192,17 @@ final splitByIdProvider = FutureProvider.family<Split?, String>(
 /// Repeating entries the owner set up (salary and friends).
 final recurringRulesProvider = FutureProvider((ref) => ref.watch(recurringServiceProvider).all());
 
+/// Entries that still need a category, a bucket or an account — the "ready to
+/// fill" list on the front page (#17).
+final readyToFillProvider = FutureProvider<List<Transaction>>((ref) async {
+  final rows = await ref.watch(transactionRepositoryProvider).all();
+  return [
+    for (final r in rows)
+      if (!TransactionRepository.isNeutral(r) && r.kind != 'transfer' && r.kind != 'split')
+        if (r.categoryRaw.trim().isEmpty || (r.bucket ?? '').trim().isEmpty || r.accountId == null) r,
+  ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+});
+
 /// Months with any activity, newest first — search and report filters.
 final monthsWithActivityProvider = FutureProvider((ref) => ref.watch(databaseProvider).monthsWithActivity());
 

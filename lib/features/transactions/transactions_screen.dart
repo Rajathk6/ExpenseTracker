@@ -12,6 +12,7 @@ import '../budgets/budget_status.dart';
 import '../budgets/budget_screen.dart';
 import '../cash/transfer_sheet.dart';
 import '../customization/accounts_screen.dart';
+import '../customization/first_run_sheet.dart';
 import '../instruments/instruments_screen.dart';
 import '../intake/intake_screen.dart';
 import '../shared/shared_screen.dart';
@@ -107,7 +108,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final key = _monthKey(_month);
-    final summary = ref.watch(monthSummaryProvider(key));
     final recent = ref.watch(recentTransactionsProvider);
     final accounts = ref.watch(accountsProvider);
     final names = accounts.maybeWhen(data: (l) => {for (final a in l) a.id: a.name}, orElse: () => const <String, String>{});
@@ -189,23 +189,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onPrev: () => setState(() => _month = DateTime(_month.year, _month.month - 1)),
             onNext: () => setState(() => _month = DateTime(_month.year, _month.month + 1)),
           ),
-          summary.when(
-            data: (s) => _SummaryCard(
-              inflow: s.inActual,
-              outflow: s.outBudget,
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Summary unavailable: $e'),
-          ),
           _BudgetPulseCard(monthKey: key),
-          _NeutralHoldCard(monthKey: key),
-          const _AbsorbedNeutralCard(),
+          const _ReadyToFillCard(),
           accounts.maybeWhen(
             data: (l) => l.isEmpty
                 ? _NoAccountBanner(
                     onCreate: () async {
-                      await ref.read(accountRepositoryProvider).create(name: 'Cash', kind: 'cash');
-                      ref.invalidate(accountsProvider);
+                      // First run: set up Cash + the primary bank + your name.
+                      await openFirstRun(context);
+                      _refreshMonth();
                     },
                   )
                 : const SizedBox.shrink(),
@@ -236,6 +228,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 final inMonth = rows
                     .where((t) => t.occurredAt.year == _month.year && t.occurredAt.month == _month.month)
                     .where(passesFilter)
+                    // Lending and borrowing are not my spending — they live in
+                    // Shared money, not on the front page.
+                    .where((t) => t.kind != 'lend' && t.kind != 'borrow' && t.linkType != 'debt')
                     .toList();
                 if (inMonth.isEmpty) {
                   return Center(
@@ -293,31 +288,6 @@ class _MonthBar extends StatelessWidget {
 }
 
 String _money(double v) => '₹${v.abs().round()}';
-
-class _SummaryCard extends StatelessWidget {
-  final double inflow;
-  final double outflow;
-  const _SummaryCard({required this.inflow, required this.outflow});
-
-  @override
-  Widget build(BuildContext context) {
-    final net = inflow + outflow; // outflow is negative
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _Stat('In', '₹${inflow.toStringAsFixed(0)}'),
-            _Stat('Out', '₹${outflow.abs().toStringAsFixed(0)}'),
-            _Stat('Net', '₹${net.toStringAsFixed(0)}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Repeating entries (#4): what the owner set up to fill in automatically, and
 /// a button to fill the pending months now. Applying writes real entries, so
@@ -410,6 +380,7 @@ class _BudgetPulseCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(budgetStatusProvider(monthKey));
+    final summary = ref.watch(monthSummaryProvider(monthKey));
     return status.maybeWhen(
       data: (report) {
         if (report.budgetTotal <= 0 && report.spent <= 0) return const SizedBox.shrink();
@@ -420,6 +391,11 @@ class _BudgetPulseCard extends ConsumerWidget {
           _ => Colors.teal.shade400,
         };
         final carried = report.sourceMonth != monthKey ? ' (split from ${report.sourceMonth})' : '';
+        // In / Out / Net — the three numbers the owner actually wants, in the
+        // one card that is about money.
+        final inAmount = summary.maybeWhen(data: (s) => s.inActual, orElse: () => report.income);
+        final outAmount = summary.maybeWhen(data: (s) => s.outBudget.abs(), orElse: () => report.spent);
+        final net = inAmount - outAmount;
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Padding(
@@ -433,6 +409,26 @@ class _BudgetPulseCard extends ConsumerWidget {
                     Text('Budget · ${_money(report.budgetTotal)} planned', style: theme.textTheme.titleSmall),
                     Text('${_money(report.income)} in', style: theme.textTheme.bodySmall),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _Figure('In', _money(inAmount), Colors.green.shade700),
+                      _Figure('Out', _money(outAmount), Colors.red.shade400),
+                      _Figure(
+                        'Net',
+                        '${net < 0 ? '-' : ''}${_money(net)}',
+                        net < 0 ? Colors.red.shade400 : Colors.green.shade700,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 6),
                 ClipRRect(
@@ -502,17 +498,19 @@ class _BudgetPulseCard extends ConsumerWidget {
   }
 }
 
-/// Neutral rows already absorbed into a month — listed so the choice can be
-/// taken back (#10: absorbing is a decision, not an edit).
-class _AbsorbedNeutralCard extends ConsumerWidget {
-  const _AbsorbedNeutralCard();
+/// Entries made elsewhere (or in a hurry) that are missing what the app needs
+/// to make sense of them: a category, a bucket or an account. They are listed
+/// with the money and the time already on them, and one tap opens the same
+/// form with those prefilled — so nothing stays half-written.
+class _ReadyToFillCard extends ConsumerWidget {
+  const _ReadyToFillCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(absorbedNeutralProvider);
+    final rows = ref.watch(readyToFillProvider);
     return rows.maybeWhen(
-      data: (all) {
-        if (all.isEmpty) return const SizedBox.shrink();
+      data: (list) {
+        if (list.isEmpty) return const SizedBox.shrink();
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Padding(
@@ -520,31 +518,36 @@ class _AbsorbedNeutralCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Counting toward a month (${all.length})', style: Theme.of(context).textTheme.titleSmall),
+                Text('Finish these (${list.length})', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 4),
                 Text(
-                  'These lend/borrow rows were absorbed into their month. Undo any of them here.',
+                  'Money is in, but the category, bucket or account is missing. Tap to fill it in.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                for (final r in all.take(4))
+                for (final r in list.take(5))
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: Text(r.categoryRaw),
+                    title: Text(r.categoryRaw.trim().isEmpty ? '(no category)' : r.categoryRaw),
                     subtitle: Text(
-                      '${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}',
+                      '${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}'
+                      '${r.bucket == null || r.bucket!.isEmpty ? ' · no bucket' : ''}'
+                      '${r.accountId == null ? ' · no account' : ''}',
                     ),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: false);
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () async {
+                      final saved = await showModalBottomSheet<bool>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => EntrySheet(existing: r),
+                      );
+                      if (saved ?? false) {
                         ref
-                          ..invalidate(absorbedNeutralProvider)
-                          ..invalidate(unabsorbedNeutralProvider)
-                          ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())))
-                          ..invalidate(monthSummaryProvider(_monthKey(DateTime.now())));
-                      },
-                      child: const Text('Undo'),
-                    ),
+                          ..invalidate(readyToFillProvider)
+                          ..invalidate(recentTransactionsProvider)
+                          ..invalidate(budgetStatusProvider(_monthKey(DateTime.now())));
+                      }
+                    },
                   ),
               ],
             ),
@@ -556,82 +559,17 @@ class _AbsorbedNeutralCard extends ConsumerWidget {
   }
 }
 
-/// Neutral ledger held out of the month until the owner absorbs it (#10).
-class _NeutralHoldCard extends ConsumerWidget {
-  final String monthKey;
-  const _NeutralHoldCard({required this.monthKey});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(unabsorbedNeutralProvider);
-    return rows.maybeWhen(
-      data: (all) {
-        if (all.isEmpty) return const SizedBox.shrink();
-        final inMonth = all
-            .where((r) => '${r.occurredAt.year}-${r.occurredAt.month.toString().padLeft(2, '0')}' == monthKey)
-            .toList();
-        final shown = (inMonth.isEmpty ? all : inMonth).take(3).toList();
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lend / borrow held out of the month (${all.length})',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'These do not touch any month total until you absorb them.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                for (final r in shown)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(r.categoryRaw),
-                    subtitle: Text('${_dayFmt.format(r.occurredAt)} · ₹${r.actual.abs().round()}'),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        await ref.read(transactionRepositoryProvider).setAbsorbed(id: r.id, absorbed: true);
-                        ref
-                          ..invalidate(unabsorbedNeutralProvider)
-                          ..invalidate(monthSummaryProvider(monthKey))
-                          ..invalidate(budgetStatusProvider(monthKey));
-                      },
-                      child: const Text('Absorb'),
-                    ),
-                  ),
-                if (inMonth.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'None in $monthKey — showing the latest.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-      orElse: () => const SizedBox.shrink(),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
+class _Figure extends StatelessWidget {
   final String label;
   final String value;
-  const _Stat(this.label, this.value);
+  final Color colour;
+  const _Figure(this.label, this.value, this.colour);
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: Theme.of(context).textTheme.titleSmall),
+        Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colour)),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
@@ -979,29 +917,16 @@ class _TxnTile extends ConsumerWidget {
     // Split rows show the live outstanding (paid → shrinks → my share),
     // whole rupees, so the main list tells the truth as friends pay back.
     if (row.kind == 'split' && row.linkId != null) {
-      final live = ref.watch(splitOutstandingProvider(row.linkId!));
-      return live.when(
-        data: (left) => ListTile(
-          onTap: onTap,
-          leading: const Icon(Icons.group_outlined, color: Colors.red),
-          title: Text(row.categoryRaw),
-          subtitle: Text(
-            '${_dayFmt.format(row.occurredAt)}${accountName != null ? ' · $accountName' : ''} · ₹$left to come back',
-          ),
-          trailing: Text(
-            '₹${row.actual.round()}',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-          ),
-        ),
-        loading: () => _plainTile(context),
-        error: (o, s) => _plainTile(context),
-      );
+      // Only my share of a split is my spending. The bill I fronted and the
+      // money still owed to me live in Shared money.
+      return _plainTile(context, amountOverride: row.budgetImpact, note: 'your share');
     }
     return _plainTile(context);
   }
 
-  Widget _plainTile(BuildContext context) {
-    final isOut = row.actual < 0;
+  Widget _plainTile(BuildContext context, {double? amountOverride, String? note}) {
+    final shown = amountOverride ?? row.actual;
+    final isOut = shown < 0;
     return ListTile(
       onTap: onTap,
       leading: Icon(
@@ -1011,17 +936,18 @@ class _TxnTile extends ConsumerWidget {
       title: Text(row.categoryRaw),
       subtitle: Text(
         '${_dayFmt.format(row.occurredAt)}${accountName != null ? ' · $accountName' : ''}'
-        '${row.bucket != null && row.bucket!.isNotEmpty ? ' · ${row.bucket}' : ''}',
+        '${row.bucket != null && row.bucket!.isNotEmpty ? ' · ${row.bucket}' : ''}'
+        '${note != null ? ' · $note' : ''}',
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '₹${row.actual.round()}',
+            '₹${shown.round()}',
             style: TextStyle(fontWeight: FontWeight.bold, color: isOut ? Colors.red : Colors.green),
           ),
-          if (row.budgetImpact != row.actual)
+          if (amountOverride == null && row.budgetImpact != row.actual)
             Text('budget ₹${row.budgetImpact.round()}', style: Theme.of(context).textTheme.bodySmall),
         ],
       ),

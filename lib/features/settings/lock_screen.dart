@@ -390,7 +390,9 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   }
 
   Future<void> _save() async {
-    if (_unlocked != true) {
+    // First run (or a cleared app): there is no old PIN to prove, so the
+    // identity gate must not block setting the first one.
+    if (!widget.firstRun && _unlocked != true) {
       await _checkIdentity();
       return;
     }

@@ -206,8 +206,14 @@ class _BudgetFormState extends ConsumerState<_BudgetForm> {
     });
     try {
       await ref.read(budgetRepositoryProvider).save(month: widget.monthKey, total: total, buckets: buckets);
+      // The screen shows the *effective* budget (its own row, else the one
+      // carried forward). Invalidating only the month's own row left the old
+      // numbers on screen, so saving looked like it reverted.
       ref
         ..invalidate(budgetProvider(widget.monthKey))
+        ..invalidate(effectiveBudgetProvider(widget.monthKey))
+        ..invalidate(budgetStatusProvider(widget.monthKey))
+        ..invalidate(bucketSpendProvider(widget.monthKey))
         ..invalidate(monthSummaryProvider(widget.monthKey));
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Budget saved')));
     } on Object catch (e) {

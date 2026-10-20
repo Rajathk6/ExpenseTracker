@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
+import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
 import '../splits/split_detail_screen.dart';
 import '../neutral/debt_logic.dart';
@@ -431,6 +432,8 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
   String? _accountId;
   String? _error;
   bool _saving = false;
+  /// Whether the owner name has been filled into the people field yet.
+  bool _named = false;
 
   @override
   void dispose() {
@@ -499,6 +502,12 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final share = _share;
+    // Put the owner's own name in for them: "Me" is what a split means.
+    final owner = ref.watch(ownerDisplayNameProvider).valueOrNull ?? 'Me';
+    if (!_named && _members.text.trim().isEmpty) {
+      _named = true;
+      _members.text = owner;
+    }
     return AlertDialog(
       title: const Text('New split'),
       content: SingleChildScrollView(
@@ -531,11 +540,11 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
             TextField(
               controller: _members,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Who is in it (names, comma separated)',
-                hintText: 'Me, Ravi, Asha',
+                hintText: '$owner, Ravi, Asha',
                 helperText: 'Names are required — a split nobody can name cannot be settled',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),

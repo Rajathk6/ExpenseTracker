@@ -119,16 +119,19 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> with Widg
 
   @override
   Widget build(BuildContext context) {
-    final lockState = ref.watch(lockProvider);
-    // A tile tap that arrived while locked opens the sheet as soon as the
-    // PIN/biometric gate lets us through.
+    // The router lives for the app's life; the lock gate moves it explicitly
+    // instead of rebuilding it (rebuilding wiped any open screen).
+    final router = ref.watch(routerProvider);
     ref.listen(lockProvider, (_, next) {
+      syncLockRoute(ref, next.locked);
+      // A tile tap that arrived while locked opens the sheet as soon as the
+      // PIN/biometric gate lets us through.
       if (!next.locked) unawaited(_openQuickAdd());
     });
     return MaterialApp.router(
       title: 'ExpenseTracker',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
-      routerConfig: buildRouter(locked: lockState.locked),
+      routerConfig: router,
       // Inside MaterialApp so a Navigator exists for the share sheet and the
       // quick-add sheet to push onto.
       builder: (context, child) => ShareTargetListener(

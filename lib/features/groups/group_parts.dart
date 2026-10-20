@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database.dart';
 import '../../core/months.dart';
+import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
 import 'group_detail_screen.dart';
 
@@ -82,6 +83,7 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
   late final _month = TextEditingController(text: monthKey(DateTime.now()));
   String _mode = 'new';
   String? _error;
+  bool _named = false;
 
   @override
   void dispose() {
@@ -120,6 +122,11 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final owner = ref.watch(ownerDisplayNameProvider).valueOrNull ?? 'Me';
+    if (!_named && _people.text.trim().isEmpty) {
+      _named = true;
+      _people.text = owner;
+    }
     return AlertDialog(
       title: const Text('Groups'),
       content: SingleChildScrollView(
@@ -152,11 +159,11 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
               const SizedBox(height: 8),
               TextField(
                 controller: _people,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'People (names, comma separated)',
-                  hintText: 'Me, Ravi, Asha',
+                  hintText: '$owner, Ravi, Asha',
                   helperText: 'Names are required — balances need names to mean anything',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 8),
