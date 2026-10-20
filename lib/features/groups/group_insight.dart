@@ -16,6 +16,18 @@ class GroupInsight {
   const GroupInsight(this.label, this.amount, this.count);
 }
 
+/// Money with thousands separators — ₹2,400 reads better than ₹2400.
+String _money(double v) {
+  final rounded = v.abs().round();
+  final digits = rounded.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '₹${v < 0 ? '-' : ''}$buffer';
+}
+
 class GroupInsightReport {
   final String name;
   final String code;
@@ -62,24 +74,24 @@ class GroupInsightReport {
   List<String> get lines {
     final out = <String>[];
     if (totalSpent > 0 && peopleCount > 0) {
-      out.add('₹${totalSpent.round()} over $expenseCount ${expenseCount == 1 ? 'entry' : 'entries'} · '
-          'about ₹${(totalSpent / peopleCount).round()} each.');
+      out.add('${_money(totalSpent)} over $expenseCount ${expenseCount == 1 ? 'entry' : 'entries'} · '
+          'about ${_money(totalSpent / peopleCount)} each.');
     }
     if (largest != null && largest!.amount > 0) {
-      out.add('Biggest: ${largest!.label} ₹${largest!.amount.round()}'
+      out.add('Biggest: ${largest!.label} ${_money(largest!.amount)}'
           '${largest!.count > 1 ? ' (${largest!.count}×)' : ''}');
     }
     if (perPerson.isNotEmpty) {
       final top = perPerson.first;
-      out.add('${top.label} fronted the most: ₹${top.amount.round()}');
+      out.add('${top.label} fronted the most: ${_money(top.amount)}');
     }
     if (evenness < 0.8 && perPerson.length > 1) {
       out.add('Not shared evenly — the difference between the most and the least is '
-          '₹${(perPerson.first.amount - perPerson.last.amount).round()}');
+          '${_money(perPerson.first.amount - perPerson.last.amount)}');
     }
     if (settleUp.isNotEmpty) {
       for (final move in settleUp) {
-        out.add('${move.from} pays ${move.to} ₹${move.amount.round()}');
+        out.add('${move.from} pays ${move.to} ${_money(move.amount)}');
       }
     } else if (balances.isNotEmpty) {
       out.add('Everyone is settled up.');
@@ -109,13 +121,10 @@ GroupInsightReport buildGroupInsight({
     perPerson[payer] = (perPerson[payer] ?? 0) + e.amount;
     perTitle[e.title] = (perTitle[e.title] ?? 0) + e.amount;
     titleCounts[e.title] = (titleCounts[e.title] ?? 0) + 1;
+    // The biggest *single* expense, which is not the same as the biggest total.
     if (largest == null || e.amount > largest.amount) {
       largest = GroupInsight(e.title, e.amount, 1);
     }
-  }
-  if (largest != null) {
-    final key = perTitle.entries.firstWhere((e) => e.value == largest!.amount).key;
-    largest = GroupInsight(key, largest.amount, titleCounts[key] ?? 1);
   }
 
   final net = <String, double>{for (final m in members) m.name: 0};
