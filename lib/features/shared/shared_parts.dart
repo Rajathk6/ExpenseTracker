@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/database.dart';
+import '../../core/owner_profile.dart';
+import '../../core/share_out.dart';
 import '../../core/providers.dart';
 import '../splits/split_detail_screen.dart';
 import '../neutral/debt_logic.dart';
@@ -15,6 +17,9 @@ import '../splits/split_logic.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
 
+/// One lend/borrow contract, everything on the card: the amount, what has
+/// come back, how old it is, the money trail and the payoff button. There is
+/// no separate screen to open — the card *is* the contract (#9).
 class DebtCard extends ConsumerWidget {
   final Debt debt;
   final VoidCallback onChanged;
@@ -29,65 +34,116 @@ class DebtCard extends ConsumerWidget {
     final overdue = isOverdue(dueDate: debt.dueDate, status: debt.status, now: now);
     final nudge = nudgeDue(nudgeDate: debt.nudgeDate, status: debt.status, now: now);
     final history = ref.watch(debtHistoryProvider(debt.id));
+    final theme = Theme.of(context);
+    final lent = debt.direction == 'lent';
     return Card(
-      child: ExpansionTile(
-        title: Text('${debt.direction == 'lent' ? 'Lent to' : 'Borrowed from'} ${debt.counterparty}'),
-        subtitle: Column(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            LinearProgressIndicator(value: ratio),
-            const SizedBox(height: 4),
-            Text('₹${debt.paid.toStringAsFixed(0)} of ₹${debt.principal.toStringAsFixed(0)} · ₹${left.toStringAsFixed(0)} left · $age day${age == 1 ? '' : 's'}'),
-            if (overdue)
-              Text('Overdue since ${_dayFmt.format(debt.dueDate!)}', style: const TextStyle(color: Colors.red)),
-            if (nudge && !overdue) const Text('Nudge due — time for a reminder', style: TextStyle(color: Colors.orange)),
-          ],
-        ),
-        trailing: FilledButton.tonal(
-          onPressed: () async {
-            final done = await showDialog<bool>(
-              context: context,
-              builder: (_) => PayoffDialog(debt: debt),
-            );
-            if (done ?? false) onChanged();
-          },
-          child: const Text('Pay'),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  final done = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => PayoffDialog(debt: debt),
-                  );
-                  if (done ?? false) onChanged();
-                },
-                icon: const Icon(Icons.payments_outlined),
-                label: Text(left <= 0.005 ? 'Record payoff' : 'Record payoff · ₹${left.round()} left'),
-              ),
-            ),
-          ),
-          history.when(
-            data: (rows) => Column(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final t in rows)
-                  ListTile(
-                    dense: true,
-                    title: Text(t.kind == 'lend' || t.kind == 'borrow' ? 'Principal' : 'Payoff'),
-                    subtitle: Text(_dayFmt.format(t.occurredAt)),
-                    trailing: Text('₹${t.actual.toStringAsFixed(0)}'),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${lent ? 'Lent to' : 'Borrowed from'} ${debt.counterparty}',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '₹${debt.principal.round()} · back ₹${debt.paid.round()} · ₹${left.round()} left'
+                        ' · $age day${age == 1 ? '' : 's'}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                if (debt.status == 'open')
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final done = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => PayoffDialog(debt: debt),
+                      );
+                      if (done ?? false) onChanged();
+                    },
+                    icon: const Icon(Icons.payments_outlined),
+                    label: const Text('Pay back'),
+                  )
+                else
+                  const Chip(
+                    avatar: Icon(Icons.check_circle_outline, size: 18),
+                    label: Text('Settled'),
                   ),
               ],
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Could not load: $e'),
-          ),
-        ],
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 8,
+                color: lent ? Colors.teal : Colors.orange,
+              ),
+            ),
+            if (overdue)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('Overdue since ${_dayFmt.format(debt.dueDate!)}', style: const TextStyle(color: Colors.red)),
+              ),
+            if (nudge && !overdue)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Nudge due — time for a reminder', style: TextStyle(color: Colors.orange)),
+              ),
+            if (debt.note != null && debt.note!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(debt.note!, style: theme.textTheme.bodySmall),
+              ),
+            // --- The money trail, right here (#8) ---
+            const SizedBox(height: 10),
+            Text('Money trail', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+            history.when(
+              data: (rows) => Column(
+                children: [
+                  for (final t in rows)
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        switch (t.kind) {
+                          'lend' || 'borrow' => Icons.arrow_outward,
+                          'settle' => Icons.south_west,
+                          _ => Icons.circle_outlined,
+                        },
+                        size: 18,
+                        color: t.kind == 'settle' ? Colors.green : null,
+                      ),
+                      title: Text(switch (t.kind) {
+                        'lend' => 'Handed over',
+                        'borrow' => 'Taken',
+                        'settle' => lent ? 'Came back' : 'Paid back',
+                        _ => t.kind,
+                      },),
+                      subtitle: Text(
+                        '${_dayFmt.format(t.occurredAt)}'
+                        '${t.note != null && t.note!.isNotEmpty ? ' · ${t.note}' : ''}',
+                      ),
+                      trailing: Text('₹${t.actual.abs().round()}'),
+                    ),
+                ],
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Could not load: $e'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -302,6 +358,26 @@ class SplitCard extends ConsumerWidget {
   final VoidCallback onChanged;
   const SplitCard({super.key, required this.split, required this.onChanged});
 
+  /// The share message: what it was for, who is in it, the code, and what is
+  /// still to come back. One tap to WhatsApp.
+  Future<void> _share(BuildContext context, WidgetRef ref, Split s) async {
+    final people = ref.read(splitRepositoryProvider).membersOf(s);
+    final left = splitRemaining(s.totalPaid, s.myShare, s.received, s.absorbed);
+    final message = [
+      'Split: ${s.title}',
+      'Code: ${s.code ?? '—'}',
+      'I paid ₹${s.totalPaid.round()}, my share ₹${s.myShare.round()}',
+      if (people.isNotEmpty) 'In it: ${people.join(', ')}',
+      if (left > 0) 'Still to come back: ₹${left.round()}',
+    ].join('\n');
+    final sent = await shareText(text: message, subject: 'Split · ${s.title}');
+    if (!sent && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No app to share with on this device')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final left = splitRemaining(split.totalPaid, split.myShare, split.received, split.absorbed);
@@ -355,9 +431,11 @@ class SplitCard extends ConsumerWidget {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Chip(
+                ActionChip(
                   avatar: const Icon(Icons.tag, size: 18),
                   label: Text(split.code ?? 'no code'),
+                  tooltip: 'Tap to share this split',
+                  onPressed: () => _share(context, ref, split),
                 ),
                 Chip(
                   avatar: const Icon(Icons.group_outlined, size: 18),
@@ -431,6 +509,8 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
   String? _accountId;
   String? _error;
   bool _saving = false;
+  /// Whether the owner name has been filled into the people field yet.
+  bool _named = false;
 
   @override
   void dispose() {
@@ -499,6 +579,12 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final share = _share;
+    // Put the owner's own name in for them: "Me" is what a split means.
+    final owner = ref.watch(ownerDisplayNameProvider).valueOrNull ?? 'Me';
+    if (!_named && _members.text.trim().isEmpty) {
+      _named = true;
+      _members.text = owner;
+    }
     return AlertDialog(
       title: const Text('New split'),
       content: SingleChildScrollView(
@@ -531,11 +617,11 @@ class SplitDialogState extends ConsumerState<SplitDialog> {
             TextField(
               controller: _members,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Who is in it (names, comma separated)',
-                hintText: 'Me, Ravi, Asha',
+                hintText: '$owner, Ravi, Asha',
                 helperText: 'Names are required — a split nobody can name cannot be settled',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),

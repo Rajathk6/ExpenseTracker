@@ -147,6 +147,42 @@ class GroupRepository {
 
   Future<List<GroupPayment>> payments(String groupId) => db.paymentsOf(groupId);
 
+  /// Renames a group, moves it to another month and fixes the people in it.
+  Future<void> update({
+    required String groupId,
+    required String name,
+    required String monthKey,
+    required List<String> people,
+  }) async {
+    final clean = name.trim();
+    if (clean.isEmpty) throw ArgumentError('Give the group a name');
+    if (!_monthRe.hasMatch(monthKey)) {
+      throw ArgumentError('Month must be YYYY-MM (got "$monthKey")');
+    }
+    final names = [for (final p in people) p.trim()].where((p) => p.isNotEmpty).toList();
+    if (names.isEmpty) throw ArgumentError('A group needs at least one person');
+    await db.upsertGroup(
+      GroupsCompanion(
+        id: Value(groupId),
+        name: Value(clean),
+        monthKey: Value(monthKey),
+      ),
+    );
+    final existing = [for (final m in await db.membersOf(groupId)) m.name];
+    for (final person in names) {
+      if (!existing.contains(person)) {
+        await db.insertMember(
+          GroupMembersCompanion(id: Value(const Uuid().v4()), groupId: Value(groupId), name: Value(person)),
+        );
+      }
+    }
+    for (final member in await db.membersOf(groupId)) {
+      if (!names.contains(member.name)) {
+        await db.deleteMember(member.id);
+      }
+    }
+  }
+
   Future<void> close(String groupId) => db.upsertGroup(
         GroupsCompanion(id: Value(groupId), status: const Value('closed')),
       );

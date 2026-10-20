@@ -26,6 +26,10 @@
 | Owner9 | Groups | Splitwise-style groups: name, month, required people, share code, join by code, expenses, pay-ups, live balances, settle-up in rupees | ✅ 2026-10-17 (offline; cross-device sync needs a server — `exportGroup`/`importGroup` are that seam, tested) |
 | Owner5 | Exports | CSV / real .xlsx / PDF of the month(s): entries + lends + borrows + settlements + splits, into public Downloads with the path shown | ✅ 2026-10-17 (pure-Dart writers over one model, tested) |
 | Owner17 | Charts | Axes, gridlines, legends and tap readouts on the trend and category charts; cash/digital as a labelled split bar | ✅ 2026-10-17 / `feature/owner-batch-2026-09` |
+| Owner4 | NetWorth | Net worth = cash + investments + money owed to you − money you owe, per month end | ✅ 2026-10-20 / `feature/owner-batch-2` (pure `networth_logic.dart` + provider, 184/184 green) |
+| Owner7 | BudgetInsight | The month explained: pace, month-end estimate, each bucket vs plan and vs your usual spend, plain-language lines | ✅ 2026-10-20 (`budget_insight.dart` + Budgets screen, tested) |
+| Owner15 | GroupInsight | Group money insights: total, per person, per what, biggest item, evenness, settle-up + the group's own CSV report | ✅ 2026-10-20 (`group_insight.dart` + `group_report.dart`, tested) |
+| Owner17 | ReadyToFill | Entries missing a category, bucket or account are listed on the front page with a one-tap form prefilled with money and time | ✅ 2026-10-20 (`readyToFillProvider` + card) |
 | Cat | CategorySearch | Typing part of a past category — level, item or mid-word — offers it; tap fills the full string; a never-seen category is still saved as typed | ✅ 2026-09-16 / `develop` (pure `category_suggest` ranking + shared `CategoryField` in entry/intake/quick-add, 109/109 green, analyze clean) |
 
 Mark `✅ date/branch` when green. Merge rule: row green + `flutter test` green.

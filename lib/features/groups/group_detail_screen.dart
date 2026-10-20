@@ -9,6 +9,9 @@ import 'package:intl/intl.dart';
 import '../../core/database.dart';
 import '../../core/months.dart';
 import '../../core/providers.dart';
+import '../../core/share_out.dart';
+import 'group_insight.dart';
+import 'group_report.dart';
 import 'group_repository.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
@@ -21,10 +24,6 @@ class GroupDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balances = ref.watch(groupBalancesProvider(groupId));
     return Scaffold(
-      appBar: AppBar(title: Text(balances.maybeWhen(
-        data: (b) => b?.name ?? 'Group',
-        orElse: () => 'Group',
-      ),),),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showModalBottomSheet<void>(
           context: context,
@@ -33,6 +32,27 @@ class GroupDetailScreen extends ConsumerWidget {
         ),
         icon: const Icon(Icons.add),
         label: const Text('Add'),
+      ),
+      // The group's own report (#14).
+      appBar: AppBar(
+        title: Text(
+          balances.maybeWhen(
+            data: (b) => b?.name ?? 'Group',
+            orElse: () => 'Group',
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Download the group report',
+            icon: const Icon(Icons.download_outlined),
+            onPressed: () => _downloadReport(context, ref, groupId),
+          ),
+          IconButton(
+            tooltip: 'Share this group',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareGroup(context, ref, groupId),
+          ),
+        ],
       ),
       body: balances.when(
         data: (b) => b == null ? const Center(child: Text('This group is gone.')) : _body(context, ref, b),
@@ -48,6 +68,7 @@ class GroupDetailScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
       children: [
+        const _GroupInsightsCard(),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -157,6 +178,129 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// What the group spent, who spent it, on what, the biggest item and how to
+/// settle up (#15) — the same numbers the group's report is built from.
+Future<void> _downloadReport(BuildContext context, WidgetRef ref, String groupId) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final group = (await ref.read(groupRepositoryProvider).all()).where((g) => g.id == groupId).firstOrNull;
+    if (group == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('That group is gone.')));
+      return;
+    }
+    final report = await buildGroupReport(ref.read(groupRepositoryProvider), group);
+    final path = await writeGroupReport(report);
+    messenger.showSnackBar(SnackBar(content: Text('Saved: $path')));
+  } on Object catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Could not write the report: $e')));
+  }
+}
+
+Future<void> _shareGroup(BuildContext context, WidgetRef ref, String groupId) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final group = (await ref.read(groupRepositoryProvider).all()).where((g) => g.id == groupId).firstOrNull;
+  if (group == null) return;
+  final report = await buildGroupReport(ref.read(groupRepositoryProvider), group);
+  final message = [
+    'Group: ${report.name} (${report.code})',
+    'Month: ${report.monthKey}',
+    'Total spent: ₹${report.totalSpent.round()} over ${report.expenseCount} entries',
+    if (report.largest != null) 'Biggest: ${report.largest!.label} ₹${report.largest!.amount.round()}',
+    for (final line in report.lines.take(4)) line,
+  ].join('\n');
+  final sent = await shareText(text: message, subject: 'Group · ${report.name}');
+  if (!sent && context.mounted) {
+    messenger.showSnackBar(const SnackBar(content: Text('No app to share with on this device')));
+  }
+}
+
+class _GroupInsightsCard extends ConsumerWidget {
+  const _GroupInsightsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(groupRepositoryProvider);
+    final groups = ref.watch(groupsProvider);
+    return groups.maybeWhen(
+      data: (list) {
+        if (list.isEmpty) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        return FutureBuilder<GroupInsightReport>(
+          future: _report(repo, list),
+          builder: (context, snap) {
+            final report = snap.data;
+            if (report == null) return const SizedBox.shrink();
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Money insights', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Text(
+                      '₹${report.totalSpent.round()} spent in total · ${report.expenseCount} '
+                      '${report.expenseCount == 1 ? 'entry' : 'entries'} · ${report.peopleCount} people',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    if (report.perPerson.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('Who spent', style: theme.textTheme.bodySmall),
+                      for (final p in report.perPerson.take(5))
+                        Row(
+                          children: [
+                            Expanded(child: Text(p.label, style: theme.textTheme.bodySmall)),
+                            Text('₹${p.amount.round()}', style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                    ],
+                    if (report.perTitle.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('Spent on', style: theme.textTheme.bodySmall),
+                      for (final t in report.perTitle.take(5))
+                        Row(
+                          children: [
+                            Expanded(child: Text(t.label, style: theme.textTheme.bodySmall)),
+                            Text('₹${t.amount.round()}', style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                    ],
+                    for (final line in report.lines)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.lightbulb_outline, size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(line, style: theme.textTheme.bodySmall)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  Future<GroupInsightReport> _report(GroupRepository repo, List<Group> groups) async {
+    final group = groups.first;
+    return buildGroupInsight(
+      name: group.name,
+      code: group.code,
+      monthKey: group.monthKey,
+      members: await repo.people(group.id),
+      expenses: await repo.expenses(group.id),
+      payments: await repo.payments(group.id),
     );
   }
 }

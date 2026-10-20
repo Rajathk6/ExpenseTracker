@@ -210,7 +210,19 @@
 - **Then a line-by-line audit of my own work**, which found bugs the tests had missed and fixed them: the .etbak was silently dropping all five v8 tables; exports fell back to the hidden dir on Android 10+; a name typed with a lend role and switched back to Normal **discarded the entry**; settlement was not atomic; the bucket vocabulary was split (need vs Needs) so entries showed as unfunded; opening balances were guessed onto the wrong account; the wrapped-year card counted borrowed cash as income; month contracts matched by row-typed date; Settlements were built and never rendered; the export month set was frozen. Each fix has a test.
 - Schema v8; new pure-Dart deps `pdf`, `csv`, `excel` (no native plugins, no APK cost). Gotcha: real file I/O inside `testWidgets` deadlocks the fake-async zone — create temp files in `setUp`.
 - Validation: `flutter analyze` clean, `flutter test` **171/171** (127 → +44), debug APK builds.
-- Next: merge to develop → main, tag v0.12.0, publish the APKs.
+- **Released:** PR #13 merged to `main` (ff70b44), tag `v0.12.0`, published `expensetracker-0.12.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Still debug-keyed so it installs over v0.11.0 without touching the vault; the signed build (37.6MB, keystore verified) is saved at `~/signed-v0.12.0/` for the day an encrypted backup exists.
+- Next: phone-test v0.12.0, then the signing-key switch as its own step.
+
+## 2026-10-20 — Owner batch 2: the 26 points / `feature/owner-batch-2` → v0.13.0
+- Planned: the owner's second list — five things that were outright broken, a front page that was not about their money, and a batch of "this does nothing / it is not here" complaints.
+- **Broken, now fixed:** setting a PIN after clearing the app data asked for the old PIN (the identity gate ran on first run too); saving a budget showed the old numbers (the screen read the *effective* budget and only the month's own row was invalidated); CSV/Excel/PDF "crashed" (the CSV used `;` and the PDF's font has no rupee glyph — and nothing checked the file afterwards, now nothing can throw into the UI); "Read a screenshot" opened the picker and read nothing (the picked file is not always a readable path, so it is copied into our cache first); sharing a message into the app opened nothing (the router was rebuilt on every frame, wiping the screen it had just pushed).
+- **The front page is now only about my money:** no lend/borrow/settlement rows, no "held out of the month" cards; a split shows **my share**, not the bill I fronted; one card instead of two (the budget, with In/Out/Net highlighted in it); and a **Finish these** list for entries still missing a category, bucket or account — one tap to a prefilled form.
+- **Net worth, properly** (#4): what you hold minus what you owe — cash + investments + money owed to you (lends, split shares) − money you owe (borrowings). A lend is neither a loss nor a gain; a borrow is neither income nor wealth.
+- **First run asks your name** and sets up Cash + your primary bank with optional opening balances; your name is used wherever the app says "Me".
+- **Shared money:** the lend/borrow card *is* the contract (amount, back so far, age, money trail, payoff) — no second screen; the split's code now **shares** the split to WhatsApp; groups gained money insights, a CSV report, a share button, a green tick when everyone is settled, an edit dialog and a closed section.
+- **Search** gained a month picker, a year picker and a range picker. **Budgets** gained pace, a month-end estimate and "you spent ₹1.2k more on food than usual". **Reconcile** and the dead "Locking" setting are gone.
+- Tests: 184/184 (174 → +10). Docs updated; schema unchanged (v8).
+- Next: merge → main → tag v0.13.0 → publish the APKs.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

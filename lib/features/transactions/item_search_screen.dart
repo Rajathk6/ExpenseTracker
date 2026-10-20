@@ -56,6 +56,7 @@ enum SearchWhen {
   lastMonth('Last month'),
   aMonth('Pick a month'),
   aYear('Pick a year'),
+  aRange('Pick a range'),
   allTime('All time');
 
   const SearchWhen(this.label);
@@ -67,6 +68,9 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
   SearchWhen _when = SearchWhen.thisMonth;
   DateTime? _month;
   int? _year;
+  /// A custom range: from 1st of [fromMonth] to the end of [toMonth].
+  DateTime? _fromMonth;
+  DateTime? _toMonth;
 
   @override
   void initState() {
@@ -96,6 +100,13 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
         return _year == null
             ? (from: null, to: null)
             : (from: DateTime(_year!), to: DateTime(_year! + 1, 1, 1).subtract(const Duration(milliseconds: 1)));
+      case SearchWhen.aRange:
+        if (_fromMonth == null) return (from: null, to: null);
+        return (
+          from: DateTime(_fromMonth!.year, _fromMonth!.month),
+          to: DateTime(_toMonth?.year ?? _fromMonth!.year, (_toMonth?.month ?? _fromMonth!.month) + 1)
+              .subtract(const Duration(milliseconds: 1)),
+        );
       case SearchWhen.allTime:
         return (from: null, to: null);
     }
@@ -117,6 +128,9 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
         return _month == null ? 'Pick a month' : _monthFmt.format(_month!);
       case SearchWhen.aYear:
         return _year == null ? 'Pick a year' : '$_year';
+      case SearchWhen.aRange:
+        if (_fromMonth == null) return 'Pick a range';
+        return '${_monthFmt.format(_fromMonth!)} → ${_monthFmt.format(_toMonth ?? _fromMonth!)}';
       case SearchWhen.allTime:
         return 'all time';
     }
@@ -135,6 +149,34 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
     setState(() {
       _month = DateTime(picked.year, picked.month);
       _when = SearchWhen.aMonth;
+    });
+  }
+
+  /// Two month pickers, in order: the range starts, then the range ends.
+  Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final from = await showDatePicker(
+      context: context,
+      initialDate: _fromMonth ?? DateTime(now.year, now.month),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 1, 12),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Range starts',
+    );
+    if (from == null || !mounted) return;
+    final to = await showDatePicker(
+      context: context,
+      initialDate: _toMonth ?? DateTime(from.year, from.month),
+      firstDate: DateTime(from.year, from.month),
+      lastDate: DateTime(now.year + 1, 12),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Range ends',
+    );
+    if (to == null || !mounted) return;
+    setState(() {
+      _fromMonth = DateTime(from.year, from.month);
+      _toMonth = DateTime(to.year, to.month);
+      _when = SearchWhen.aRange;
     });
   }
 
@@ -188,14 +230,22 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
                 for (final w in SearchWhen.values)
-                  if (w == SearchWhen.aMonth || w == SearchWhen.aYear)
+                  if (w == SearchWhen.aMonth || w == SearchWhen.aYear || w == SearchWhen.aRange)
                     ActionChip(
                       avatar: Icon(
-                        w == SearchWhen.aMonth ? Icons.calendar_month : Icons.calendar_today,
+                        switch (w) {
+                          SearchWhen.aMonth => Icons.calendar_month,
+                          SearchWhen.aYear => Icons.calendar_today,
+                          _ => Icons.date_range_outlined,
+                        },
                         size: 18,
                       ),
                       label: Text(_scopeLabelFor(w)),
-                      onPressed: () => w == SearchWhen.aMonth ? _pickMonth() : _pickYear(),
+                      onPressed: () => switch (w) {
+                        SearchWhen.aMonth => _pickMonth(),
+                        SearchWhen.aYear => _pickYear(),
+                        _ => _pickRange(),
+                      },
                     )
                   else
                     Padding(
@@ -277,6 +327,9 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
   String _scopeLabelFor(SearchWhen w) => switch (w) {
         SearchWhen.aMonth => _month == null ? 'Month…' : _monthFmt.format(_month!),
         SearchWhen.aYear => _year == null ? 'Year…' : '$_year',
+        SearchWhen.aRange => _fromMonth == null
+            ? 'Range…'
+            : '${_monthFmt.format(_fromMonth!)} → ${_monthFmt.format(_toMonth ?? _fromMonth!)}',
         SearchWhen.thisMonth => _monthFmt.format(DateTime.now()),
         SearchWhen.lastMonth => _monthFmt.format(DateTime(DateTime.now().year, DateTime.now().month - 1)),
         SearchWhen.allTime => 'All time',
