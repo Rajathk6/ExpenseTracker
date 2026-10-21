@@ -65,8 +65,15 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
                 }
-                // Turn any image path or content:// uri into a real file in
-                // our cache, so the OCR always gets something it can open.
+                // Turn any image path or content:// uri into a **plain,
+                // re-encoded JPEG** in our cache.
+                //
+                // ML Kit crashed with a NullPointerException inside its own
+                // decoder when it was handed the file as it arrived: a
+                // screenshot can be a WebP/HEIF or a huge bitmap, and the
+                // recogniser got a null image out of it. Decoding and
+                // re-encoding here (and shrinking anything oversized) gives
+                // the recogniser the one format it is happiest with.
                 "resolveImage" -> {
                     val path = call.argument<String>("path")
                     if (path == null) {
@@ -75,7 +82,8 @@ class MainActivity : FlutterFragmentActivity() {
                         try {
                             val uri = Uri.parse(path)
                             val copied = copyToCache(uri) ?: path
-                            result.success(copied)
+                            val prepared = prepareImage(copied)
+                            result.success(prepared)
                         } catch (error: Exception) {
                             result.error("resolve_failed", error.message, null)
                         }
@@ -210,6 +218,38 @@ class MainActivity : FlutterFragmentActivity() {
         val file = File(dir, name)
         file.writeBytes(bytes)
         return file.absolutePath
+    }
+
+    /**
+     * Decodes the image and writes it back as a plain JPEG, scaled down if it
+     * is large. Returns the path of a file the recogniser can open.
+     */
+    private fun prepareImage(path: String): String {
+        val source = File(path)
+        if (!source.exists() || source.length() == 0L) return path
+        val bitmap = android.graphics.BitmapFactory.decodeFile(source.absolutePath) ?: return path
+        var scaled = bitmap
+        try {
+            val maxSide = 2000
+            val longest = maxOf(bitmap.width, bitmap.height)
+            if (longest > maxSide) {
+                val ratio = maxSide.toDouble() / longest.toDouble()
+                scaled = android.graphics.Bitmap.createScaledBitmap(
+                    bitmap,
+                    (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                    (bitmap.height * ratio).toInt().coerceAtLeast(1),
+                    true,
+                )
+            }
+            val out = File(cacheDir, "ocr-${System.currentTimeMillis()}.jpg")
+            out.outputStream().use { stream ->
+                scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
+            }
+            return out.absolutePath
+        } finally {
+            if (scaled !== bitmap) scaled.recycle()
+            bitmap.recycle()
+        }
     }
 
     private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {

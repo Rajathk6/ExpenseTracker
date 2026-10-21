@@ -342,6 +342,9 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
   /// null = not checked yet. True once the owner proved it is them.
   bool? _unlocked;
+
+  /// Whether a PIN exists at all. The identity gate only applies when it does.
+  bool _hasExistingPin = false;
   bool _checking = false;
 
   @override
@@ -392,7 +395,10 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   Future<void> _save() async {
     // First run (or a cleared app): there is no old PIN to prove, so the
     // identity gate must not block setting the first one.
-    if (!widget.firstRun && _unlocked != true) {
+    // Only ask for the current PIN when there *is* one. Opening Settings with
+    // no PIN set used to ask for a "current" PIN — in a form with nowhere to
+    // type it.
+    if (_hasExistingPin && _unlocked != true) {
       await _checkIdentity();
       return;
     }
@@ -440,6 +446,8 @@ class PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         future: svc.hasPin,
         builder: (context, snap) {
           final existingPin = snap.data ?? false;
+          // Remember it: the save button asks the same question.
+          _hasExistingPin = existingPin;
           if (!existingPin) return _form(firstRun: true);
           if (_unlocked != true) return _identityGate(svc.hasRecovery);
           return _form(firstRun: false);
