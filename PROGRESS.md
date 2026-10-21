@@ -262,5 +262,11 @@
 - **The category field searches and browses** — open it and it shows the categories you use most (most used first), type a few letters and it shows the matches. Same behaviour in the entry form and the intake sheet.
 - Tests: 215/215. Next: merge → main → tag v0.17.0 → publish.
 
+## 2026-10-20 — The amount is chosen by how it looks / `develop` → v0.18.0
+- **The phone tail was the amount.** A payment screenshot is full of numbers (amount, UTR, date, time, phone number, the phone's last four digits, balance) and the parser took the first or the largest one. Now every number is **scored** on how much it looks like money: a currency mark next to it, two decimals, alone on its line, a money word on the line — minus a phone/id word, a masked number, a spaced digit group, more than seven digits. The best score wins, and if everything scores badly the amount stays **empty** instead of showing a phone number.
+- **The shop name** is no longer taken from a line that is only money, a date or a label ("Amount 450" is not a shop) — it feeds the category suggestion, so a wrong one was annoying.
+- Also fixed: the number regex refused a number preceded by a dot, so "Rs.450" was not matched at all.
+- Tests: 223/223 (215 → +8). Next: merge → main → tag v0.18.0 → publish.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
