@@ -29,6 +29,33 @@ void main() {
       expect(s.merchant, isNotNull);
     });
 
+    test('a UTR is never read as the amount', () {
+      final s = parseSharedText('Paid to SWIGGY\nUTR 431623789012\nAmount 450');
+      expect(s.amount, 450);
+    });
+
+    test('a currency-marked amount beats a reference number', () {
+      final s = parseSharedText('Paid Rs.450 to Swiggy\nUPI:987654321098');
+      expect(s.amount, 450);
+    });
+
+    test('a screenshot full of numbers still finds the money', () {
+      final s = parseOcrText(
+        'PhonePe\nPaid to SWIGGY\n12/09/2026 14:35\nRs 450.00\nUTR 431623789012\nBalance 12000.00',
+      );
+      expect(s.amount, 450);
+    });
+
+    test('a long digit string with no amount is not an amount', () {
+      final s = parseSharedText('UPI 431623789012');
+      expect(s.amount, isNull);
+    });
+
+    test('a date is not an amount', () {
+      final s = parseSharedText('12/09/2026');
+      expect(s.amount, isNull);
+    });
+
     test('blank text parses to nothing, never throws', () {
       final s = parseSharedText('   ');
       expect(s.amount, isNull);

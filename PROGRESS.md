@@ -253,7 +253,8 @@
 - **Fix:** the official ML Kit keep rules (`-keep class com.google.mlkit.** { *; }`, `-keep class com.google.android.gms.internal.mlkit_vision_text** { *; }`) in `android/app/proguard-rules.pro`. **Verified in the rebuilt mapping:** 0 ML Kit classes removed, the bundled recogniser kept and unrenamed, 21 model assets + `libmlkit_google_ocr_pipeline.so` in the APK — OCR is offline, as promised. A test fails if the rules are ever dropped.
 - **The trail did not move** when money was added to an existing contract: the trail provider was cached and nothing invalidated it. Now autoDispose + invalidated on every change, so the total and the history cannot disagree.
 - **Two ticks, two meanings** on a group card (settled vs close). The close button is an archive icon now.
-- Tests: 209/209. Next: merge → main → tag v0.16.0 → publish.
+- **Released:** PR #17 merged to `main` (33d32b8), tag `v0.16.0`, published `expensetracker-0.16.0-arm64.apk` (36MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.15.0.
+- Next: phone-test the screenshot reader. If it still fails, the message will now be a sentence from ML Kit, not a Java stack trace.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

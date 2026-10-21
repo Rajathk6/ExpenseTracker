@@ -50,6 +50,11 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
   late String _query;
   late String _seen;
   bool _picked = false;
+  final _focus = FocusNode();
+
+  /// Open but empty: show what the owner uses most, so the category can be
+  /// picked without typing anything.
+  bool _browsing = false;
 
   @override
   void initState() {
@@ -57,12 +62,16 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
     _query = widget.controller.text.trim();
     _seen = widget.controller.text;
     widget.controller.addListener(_onTextChanged);
+    _focus.addListener(() {
+      if (!_focus.hasFocus) setState(() => _browsing = false);
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     widget.controller.removeListener(_onTextChanged);
+    _focus.dispose();
     super.dispose();
   }
 
@@ -96,14 +105,17 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
   @override
   Widget build(BuildContext context) {
     final typed = _query.trim();
-    final show = !_picked && typed.isNotEmpty;
+    // While typing: the matches. Empty and focused: what you use most.
+    final show = !_picked && (typed.isNotEmpty || _browsing);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
           controller: widget.controller,
+          focusNode: _focus,
           autofocus: widget.autofocus,
+          onTap: () => setState(() => _browsing = true),
           decoration: InputDecoration(
             labelText: widget.label,
             hintText: widget.hintText,
@@ -140,6 +152,7 @@ class _Suggestions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // An empty query browses the most-used categories; a query searches.
     final options = ref.watch(categorySuggestProvider(query));
     return options.maybeWhen(
       data: (list) {

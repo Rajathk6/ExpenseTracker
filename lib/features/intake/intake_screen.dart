@@ -42,6 +42,8 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
   late final TextEditingController _raw;
   late final TextEditingController _amount;
   late final TextEditingController _category;
+  /// What the owner shares is what they **spent** — the sheet opens on "Spent",
+  /// and "Received" is one tap away if that is not the case.
   String _kind = 'out';
   String? _accountId;
   String? _error;
@@ -75,7 +77,8 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
         final a = p.amount;
         _amount.text = a == null ? '' : a.toStringAsFixed(a % 1 == 0 ? 0 : 2);
       }
-      _kind = p.kindHint;
+      // The kind is not guessed from the text: what you share is what you
+      // spent. Flip it in one tap if it is not.
       if (_category.text.isEmpty && (p.merchant ?? '').isNotEmpty) {
         _category.text = p.merchant!.toLowerCase();
       }
