@@ -39,12 +39,23 @@ class RecogniseText implements TextReader {
   @override
   Future<String> read(String imagePath) async {
     final path = await readableImagePath(imagePath);
+    // A file that is not really a picture makes the recogniser fail with an
+    // unreadable NullPointerException — so it is checked here first, where
+    // the message can be useful.
+    if (!await _looksLikeAnImage(File(path))) {
+      throw const OcrFailure('That file is not a picture the recogniser can open.');
+    }
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     try {
       final result = await recognizer.processImage(InputImage.fromFilePath(path));
       return result.text;
-    } on Object catch (error) {
-      throw OcrFailure('The recogniser could not read this image: $error');
+    } on Object {
+      // ML Kit's own crash (a null image inside its decoder) is unreadable;
+      // say so in words the owner can act on.
+      throw const OcrFailure(
+        'The recogniser could not read this picture. Try a screenshot of the '
+        'payment message (not a photo of the screen), or type the amount in.',
+      );
     } finally {
       await recognizer.close();
     }

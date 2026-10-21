@@ -218,21 +218,26 @@ class DebtDialogState extends ConsumerState<DebtDialog> {
     });
     try {
       final repo = ref.read(debtRepositoryProvider);
+      final owner = await ref.read(ownerProfileProvider).name();
+      // The same person is the same contract: this adds to the card that
+      // already exists instead of creating a second one (#2).
       if (_direction == 'lent') {
-        await repo.lend(
+        await repo.lendTo(
           counterparty: _who.text,
           principal: principal,
           accountId: _accountId,
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           dueDate: _due,
+          ownerName: owner,
         );
       } else {
-        await repo.borrow(
+        await repo.borrowFrom(
           counterparty: _who.text,
           principal: principal,
           accountId: _accountId,
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           dueDate: _due,
+          ownerName: owner,
         );
       }
       if (mounted) Navigator.of(context).pop(true);

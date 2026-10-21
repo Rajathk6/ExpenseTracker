@@ -78,6 +78,9 @@ class DebtRepository {
     return db.getDebt(id);
   }
 
+  /// Lends money to someone. If there is already an open contract with that
+  /// person, the amount is **added to it** — the same person is the same
+  /// contract, whichever screen you lend from (#2).
   Future<Debt> lend({
     required String counterparty,
     required double principal,
@@ -86,18 +89,26 @@ class DebtRepository {
     String? note,
     DateTime? dueDate,
     DateTime? nudgeDate,
-  }) =>
-      _create(
-        counterparty: counterparty,
-        direction: 'lent',
-        principal: principal,
-        accountId: accountId,
-        at: at ?? DateTime.now(),
-        note: note,
-        dueDate: dueDate,
-        nudgeDate: nudgeDate,
-      );
+  }) async {
+    final existing = await openContractFor(counterparty);
+    if (existing != null && existing.direction == 'lent') {
+      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
+      return db.getDebt(existing.id);
+    }
+    return _create(
+      counterparty: counterparty,
+      direction: 'lent',
+      principal: principal,
+      accountId: accountId,
+      at: at ?? DateTime.now(),
+      note: note,
+      dueDate: dueDate,
+      nudgeDate: nudgeDate,
+    );
+  }
 
+  /// Borrows money — folded into the existing contract with that person, the
+  /// same way a lend is (#2).
   Future<Debt> borrow({
     required String counterparty,
     required double principal,
@@ -106,17 +117,23 @@ class DebtRepository {
     String? note,
     DateTime? dueDate,
     DateTime? nudgeDate,
-  }) =>
-      _create(
-        counterparty: counterparty,
-        direction: 'borrowed',
-        principal: principal,
-        accountId: accountId,
-        at: at ?? DateTime.now(),
-        note: note,
-        dueDate: dueDate,
-        nudgeDate: nudgeDate,
-      );
+  }) async {
+    final existing = await openContractFor(counterparty);
+    if (existing != null && existing.direction == 'borrowed') {
+      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
+      return db.getDebt(existing.id);
+    }
+    return _create(
+      counterparty: counterparty,
+      direction: 'borrowed',
+      principal: principal,
+      accountId: accountId,
+      at: at ?? DateTime.now(),
+      note: note,
+      dueDate: dueDate,
+      nudgeDate: nudgeDate,
+    );
+  }
 
   /// Adds to the existing contract with this person when there is one, so
   /// lending to Karthik twice does not create two cards (#2). The person's
@@ -134,11 +151,6 @@ class DebtRepository {
   }) async {
     if (ownerName != null && normaliseName(ownerName) == normaliseName(counterparty)) {
       throw ArgumentError('You cannot lend money to yourself');
-    }
-    final existing = await openContractFor(counterparty);
-    if (existing != null && existing.direction == 'lent') {
-      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
-      return db.getDebt(existing.id);
     }
     return lend(
       counterparty: counterparty,
@@ -164,11 +176,6 @@ class DebtRepository {
   }) async {
     if (ownerName != null && normaliseName(ownerName) == normaliseName(counterparty)) {
       throw ArgumentError('You cannot borrow money from yourself');
-    }
-    final existing = await openContractFor(counterparty);
-    if (existing != null && existing.direction == 'borrowed') {
-      await _addTo(existing, principal, accountId: accountId, at: at, note: note);
-      return db.getDebt(existing.id);
     }
     return borrow(
       counterparty: counterparty,

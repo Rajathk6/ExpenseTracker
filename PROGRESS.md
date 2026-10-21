@@ -240,5 +240,12 @@
 - **Released:** PR #15 merged to `main` (5cdeb9b), tag `v0.14.0`, published `expensetracker-0.14.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.13.0 without touching the vault.
 - Next: phone-test v0.14.0. If the OCR still cannot read a screenshot, the screen now shows the recogniser's own error — that message is the next thing to send me.
 
+## 2026-10-20 — Owner batch 4: the PIN gate, one card per person, the OCR crash / `develop` → v0.15.0
+- **#1 + #3 the PIN gate.** The identity check asked for a "current PIN" even when **no PIN existed yet** — and it asked inside the *new-PIN form*, which has no field for it, so the owner was told to type a PIN that had no box. The gate now depends on "does a PIN exist", not on which screen opened it: no PIN → straight to the form; PIN exists → the gate with its own field, then the form. Four widget tests cover it.
+- **#2 one card per person, everywhere.** Merging used to happen only on one path (the entry form); the "Lend" button in Shared money still made a second card. Now `lend()`/`borrow()` themselves fold into the open contract with that person, so **no screen can create a duplicate** — and a *settled* contract with that person still starts a new one.
+- **#4 the OCR crash.** ML Kit died with a NullPointerException inside its own decoder (`sc2.<init>` … `gk.run`): it was handed the file as it arrived, and a screenshot is not always what its decoder expects. The platform now **decodes the image and re-encodes it as a plain JPEG** (scaled down if it is large) before the recogniser sees it, `content://` uris are resolved first, and a file that is not a picture is refused with a readable message instead of a Java stack trace.
+- Tests: 207/207 (198 → +9).
+- Next: merge → main → tag v0.15.0 → publish.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
