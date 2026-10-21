@@ -95,6 +95,28 @@ void main() {
     expect(controller.text, 'gym membership');
   });
 
+  testWidgets('opening the field shows what you use most, without typing', (tester) async {
+    await seed('food chai cutting');
+    await seed('food chai cutting');
+    await seed('transport auto cab');
+    await pumpField(tester);
+
+    // Tap it (empty) → the categories you use, ready to pick.
+    await tester.tap(find.byType(TextField));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CategorySuggestionRow), findsWidgets);
+    final texts = [
+      for (final row in find.byType(CategorySuggestionRow).evaluate())
+        (row.widget as CategorySuggestionRow).suggestion.value,
+    ];
+    expect(texts, contains('food chai cutting'));
+    expect(texts, contains('transport auto cab'));
+    // The most used comes first.
+    expect(texts.first, 'food chai cutting');
+  });
+
   testWidgets('the typed text is never shown as its own suggestion', (tester) async {
     await seed('food chai cutting');
     await pumpField(tester);
