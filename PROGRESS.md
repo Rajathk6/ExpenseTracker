@@ -245,7 +245,15 @@
 - **#2 one card per person, everywhere.** Merging used to happen only on one path (the entry form); the "Lend" button in Shared money still made a second card. Now `lend()`/`borrow()` themselves fold into the open contract with that person, so **no screen can create a duplicate** — and a *settled* contract with that person still starts a new one.
 - **#4 the OCR crash.** ML Kit died with a NullPointerException inside its own decoder (`sc2.<init>` … `gk.run`): it was handed the file as it arrived, and a screenshot is not always what its decoder expects. The platform now **decodes the image and re-encodes it as a plain JPEG** (scaled down if it is large) before the recogniser sees it, `content://` uris are resolved first, and a file that is not a picture is refused with a readable message instead of a Java stack trace.
 - Tests: 207/207 (198 → +9).
-- Next: merge → main → tag v0.15.0 → publish.
+- **Released:** PR #16 merged to `main` (be1455b), tag `v0.15.0`, published `expensetracker-0.15.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.14.0.
+- Next: phone-test v0.15.0. The OCR path is the one to watch: if it still cannot read a screenshot, send the message it shows (it is now a sentence, not a Java stack trace).
+
+## 2026-10-20 — The OCR crash, root-caused / `develop` → v0.16.0
+- **The screenshot reader never worked in any release build.** ML Kit loads its bundled recogniser **by class name** at runtime, and the release build runs R8 — which renamed and *deleted* those classes. The release mapping proved it: `...mlkit_vision_text_bundled_common.zba -> R8$$REMOVED$$CLASS$$367`. The lookup returned null → the NullPointerException the owner sent. The debug build never showed it, which is why every installed APK failed and nothing else did.
+- **Fix:** the official ML Kit keep rules (`-keep class com.google.mlkit.** { *; }`, `-keep class com.google.android.gms.internal.mlkit_vision_text** { *; }`) in `android/app/proguard-rules.pro`. **Verified in the rebuilt mapping:** 0 ML Kit classes removed, the bundled recogniser kept and unrenamed, 21 model assets + `libmlkit_google_ocr_pipeline.so` in the APK — OCR is offline, as promised. A test fails if the rules are ever dropped.
+- **The trail did not move** when money was added to an existing contract: the trail provider was cached and nothing invalidated it. Now autoDispose + invalidated on every change, so the total and the history cannot disagree.
+- **Two ticks, two meanings** on a group card (settled vs close). The close button is an archive icon now.
+- Tests: 209/209. Next: merge → main → tag v0.16.0 → publish.
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.

@@ -283,8 +283,11 @@ final openDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvid
 
 final allDebtsProvider = FutureProvider((ref) => ref.watch(debtRepositoryProvider).all());
 
+/// The money trail of one contract. autoDispose so a trail is re-read when the
+/// screen is opened again — a cached list is how "I added money and the
+/// history did not show it" happened.
 final debtHistoryProvider =
-    FutureProvider.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
+    FutureProvider.autoDispose.family((ref, String debtId) => ref.watch(debtRepositoryProvider).history(debtId));
 
 // --- Splits UI ---
 
@@ -292,8 +295,10 @@ final openSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProv
 
 final allSplitsProvider = FutureProvider((ref) => ref.watch(splitRepositoryProvider).all());
 
+/// The money trail of one split. autoDispose, for the same reason as the
+/// debt trail above.
 final splitHistoryProvider =
-    FutureProvider.family((ref, String splitId) => ref.watch(splitRepositoryProvider).history(splitId));
+    FutureProvider.autoDispose.family((ref, String splitId) => ref.watch(splitRepositoryProvider).history(splitId));
 
 /// Live outstanding (total − received − absorbed, whole rupees) for a split
 /// contract. Drives the main-list tile: paid → shrinks → my share.
