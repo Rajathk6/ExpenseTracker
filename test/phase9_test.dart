@@ -56,6 +56,53 @@ void main() {
       expect(s.amount, isNull);
     });
 
+    test('the last four digits of a phone number are not the amount', () {
+      // A real payment screenshot: the number the app shows is the phone tail.
+      final s = parseOcrText(
+        'Paid to Ravi Kumar\nXXXXXXXX3210\nAmount\n450.00\nUPI:431623789012',
+      );
+      expect(s.amount, 450);
+    });
+
+    test('a phone number written in groups is not the amount', () {
+      final s = parseOcrText('To: 98765 43210\n₹450\nPaid successfully');
+      expect(s.amount, 450);
+    });
+
+    test('a masked number on its own is not the amount', () {
+      final s = parseOcrText('XXXXXXXX3210');
+      expect(s.amount, isNull);
+    });
+
+    test('an amount alone on its line wins over a phone number above it', () {
+      final s = parseOcrText('9876543210\n450');
+      expect(s.amount, 450);
+    });
+
+    test('a decimal amount beats a plain number next to it', () {
+      final s = parseOcrText('450.00\n1200');
+      expect(s.amount, 450);
+    });
+
+    test('a rupee-marked amount always wins', () {
+      final s = parseOcrText('1200\nRs 450');
+      expect(s.amount, 450);
+    });
+
+    test('the phone tail never beats a rupee amount', () {
+      final s = parseOcrText('XXXXXXXX3210\nRs 450');
+      expect(s.amount, 450);
+    });
+
+    test('the shop name is not a label, a date or a money line', () {
+      // A label line is not a shop.
+      expect(parseOcrText('Amount 450\nPaid to SWIGGY').merchant, 'SWIGGY');
+      // A date is not a shop.
+      expect(parseOcrText('12/09/2026 14:35\n₹450').merchant, isNull);
+      // A plain number line is not a shop.
+      expect(parseOcrText('450.00\nPaid to Ravi').merchant, 'Ravi');
+    });
+
     test('blank text parses to nothing, never throws', () {
       final s = parseSharedText('   ');
       expect(s.amount, isNull);

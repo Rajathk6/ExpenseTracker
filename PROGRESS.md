@@ -256,5 +256,11 @@
 - **Released:** PR #17 merged to `main` (33d32b8), tag `v0.16.0`, published `expensetracker-0.16.0-arm64.apk` (36MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.15.0.
 - Next: phone-test the screenshot reader. If it still fails, the message will now be a sentence from ML Kit, not a Java stack trace.
 
+## 2026-10-20 — Intake reads the right number / `develop` → v0.17.0
+- **A shared payment is spending.** The intake sheet no longer guesses the direction from the wording — it opens on **Spent** (what you share from another app is what you paid); "Received" is one tap away.
+- **A UTR is never the amount.** The parser used to take the *largest* number in the text, which on a payment screenshot is the 12-digit reference. Now references (UPI/UTR/transaction id/ref), dates and times are removed first, a currency-marked number wins, and anything with more than seven digits is not money. Five parser tests.
+- **The category field searches and browses** — open it and it shows the categories you use most (most used first), type a few letters and it shows the matches. Same behaviour in the entry form and the intake sheet.
+- Tests: 215/215. Next: merge → main → tag v0.17.0 → publish.
+
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
