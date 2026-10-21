@@ -30,6 +30,7 @@ class GroupCard extends ConsumerWidget {
           settled ? Icons.check_circle : Icons.circle_outlined,
           color: settled ? Colors.green : Colors.grey,
         ),
+        // The tooltip says what the tick means.
         title: Text(group.name),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,9 +69,11 @@ class GroupCard extends ConsumerWidget {
                   ref.invalidate(groupsProvider);
                 },
               ),
+              // Not a tick: the green tick on the card already means
+              // "everyone is settled up". This one files the group away.
               IconButton(
                 tooltip: 'Close this group',
-                icon: const Icon(Icons.check_circle_outline),
+                icon: const Icon(Icons.archive_outlined),
                 onPressed: () async {
                   await ref.read(groupRepositoryProvider).close(group.id);
                   ref.invalidate(groupsProvider);
