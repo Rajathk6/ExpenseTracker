@@ -245,7 +245,8 @@
 - **#2 one card per person, everywhere.** Merging used to happen only on one path (the entry form); the "Lend" button in Shared money still made a second card. Now `lend()`/`borrow()` themselves fold into the open contract with that person, so **no screen can create a duplicate** — and a *settled* contract with that person still starts a new one.
 - **#4 the OCR crash.** ML Kit died with a NullPointerException inside its own decoder (`sc2.<init>` … `gk.run`): it was handed the file as it arrived, and a screenshot is not always what its decoder expects. The platform now **decodes the image and re-encodes it as a plain JPEG** (scaled down if it is large) before the recogniser sees it, `content://` uris are resolved first, and a file that is not a picture is refused with a readable message instead of a Java stack trace.
 - Tests: 207/207 (198 → +9).
-- Next: merge → main → tag v0.15.0 → publish.
+- **Released:** PR #16 merged to `main` (be1455b), tag `v0.15.0`, published `expensetracker-0.15.0-arm64.apk` (35MB) + `-armeabi.apk` (29MB). Debug-keyed — installs over v0.14.0.
+- Next: phone-test v0.15.0. The OCR path is the one to watch: if it still cannot read a screenshot, send the message it shows (it is now a sentence, not a Java stack trace).
 
 ## How to update
 Append a dated section per session. Flip Status todo→doing→done only with VALIDATION row green.
