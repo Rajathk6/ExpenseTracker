@@ -16,6 +16,7 @@ import '../../core/months.dart';
 import '../../core/providers.dart';
 import '../splits/split_detail_screen.dart';
 import '../groups/group_parts.dart';
+import '../groups/group_sync.dart';
 import 'shared_logic.dart';
 import 'shared_parts.dart';
 
@@ -172,7 +173,19 @@ class _DebtList extends ConsumerWidget {
                   '${direction == 'lent' ? 'Lent' : 'Borrowed'} ₹${d.principal.round()} · back ₹${d.paid.round()}'
                   '${d.note != null && d.note!.isNotEmpty ? ' · ${d.note}' : ''}',
                 ),
-                onTap: () {}, // the list already shows everything
+                onTap: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (_) => Padding(
+                    padding: EdgeInsets.only(
+                      left: 12,
+                      right: 12,
+                      top: 12,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                    ),
+                    child: SingleChildScrollView(child: DebtCard(debt: d, onChanged: onChanged)),
+                  ),
+                ),
               ),
           ],
         );
@@ -250,17 +263,24 @@ class _GroupsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(groupSyncWatcherProvider);
     final groups = ref.watch(groupsProvider);
     return groups.when(
       data: (list) {
         if (list.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Groups are for a set of people and a period — a flat, a trip, a monthly '
-              'shopping run. Give the group a name, add everyone (names are required), '
-              'and share the code so the others can join the same group.',
-            ),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+            children: const [
+              _GroupsSyncBar(),
+              SizedBox(height: 8),
+              Text(
+                'Groups are for a set of people and a period — a flat, a trip, a monthly '
+                'shopping run. Give the group a name, add everyone (names are required), '
+                'and share the code so the others can join the same group. If another '
+                'phone already synced a group, tap Sync now to pull it in. Group sync '
+                'uses Firebase anonymously — no email or Google account.',
+              ),
+            ],
           );
         }
         final open = [for (final g in list) if (g.status == 'open') g];
@@ -268,6 +288,8 @@ class _GroupsTab extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
           children: [
+            const _GroupsSyncBar(),
+            const SizedBox(height: 8),
             if (open.isNotEmpty) ...[
               Text('Open', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
@@ -287,8 +309,8 @@ class _GroupsTab extends ConsumerWidget {
             ],
             const SizedBox(height: 8),
             const Text(
-              'Joining by code works on this phone. Two phones see each other\'s entries '
-              'only once a sync service exists — the app is offline-first by design.',
+              'Joining by code pulls the creator\'s synced group from Firebase. Anonymous '
+              'sync needs no email; anyone you give the code to can join.',
               style: TextStyle(fontSize: 12),
             ),
           ],
@@ -296,6 +318,104 @@ class _GroupsTab extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Could not load: $e')),
+    );
+  }
+}
+
+class _GroupsSyncBar extends ConsumerStatefulWidget {
+  const _GroupsSyncBar();
+
+  @override
+  ConsumerState<_GroupsSyncBar> createState() => _GroupsSyncBarState();
+}
+
+class _GroupsSyncBarState extends ConsumerState<_GroupsSyncBar> {
+  bool _busy = false;
+  String? _status;
+
+  Future<void> _sync() async {
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await ref.read(groupSyncServiceProvider).sync();
+      ref
+        ..invalidate(groupsProvider)
+        ..invalidate(groupBalancesProvider)
+        ..invalidate(groupSyncUidProvider);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _status = result.errors.isEmpty
+            ? 'Synced ${result.localGroups} groups — pulled ${result.pulled}, pushed ${result.pushed}.'
+            : 'Pulled ${result.pulled}, pushed ${result.pushed}; ${result.errors.length} group(s) failed: '
+                '${result.errors.take(2).join(' | ')}';
+      });
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _status = groupSyncErrorMessage(e);
+      });
+      messenger.showSnackBar(SnackBar(content: Text('Group sync failed: ${groupSyncErrorMessage(e)}')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final service = ref.watch(groupSyncServiceProvider);
+    final uid = ref.watch(groupSyncUidProvider).valueOrNull;
+    final theme = Theme.of(context);
+    final shortUid = uid == null || uid.length < 8 ? null : uid.substring(0, 8);
+    final error = service.lastError;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.cloud_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Group sync', style: theme.textTheme.titleSmall),
+                      Text(
+                        !service.enabled
+                            ? 'Off in the demo vault.'
+                            : error != null
+                                ? 'Sync paused: $error'
+                                : shortUid == null
+                                    ? 'Connecting anonymously — no email or Google account.'
+                                    : 'On · anonymous id $shortUid…',
+                        style: theme.textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _busy || !service.enabled ? null : _sync,
+                  icon: _busy
+                      ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.sync),
+                  label: const Text('Sync now'),
+                ),
+              ],
+            ),
+            if (_status != null) ...[
+              const SizedBox(height: 6),
+              Text(_status!, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

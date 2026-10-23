@@ -97,6 +97,7 @@ void main() {
         title: 'Groceries',
         amount: 1500,
         paidBy: 'Ravi',
+        sharedWithJson: '[]',
         occurredAt: DateTime(2026, 9, 2),
       ),
       GroupExpense(
@@ -105,6 +106,7 @@ void main() {
         title: 'Pizza',
         amount: 600,
         paidBy: 'Me',
+        sharedWithJson: '[]',
         occurredAt: DateTime(2026, 9, 3),
       ),
       GroupExpense(
@@ -113,6 +115,7 @@ void main() {
         title: 'Groceries',
         amount: 300,
         paidBy: 'Me',
+        sharedWithJson: '[]',
         occurredAt: DateTime(2026, 9, 4),
       ),
     ];
@@ -183,6 +186,32 @@ void main() {
       // is 300 out of pocket.
       expect(report.balances.firstWhere((b) => b.name == 'Me').net, closeTo(1100, 0.05));
       expect(report.balances.firstWhere((b) => b.name == 'Ravi').net, closeTo(-300, 0.05));
+    });
+
+    test('a payer outside the share list is owed the whole amount', () {
+      final report = buildGroupInsight(
+        name: 'Lend',
+        code: 'ET-LEND',
+        monthKey: '2026-09',
+        members: members,
+        expenses: [
+          GroupExpense(
+            id: 'e9',
+            groupId: 'g',
+            title: 'Ravi ticket',
+            amount: 500,
+            paidBy: 'Me',
+            sharedWithJson: '["Ravi"]',
+            occurredAt: DateTime(2026, 9, 8),
+          ),
+        ],
+        payments: const [],
+      );
+      expect(report.balances.firstWhere((b) => b.name == 'Me').net, closeTo(500, 0.05));
+      expect(report.balances.firstWhere((b) => b.name == 'Ravi').net, closeTo(-500, 0.05));
+      expect(report.balances.firstWhere((b) => b.name == 'Asha').net, closeTo(0, 0.05));
+      expect(report.settleUp.single.from, 'Ravi');
+      expect(report.settleUp.single.to, 'Me');
     });
 
     test('the CSV report carries every section', () {

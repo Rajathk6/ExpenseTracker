@@ -217,6 +217,10 @@ class Groups extends Table {
   /// 'open' or 'closed'.
   TextColumn get status => text().withDefault(const Constant('open'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Last local change. The sync merge uses it to pick the newer group
+  /// metadata when two phones edited the same group; rows are merged by id.
+  DateTimeColumn get updatedAt => dateTime().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -240,6 +244,11 @@ class GroupExpenses extends Table {
   RealColumn get amount => real()();
   /// Participant name who paid.
   TextColumn get paidBy => text()();
+  /// JSON list of the people who own a share of this expense. Empty means
+  /// everybody in the group shares equally. When the payer is not in this
+  /// list, the payer owns none of it — the whole amount is owed to them
+  /// (the "I paid for someone else" / lend case).
+  TextColumn get sharedWithJson => text().withDefault(const Constant('[]'))();
   DateTimeColumn get occurredAt => dateTime()();
   TextColumn get note => text().nullable()();
   @override
@@ -258,6 +267,17 @@ class GroupPayments extends Table {
   RealColumn get amount => real()();
   DateTimeColumn get occurredAt => dateTime()();
   TextColumn get note => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// User-created category shortcuts. A category is still freeform text on a
+/// transaction (nothing is rewritten when one is renamed or removed), but these
+/// are the owner's own buttons under the category field in the Add form.
+class Categories extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -288,6 +308,7 @@ class Settings extends Table {
   GroupMembers,
   GroupExpenses,
   GroupPayments,
+  Categories,
 ],)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -299,7 +320,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -323,6 +344,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(groupMembers);
             await m.createTable(groupExpenses);
             await m.createTable(groupPayments);
+          }
+          if (from < 9) {
+            await m.addColumn(groupExpenses, groupExpenses.sharedWithJson);
+            await m.createTable(categories);
+          }
+          if (from < 10) {
+            await m.addColumn(groups, groups.updatedAt);
           }
         },
       );
@@ -557,6 +585,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertGroup(GroupsCompanion entry) => into(groups).insertOnConflictUpdate(entry);
 
+  /// Marks a group changed if the caller did not already write [updatedAt].
+  Future<void> touchGroup(String id, {DateTime? at}) => (update(groups)..where((g) => g.id.equals(id)))
+      .write(GroupsCompanion(updatedAt: Value(at ?? DateTime.now())));
+
   Future<void> insertMember(GroupMembersCompanion entry) => into(groupMembers).insert(entry);
 
   Future<int> deleteMember(String id) => (delete(groupMembers)..where((m) => m.id.equals(id))).go();
@@ -577,10 +609,28 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<GroupPayment>> allGroupPayments() => select(groupPayments).get();
 
+  // --- Categories (v9) ---
+
+  Future<List<Category>> allCategories() =>
+      (select(categories)..orderBy([(c) => OrderingTerm.asc(c.createdAt)])).get();
+
+  Stream<List<Category>> watchCategories() =>
+      (select(categories)..orderBy([(c) => OrderingTerm.asc(c.createdAt)])).watch();
+
+  Future<void> upsertCategory(CategoriesCompanion entry) =>
+      into(categories).insertOnConflictUpdate(entry);
+
+  Future<int> deleteCategory(String id) =>
+      (delete(categories)..where((c) => c.id.equals(id))).go();
+
   // --- Settings (Phase 10, PIN hashes etc.) ---
 
   Future<String?> getSetting(String key) async =>
       (await (select(settings)..where((s) => s.key.equals(key))).getSingleOrNull())?.value;
+
+  /// Live value of one setting, for things the whole app reacts to (theme).
+  Stream<String?> watchSetting(String key) =>
+      (select(settings)..where((s) => s.key.equals(key))).watchSingleOrNull().map((r) => r?.value);
 
   Future<void> setSetting(String key, String value) =>
       into(settings).insertOnConflictUpdate(SettingsCompanion(key: Value(key), value: Value(value)));

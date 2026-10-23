@@ -6,7 +6,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart' show csv;
@@ -49,13 +48,13 @@ Future<String> writeReport({
     ReportFormat.xlsx => renderXlsx(months),
     ReportFormat.pdf => await renderPdf(months),
   };
-  final written = await ExportPaths.save(name, bytes, paths.directory);
-  // A zero-byte file is worse than no file: it looks like a broken export.
-  final size = await File(written).exists().then((e) async => e ? (await File(written).length()) : 0);
-  if (size == 0) {
+  // The platform may hand back a MediaStore label rather than a real path, so
+  // check the bytes we built instead of trying to stat the label — the old
+  // File.exists() check failed on Android and made every download look empty.
+  if (bytes.isEmpty) {
     throw StateError('The file was written empty — nothing to open');
   }
-  return written;
+  return ExportPaths.save(name, bytes, paths.directory);
 }
 
 String renderCsv(List<ReportMonth> months) {

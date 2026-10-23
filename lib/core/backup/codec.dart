@@ -1,6 +1,6 @@
 /// Encrypted backup codec: JSON → ZIP → password-encrypted bytes and back.
 /// Pure Dart (archive + cryptography) — no filesystem, no network, fully
-/// unit-testable. File/Drive handling lives in backup_service.dart.
+/// unit-testable. File handling lives in backup_service.dart.
 ///
 /// Layout: salt(16) | nonce(12) | ciphertext | tag(16). Key = PBKDF2-HMAC-
 /// SHA256(password, salt, 10k iterations). Wrong password fails cleanly

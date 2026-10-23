@@ -16,7 +16,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/category_suggest.dart';
+import '../../core/database.dart' show Category;
 import '../../core/providers.dart';
+import 'categories_screen.dart';
 
 class CategoryField extends ConsumerStatefulWidget {
   final TextEditingController controller;
@@ -102,6 +104,65 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
     });
   }
 
+  /// Creates a category shortcut without leaving the Add form, then selects it
+  /// so the next tap on Save is enough.
+  Future<void> _createCategory() async {
+    final name = TextEditingController();
+    String? error;
+    final created = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: const Text('New category'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Category name',
+                  hintText: 'food junk gobi-65',
+                  helperText: 'A button on this form; past entries keep their own text.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  final c = await ref.read(categoryRepositoryProvider).create(name.text);
+                  ref.invalidate(categoriesProvider);
+                  if (ctx.mounted) Navigator.of(ctx).pop(c.name);
+                } on Object catch (e) {
+                  setDialog(() => error = e.toString().replaceFirst('Bad state: ', '').replaceFirst('Invalid argument(s): ', ''));
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    if (created != null && created.trim().isNotEmpty) _pick(created);
+  }
+
+  Future<void> _manageCategories() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+    );
+    ref.invalidate(categoriesProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final typed = _query.trim();
@@ -124,6 +185,14 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
             border: const OutlineInputBorder(),
           ),
         ),
+        // The owner's own categories, one tap away — the whole point of
+        // creating them. "New" makes one without leaving this form.
+        _SavedCategoryChips(
+          selected: widget.controller.text.trim(),
+          onPick: _pick,
+          onCreate: _createCategory,
+          onManage: _manageCategories,
+        ),
         if (show)
           _Suggestions(
             query: typed,
@@ -132,6 +201,58 @@ class _CategoryFieldState extends ConsumerState<CategoryField> {
             onPick: _pick,
           ),
       ],
+    );
+  }
+}
+
+class _SavedCategoryChips extends ConsumerWidget {
+  final String selected;
+  final ValueChanged<String> onPick;
+  final VoidCallback onCreate;
+  final VoidCallback onManage;
+
+  const _SavedCategoryChips({
+    required this.selected,
+    required this.onPick,
+    required this.onCreate,
+    required this.onManage,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(categoriesProvider).maybeWhen(
+          data: (list) => list,
+          orElse: () => const <Category>[],
+        );
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final c in saved)
+            ChoiceChip(
+              visualDensity: VisualDensity.compact,
+              label: Text(c.name),
+              selected: selected.toLowerCase() == c.name.toLowerCase(),
+              onSelected: (_) => onPick(c.name),
+            ),
+          ActionChip(
+            visualDensity: VisualDensity.compact,
+            avatar: const Icon(Icons.add, size: 16),
+            label: const Text('New'),
+            onPressed: onCreate,
+          ),
+          if (saved.isNotEmpty)
+            ActionChip(
+              visualDensity: VisualDensity.compact,
+              avatar: const Icon(Icons.tune, size: 16),
+              label: const Text('Manage'),
+              onPressed: onManage,
+            ),
+        ],
+      ),
     );
   }
 }

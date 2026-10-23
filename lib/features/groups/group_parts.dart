@@ -9,6 +9,7 @@ import '../../core/months.dart';
 import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
 import 'group_detail_screen.dart';
+import 'group_report.dart';
 
 class GroupCard extends ConsumerWidget {
   final Group group;
@@ -57,29 +58,41 @@ class GroupCard extends ConsumerWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (group.status == 'open') ...[
-              IconButton(
-                tooltip: 'Edit this group',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () async {
-                  await showDialog<bool>(
-                    context: context,
-                    builder: (_) => GroupEditDialog(group: group),
-                  );
-                  ref.invalidate(groupsProvider);
+            IconButton(
+              tooltip: 'Download report',
+              icon: const Icon(Icons.download_outlined),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final report = await buildGroupReport(ref.read(groupRepositoryProvider), group);
+                  final path = await writeGroupReport(report);
+                  messenger.showSnackBar(SnackBar(content: Text('Saved: $path')));
+                } on Object catch (e) {
+                  messenger.showSnackBar(SnackBar(content: Text('Could not write the report: $e')));
+                }
+              },
+            ),
+            if (group.status == 'open')
+              PopupMenuButton<String>(
+                tooltip: 'Group actions',
+                onSelected: (action) async {
+                  if (action == 'edit') {
+                    await showDialog<bool>(
+                      context: context,
+                      builder: (_) => GroupEditDialog(group: group),
+                    );
+                  } else if (action == 'close') {
+                    await ref.read(groupRepositoryProvider).close(group.id);
+                  }
+                  ref
+                    ..invalidate(groupsProvider)
+                    ..invalidate(groupBalancesProvider(group.id));
                 },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit group')),
+                  PopupMenuItem(value: 'close', child: Text('Close group')),
+                ],
               ),
-              // Not a tick: the green tick on the card already means
-              // "everyone is settled up". This one files the group away.
-              IconButton(
-                tooltip: 'Close this group',
-                icon: const Icon(Icons.archive_outlined),
-                onPressed: () async {
-                  await ref.read(groupRepositoryProvider).close(group.id);
-                  ref.invalidate(groupsProvider);
-                },
-              ),
-            ],
             const Icon(Icons.chevron_right),
           ],
         ),
@@ -216,7 +229,7 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
           setState(() => _error = 'Type the code someone shared with you');
           return;
         }
-        await repo.join(code: _code.text, people: people, name: _name.text, monthKey: _month.text.trim());
+        await ref.read(groupSyncServiceProvider).joinGroup(code: _code.text, people: people);
       }
       ref.invalidate(groupsProvider);
       if (mounted) Navigator.of(context).pop(true);
@@ -276,14 +289,14 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
                 controller: _code,
                 decoration: const InputDecoration(
                   labelText: 'Code (optional — one is generated)',
-                  hintText: 'ET-4KQ2',
+                  hintText: 'ET-4KQ2ABCD',
                   border: OutlineInputBorder(),
                 ),
               ),
             ] else ...[
               TextField(
                 controller: _code,
-                decoration: const InputDecoration(labelText: 'The code they shared', hintText: 'ET-4KQ2', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'The code they shared', hintText: 'ET-4KQ2ABCD', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -296,7 +309,8 @@ class _GroupDialogState extends ConsumerState<GroupDialog> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Same code, same group. Entries live on this phone until a sync service exists.',
+                'The creator must tap Sync once so the group reaches Firebase. After that, '
+                'anyone with this code can join and changes sync automatically.',
                 style: TextStyle(fontSize: 12),
               ),
             ],

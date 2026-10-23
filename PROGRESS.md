@@ -15,6 +15,18 @@
 | 10 backup+security | `pr/10-backup-security` | done, verified | #8/#9 ✅ 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test, 78/78 + analyze clean |
 | 11 hardening | `pr/11-hardening` | done, verified | full gate green | crash guard + release signing template + 0.9.0+9, 78/78 + analyze clean |
 
+## 2026-10-23 — Firebase group sync + v0.19.0 / `develop` (replaces Google Drive)
+- Done: replaced Google Drive/OAuth sync with anonymous Firebase Auth + Firestore. Project `expensetracker-e22db`; FlutterFire generated `firebase_options.dart`, `android/app/google-services.json`, Gradle Google-services plugin. Added `firebase_core`/`firebase_auth`/`cloud_firestore`, removed `google_sign_in`/`googleapis`/`http`.
+- Schema v10: nullable `groups.updatedAt` + migration; repository touches it on every group mutation; export/import carries it. New group codes are `ET-` + 8 chars.
+- Sync: `group_sync.dart` mirrors `groups/{code}` (`ownerUid`, `memberUids`, `data`, `updatedAt`), anonymous sign-in, pull/merge/push, transaction merge, 1.2s local debounce, manual Sync now; Groups/Settings UI and join-by-code wired. Firestore rules deployed and REST-verified for owner create, member/stranger read, join, non-member overwrite denial and owner-only delete.
+- Validation: `flutter analyze` clean; `flutter test` 236/236 green; debug APK ✅; release APKs ✅ signed with the personal keystore (v0.19.0+19, arm64/armeabi/x86_64). Anonymous auth enabled and rules live. Release build lowers Gradle heap to 4G because the 8G/4G daemon was OOM-killed on this 11GB machine.
+- Next: install the release APK on two phones and test create/sync/join/add-from-both.
+
+## 2026-10-22 — owner batch 4 / `develop` (categories, theme, group lends, downloads, Drive sync)
+- Done: custom category shortcuts (schema v9 `categories` table + chips in every `CategoryField` + manage screen + backup); persisted System/Light/Dark theme wired through `MaterialApp`; group expenses gained `sharedWithJson`, so a payer can own no share and be owed the full amount (UI shortcut "I paid for them"); group/share downloads repaired (removed the Android MediaStore `File.size` check, added report download to `GroupCard`, fixed the insights card reading the newest group); dead settled-debt tile now opens details; optional Google Drive group sync (sign-in v7, private `appDataFolder`, pull-merge-push, Settings + Groups UI, INTERNET permission).
+- Validation: `flutter analyze` clean; `flutter test` 232/232 green; `flutter build apk --debug` ✅. Google sync end-to-end needs the owner's Cloud OAuth Web client ID + Android SHA-1 (README), so it is code-complete but not live-verified.
+- Next: superseded 2026-10-23 by Firebase group sync; Google OAuth is no longer used.
+
 ## 2026-09-04 — Phase 0 verify / `feature/00-foundation` (Flutter installed, tests green)
 - Planned: install Flutter SDK, `flutter pub get`, `flutter test`, flip #0 green.
 - Done: cloned Flutter stable → 3.47.2 (Dart 3.13.2); `flutter pub get` 143 deps OK; `flutter test` 8/8 pass; standalone `tool/verify_core.dart` 15/15 asserts pass (parser/ledger/share incl. blank + zero guards); kept flutter's `analysis_options.yaml` analyzer exclude; added `pubspec.lock` + `tool/`.

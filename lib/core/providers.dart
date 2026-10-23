@@ -16,6 +16,7 @@ import '../features/budgets/budget_status.dart';
 import '../features/budgets/budget_repository.dart';
 import '../features/customization/account_repository.dart';
 import '../features/groups/group_repository.dart';
+import '../features/groups/group_sync.dart';
 import '../features/instruments/instrument_repository.dart';
 import '../features/neutral/debt_repository.dart';
 import '../features/reconcile/month_open_repository.dart';
@@ -25,6 +26,7 @@ import '../features/reconcile/reconcile_logic.dart';
 import '../features/reconcile/reconcile_repository.dart';
 import '../features/reports/reports_repository.dart';
 import '../features/splits/split_repository.dart';
+import '../features/transactions/category_repository.dart';
 import '../features/transactions/recurring_service.dart';
 import '../features/transactions/transaction_repository.dart';
 
@@ -57,11 +59,17 @@ final accountRepositoryProvider = Provider((ref) => AccountRepository(ref.watch(
 final budgetRepositoryProvider = Provider((ref) => BudgetRepository(ref.watch(databaseProvider)));
 final monthOpenRepositoryProvider = Provider((ref) => MonthOpenRepository(ref.watch(databaseProvider)));
 final transactionRepositoryProvider = Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
+final categoryRepositoryProvider = Provider((ref) => CategoryRepository(ref.watch(databaseProvider)));
 final debtRepositoryProvider = Provider((ref) => DebtRepository(ref.watch(databaseProvider)));
 final splitRepositoryProvider = Provider((ref) => SplitRepository(ref.watch(databaseProvider)));
 final instrumentRepositoryProvider = Provider((ref) => InstrumentRepository(ref.watch(databaseProvider)));
 
 final accountsProvider = StreamProvider((ref) => ref.watch(accountRepositoryProvider).watch());
+
+/// The owner's own category buttons, in creation order. Future-based so
+/// widget tests do not keep a drift stream timer alive after teardown; every
+/// create/rename/delete explicitly invalidates this provider.
+final categoriesProvider = FutureProvider((ref) => ref.watch(categoryRepositoryProvider).list());
 
 /// Every account with its real balance (opening + everything that moved).
 final accountBalancesProvider = FutureProvider((ref) => ref.watch(accountRepositoryProvider).balances());
@@ -132,7 +140,9 @@ final categorySuggestProvider =
   final db = ref.watch(transactionRepositoryProvider).db;
   final past = await db.distinctCategories();
   final uses = await db.categoryUsage();
-  return suggestCategories(past, query: query, uses: uses);
+  // The owner's saved category buttons are suggestions even before first use.
+  final saved = [for (final c in await ref.watch(categoryRepositoryProvider).list()) c.name];
+  return suggestCategories([...saved, ...past], query: query, uses: uses);
 });
 
 /// Month budget as the owner framed it: income is the scale, the bucket split
@@ -233,6 +243,39 @@ final absorbedNeutralProvider = FutureProvider<List<Transaction>>((ref) async {
 final recurringServiceProvider = Provider((ref) => RecurringService(ref.watch(databaseProvider)));
 
 final groupRepositoryProvider = Provider((ref) => GroupRepository(ref.watch(databaseProvider)));
+
+/// Optional Firebase group sync. Anonymous auth: no email, no sign-in screen.
+/// The demo vault is excluded so a decoy session never uploads demo groups.
+final Provider<GroupSyncService> groupSyncServiceProvider = Provider((ref) {
+  final lock = ref.watch(lockProvider);
+  final demo = lock.decoyMode && !lock.locked;
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+  return GroupSyncService(
+    ref.watch(databaseProvider),
+    ref.watch(groupRepositoryProvider),
+    enabled: !demo,
+    onChanged: () {
+      if (disposed) return;
+      ref.invalidate(groupsProvider);
+      ref.invalidate(groupBalancesProvider);
+      ref.invalidate(groupSyncUidProvider);
+    },
+  );
+});
+
+/// Anonymous Firebase id, shortened for the sync card; never an email.
+final groupSyncUidProvider =
+    FutureProvider((ref) => ref.watch(groupSyncServiceProvider).connectedUid());
+
+/// Starts the Firestore listener and the debounced local-change push. Watching
+/// this provider (Groups tab, group detail, Settings) is what turns sync on;
+/// it stays alive for the rest of the session after the first watch.
+final groupSyncWatcherProvider = FutureProvider<void>((ref) async {
+  final service = ref.watch(groupSyncServiceProvider);
+  ref.onDispose(service.stop);
+  await service.start();
+});
 
 /// Every group, newest first (#9).
 final groupsProvider = FutureProvider((ref) => ref.watch(groupRepositoryProvider).all());

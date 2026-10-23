@@ -20,6 +20,7 @@ import '../reconcile/networth_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/settings_screen.dart';
 import 'entry_sheet.dart';
+import 'categories_screen.dart';
 import 'item_search_screen.dart';
 
 final _dayFmt = DateFormat('d MMM, h:mm a');
@@ -159,6 +160,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 'networth' => const NetWorthScreen(),
                 'reports' => const ReportsScreen(),
                 'intake' => const IntakeScreen(),
+                'categories' => const CategoriesScreen(),
                 'settings' => const SettingsScreen(),
                 _ => null,
               };
@@ -168,6 +170,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               PopupMenuItem(value: 'networth', child: Text('Net worth')),
               PopupMenuItem(value: 'reports', child: Text('Reports & export')),
               PopupMenuItem(value: 'intake', child: Text('Intake confirm')),
+              PopupMenuItem(value: 'categories', child: Text('Manage categories')),
               PopupMenuItem(value: 'transfer', child: Text('Move between accounts')),
               PopupMenuItem(value: 'settings', child: Text('Settings & backup')),
             ],

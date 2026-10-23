@@ -1,7 +1,7 @@
 /// Backup service: full database dump → encrypted file and back.
-/// Uses only core/database + backup/codec (no feature imports). Drive
-/// upload stays manual per PLAN: export writes a file, the user moves it
-/// with the Files app. Restoring overwrites conflicting rows (including
+/// Uses only core/database + backup/codec (no feature imports). Cloud
+/// upload stays manual: export writes a file, the user moves it with the
+/// Files app. Restoring overwrites conflicting rows (including
 /// settings/PIN hashes) — export → delete → import returns identical data.
 library;
 
@@ -29,6 +29,7 @@ const backupTables = [
   'group_members',
   'group_expenses',
   'group_payments',
+  'categories',
 ];
 
 class BackupService {
@@ -52,6 +53,7 @@ class BackupService {
       'group_members': [for (final r in await db.allMembers()) r.toJson()],
       'group_expenses': [for (final r in await db.allGroupExpenses()) r.toJson()],
       'group_payments': [for (final r in await db.allGroupPayments()) r.toJson()],
+      'categories': [for (final r in await db.allCategories()) r.toJson()],
     };
   }
 
@@ -102,6 +104,9 @@ class BackupService {
     }
     for (final m in rows('group_payments')) {
       await db.into(db.groupPayments).insertOnConflictUpdate(GroupPayment.fromJson(m).toCompanion(true));
+    }
+    for (final m in rows('categories')) {
+      await db.into(db.categories).insertOnConflictUpdate(Category.fromJson(m).toCompanion(true));
     }
     return {
       for (final k in backupTables) k: rows(k).length,

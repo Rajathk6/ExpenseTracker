@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/appearance.dart';
 import 'core/auth/lock_service.dart' show lockProvider;
 import 'core/db_open.dart';
 import 'core/months.dart';
@@ -11,6 +13,7 @@ import 'core/router.dart';
 import 'features/cash/home_tile.dart';
 import 'features/cash/quickadd_sheet.dart';
 import 'features/intake/share_target.dart';
+import 'firebase_options.dart';
 
 /// Entry point. Opens the real + demo file DBs once, then gates everything
 /// behind AppLock. The decoy PIN swaps the whole DB handle (see
@@ -35,6 +38,17 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      // A Firebase outage must never keep the offline ledger from opening.
+      try {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      } on Object catch (e, st) {
+        FlutterError.reportError(FlutterErrorDetails(
+          exception: e,
+          stack: st,
+          library: 'firebase',
+          context: ErrorDescription('while initializing optional group sync'),
+        ));
+      }
       final realDb = await openFileDatabase();
       final demoDb = await openDemoDatabase();
       runApp(
@@ -122,6 +136,7 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> with Widg
     // The router lives for the app's life; the lock gate moves it explicitly
     // instead of rebuilding it (rebuilding wiped any open screen).
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
     ref.listen(lockProvider, (_, next) {
       syncLockRoute(ref, next.locked);
       // A tile tap that arrived while locked opens the sheet as soon as the
@@ -130,7 +145,9 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> with Widg
     });
     return MaterialApp.router(
       title: 'ExpenseTracker',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal, brightness: Brightness.light),
+      darkTheme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal, brightness: Brightness.dark),
+      themeMode: themeMode,
       routerConfig: router,
       // Inside MaterialApp so a Navigator exists for the share sheet and the
       // quick-add sheet to push onto.
