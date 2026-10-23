@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "expensetracker-e22db",
+          "appId": "1:420991739486:android:cecbde9fc867a87d26b6cf",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "expensetracker-e22db",
+          "configurations": {
+            "android": "1:420991739486:android:cecbde9fc867a87d26b6cf"
+          }
+        }
+      }
+    }
+  }
+}

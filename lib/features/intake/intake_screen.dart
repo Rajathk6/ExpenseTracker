@@ -216,6 +216,10 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
             ),
             onChanged: (_) => _reparse(),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _reading ? null : _pickImage,
@@ -278,10 +282,6 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Accounts unavailable: $e'),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ],
           const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving

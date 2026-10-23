@@ -130,9 +130,12 @@ GroupInsightReport buildGroupInsight({
   final net = <String, double>{for (final m in members) m.name: 0};
   for (final e in expenses) {
     if (e.paidBy.isEmpty) continue;
-    final share = e.amount / (members.isEmpty ? 1 : members.length);
-    for (final m in members) {
-      net[m.name] = net[m.name]! - share;
+    final owned = sharedWithOf(e);
+    final sharers = owned.isEmpty ? [for (final m in members) m.name] : owned;
+    if (sharers.isEmpty) continue;
+    final share = e.amount / sharers.length;
+    for (final m in sharers) {
+      net[m] = net[m]! - share;
     }
     net[e.paidBy] = net[e.paidBy]! + e.amount;
   }

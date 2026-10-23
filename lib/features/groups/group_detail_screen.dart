@@ -16,12 +16,21 @@ import 'group_repository.dart';
 
 final _dayFmt = DateFormat('d MMM yyyy');
 
+String _expenseLine(GroupExpense e) {
+  final date = _dayFmt.format(e.occurredAt);
+  if (e.paidBy.isEmpty) return '$date · split evenly';
+  final shared = sharedWithOf(e);
+  final who = shared.isEmpty ? 'shared by everyone' : 'for ${shared.join(', ')}';
+  return '$date · paid by ${e.paidBy} · $who';
+}
+
 class GroupDetailScreen extends ConsumerWidget {
   final String groupId;
   const GroupDetailScreen({super.key, required this.groupId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(groupSyncWatcherProvider);
     final balances = ref.watch(groupBalancesProvider(groupId));
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -68,7 +77,7 @@ class GroupDetailScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
       children: [
-        const _GroupInsightsCard(),
+        _GroupInsightsCard(groupId: b.groupId),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -144,9 +153,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.receipt_long_outlined),
                       title: Text(e.title),
-                      subtitle: Text(
-                        '${_dayFmt.format(e.occurredAt)} · ${e.paidBy.isEmpty ? 'split evenly' : 'paid by ${e.paidBy}'}',
-                      ),
+                      subtitle: Text(_expenseLine(e)),
                       trailing: Text('₹${e.amount.round()}'),
                     ),
                 ],
@@ -219,7 +226,8 @@ Future<void> _shareGroup(BuildContext context, WidgetRef ref, String groupId) as
 }
 
 class _GroupInsightsCard extends ConsumerWidget {
-  const _GroupInsightsCard();
+  final String groupId;
+  const _GroupInsightsCard({required this.groupId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -228,9 +236,11 @@ class _GroupInsightsCard extends ConsumerWidget {
     return groups.maybeWhen(
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
+        final group = list.where((g) => g.id == groupId).firstOrNull;
+        if (group == null) return const SizedBox.shrink();
         final theme = Theme.of(context);
         return FutureBuilder<GroupInsightReport>(
-          future: _report(repo, list),
+          future: _report(repo, group),
           builder: (context, snap) {
             final report = snap.data;
             if (report == null) return const SizedBox.shrink();
@@ -292,8 +302,7 @@ class _GroupInsightsCard extends ConsumerWidget {
     );
   }
 
-  Future<GroupInsightReport> _report(GroupRepository repo, List<Group> groups) async {
-    final group = groups.first;
+  Future<GroupInsightReport> _report(GroupRepository repo, Group group) async {
     return buildGroupInsight(
       name: group.name,
       code: group.code,
@@ -343,6 +352,10 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
   String _mode = 'expense';
   String? _who;
   String? _paidTo;
+  /// Who owns a share of the bill. Defaults to everyone once the group's
+  /// people load; the payer can be removed to record a lend.
+  final Set<String> _sharers = {};
+  bool _sharersTouched = false;
   String? _error;
 
   @override
@@ -361,11 +374,17 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
     try {
       final repo = ref.read(groupRepositoryProvider);
       if (_mode == 'expense') {
+        final payer = (_who ?? '').trim();
+        final sharers = _sharersTouched ? _sharers.toList() : people;
+        // Everyone = the old "empty list means all" form, so a member added
+        // later also shares this expense. A subset is stored explicitly.
+        final sharedWith = sharers.length == people.length ? null : sharers;
         await repo.addExpense(
           groupId: widget.groupId,
           title: _title.text,
           amount: amount,
-          paidBy: _who,
+          paidBy: payer.isEmpty ? null : payer,
+          sharedWith: payer.isEmpty ? null : sharedWith,
         );
       } else {
         if (_who == null || _paidTo == null) {
@@ -436,6 +455,64 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                     ],
                     onChanged: (v) => setState(() => _who = v),
                   ),
+                  if ((_who ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text('Who owns a share?', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final p in people)
+                          FilterChip(
+                            visualDensity: VisualDensity.compact,
+                            label: Text(p),
+                            selected: (_sharersTouched ? _sharers : people.toSet()).contains(p),
+                            onSelected: (on) => setState(() {
+                              if (!_sharersTouched) {
+                                _sharers
+                                  ..clear()
+                                  ..addAll(people);
+                                _sharersTouched = true;
+                              }
+                              if (on) {
+                                _sharers.add(p);
+                              } else {
+                                _sharers.remove(p);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _sharers
+                              ..clear()
+                              ..addAll(people);
+                            _sharersTouched = true;
+                          }),
+                          child: const Text('Everyone'),
+                        ),
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _sharers
+                              ..clear()
+                              ..addAll(people.where((p) => p != _who));
+                            _sharersTouched = true;
+                          }),
+                          child: const Text('I paid for them — no share for me'),
+                        ),
+                      ],
+                    ),
+                    const Text(
+                      'Remove yourself to record a lend: the payer is owed the whole amount, '
+                      'split only between the people who own a share.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
                 ] else ...[
                   TextField(
                     controller: _amount,

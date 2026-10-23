@@ -1,13 +1,11 @@
 /// Groups: the Splitwise-style contract the owner asked for — a name, the
-/// month it covers, the people in it and a short code they can read out.
+/// month it covers, the people in it and an 8-character code they can share.
 ///
 /// Every phone that enters the same code gets the same [groupId], which is
-/// what makes "add or track the same" work. **Honest limitation:** rows
-/// themselves stay on the phone that created them. Two devices only see each
-/// other's data once a server is involved, which is out of scope for an
-/// offline-first app — see ARCHITECTURE.md. The seam for that is
-/// [GroupRepository.exportGroup] / [importGroup], which produce and consume
-/// exactly the payload a sync service would send.
+/// what makes "add or track the same" work. Rows live locally first; the
+/// optional Firebase sync (see `group_sync.dart`) carries
+/// [exportGroup] / [importGroup] payloads between phones. There is no app
+/// server: Firestore is the only shared store.
 library;
 
 import 'dart:convert';
@@ -71,6 +69,22 @@ class GroupBalances {
 
 final _monthRe = RegExp(r'^\d{4}-(0[1-9]|1[0-2])$');
 
+/// The people who own a share of [expense]. An empty saved list means the
+/// whole group shares it — the old behaviour.
+List<String> sharedWithOf(GroupExpense expense) {
+  try {
+    final raw = jsonDecode(expense.sharedWithJson);
+    if (raw is! List) return const [];
+    return [for (final n in raw) if (n is String && n.trim().isNotEmpty) n.trim()];
+  } on FormatException {
+    return const [];
+  }
+}
+
+String encodeSharedWith(List<String> names) => jsonEncode(names);
+
+DateTime? _parseTime(Object? value) => value is String ? DateTime.tryParse(value) : null;
+
 class GroupRepository {
   final AppDatabase db;
   const GroupRepository(this.db);
@@ -97,7 +111,7 @@ class GroupRepository {
       throw ArgumentError('The same name is listed twice');
     }
     final random = Random.secure();
-    String newCode() => 'ET-${List.generate(4, (_) => _alphabet[random.nextInt(_alphabet.length)]).join()}';
+    String newCode() => 'ET-${List.generate(8, (_) => _alphabet[random.nextInt(_alphabet.length)]).join()}';
     final wanted = code?.trim().toUpperCase();
     if (wanted != null && wanted.isNotEmpty && await db.groupByCode(wanted) != null) {
       throw ArgumentError('That code $wanted is already used by another group');
@@ -110,6 +124,7 @@ class GroupRepository {
         code: Value(wanted == null || wanted.isEmpty ? newCode() : wanted),
         monthKey: Value(monthKey),
         note: Value(note != null && note.trim().isNotEmpty ? note.trim() : null),
+        updatedAt: Value(DateTime.now()),
       ),
     );
     for (final person in names) {
@@ -126,14 +141,17 @@ class GroupRepository {
     final found = await db.groupByCode(code);
     if (found == null) throw ArgumentError('No group with code $code on this phone yet');
     final existing = <String>{for (final m in await db.membersOf(found.id)) m.name.toLowerCase()};
+    var added = false;
     for (final person in people.where((p) => p.trim().isNotEmpty)) {
       final clean = person.trim();
       if (existing.add(clean.toLowerCase())) {
         await db.insertMember(
           GroupMembersCompanion(id: Value(const Uuid().v4()), groupId: Value(found.id), name: Value(clean)),
         );
+        added = true;
       }
     }
+    if (added) await db.touchGroup(found.id);
     return found;
   }
 
@@ -166,6 +184,7 @@ class GroupRepository {
         id: Value(groupId),
         name: Value(clean),
         monthKey: Value(monthKey),
+        updatedAt: Value(DateTime.now()),
       ),
     );
     final existing = [for (final m in await db.membersOf(groupId)) m.name];
@@ -184,16 +203,25 @@ class GroupRepository {
   }
 
   Future<void> close(String groupId) => db.upsertGroup(
-        GroupsCompanion(id: Value(groupId), status: const Value('closed')),
+        GroupsCompanion(
+          id: Value(groupId),
+          status: const Value('closed'),
+          updatedAt: Value(DateTime.now()),
+        ),
       );
 
   /// Adds something the group spent. When [paidBy] is left empty the money is
   /// split evenly between everybody, which is the common case.
+  ///
+  /// [sharedWith] names the people who own a share of the bill. The payer does
+  /// not have to be one of them: if they paid ₹800 for Ravi alone, the whole
+  /// ₹800 becomes Ravi's debt to the payer — a lend inside the group.
   Future<GroupExpense> addExpense({
     required String groupId,
     required String title,
     required double amount,
     String? paidBy,
+    List<String>? sharedWith,
     DateTime? at,
     String? note,
   }) async {
@@ -204,6 +232,18 @@ class GroupRepository {
     if (payer.isNotEmpty && !members.contains(payer)) {
       throw ArgumentError('$payer is not in this group');
     }
+    final sharers = [
+      for (final n in sharedWith ?? const <String>[])
+        if (n.trim().isNotEmpty) n.trim(),
+    ];
+    final uniqueSharers = <String>[];
+    for (final n in sharers) {
+      if (!members.contains(n)) throw ArgumentError('$n is not in this group');
+      if (!uniqueSharers.any((x) => x.toLowerCase() == n.toLowerCase())) uniqueSharers.add(n);
+    }
+    if (payer.isNotEmpty && sharedWith != null && uniqueSharers.isEmpty) {
+      throw ArgumentError('Choose who the payment is for');
+    }
     final id = const Uuid().v4();
     await db.insertGroupExpense(
       GroupExpensesCompanion(
@@ -212,10 +252,12 @@ class GroupRepository {
         title: Value(title.trim().isEmpty ? 'Expense' : title.trim()),
         amount: Value(amount),
         paidBy: Value(payer),
+        sharedWithJson: Value(encodeSharedWith(uniqueSharers)),
         occurredAt: Value(at ?? DateTime.now()),
         note: Value(note != null && note.trim().isNotEmpty ? note.trim() : null),
       ),
     );
+    await db.touchGroup(groupId);
     return (await db.expensesOf(groupId)).firstWhere((e) => e.id == id);
   }
 
@@ -250,6 +292,7 @@ class GroupRepository {
         note: Value(note?.trim().isEmpty ?? true ? null : note!.trim()),
       ),
     );
+    await db.touchGroup(groupId);
     return (await db.paymentsOf(groupId)).firstWhere((p) => p.id == id);
   }
 
@@ -265,10 +308,13 @@ class GroupRepository {
       total += expense.amount;
       // An expense with nobody recorded as paying is shared cost only: it moves
       // nobody's position, so balances stay even. Recording a payer credits
-      // them the whole amount and gives everyone else their share back.
+      // them the whole amount and gives everyone who owns a share their part.
       if (expense.paidBy.isEmpty) continue;
-      final share = expense.amount / members.length;
-      for (final m in members) {
+      final owned = sharedWithOf(expense);
+      final sharers = owned.isEmpty ? members : owned;
+      if (sharers.isEmpty) continue;
+      final share = expense.amount / sharers.length;
+      for (final m in sharers) {
         net[m] = net[m]! - share;
       }
       net[expense.paidBy] = net[expense.paidBy]! + expense.amount;
@@ -298,6 +344,7 @@ class GroupRepository {
       'month': group.monthKey,
       'note': group.note,
       'status': group.status,
+      'updatedAt': (group.updatedAt ?? group.createdAt).toIso8601String(),
       'members': [for (final m in await db.membersOf(groupId)) m.name],
       'expenses': [
         for (final e in await db.expensesOf(groupId))
@@ -306,6 +353,7 @@ class GroupRepository {
             'title': e.title,
             'amount': e.amount,
             'paidBy': e.paidBy,
+            'sharedWith': sharedWithOf(e),
             'at': e.occurredAt.toIso8601String(),
             'note': e.note,
           },
@@ -344,6 +392,9 @@ class GroupRepository {
         monthKey: Value(month),
         note: Value(json['note'] as String?),
         status: Value((json['status'] as String?) ?? 'open'),
+        updatedAt: Value(
+          _parseTime(json['updatedAt']) ?? existing?.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+        ),
       ),
     );
     final members = await db.membersOf(groupId);
@@ -359,6 +410,10 @@ class GroupRepository {
     for (final raw in (json['expenses'] as List? ?? const []).cast<Map<String, dynamic>>()) {
       final expenseId = raw['id'] as String;
       if (!expenseIds.add(expenseId)) continue;
+      final sharedWith = [
+        for (final n in (raw['sharedWith'] as List? ?? const []))
+          if (n is String) n,
+      ];
       await db.insertGroupExpense(
         GroupExpensesCompanion(
           id: Value(expenseId),
@@ -366,6 +421,7 @@ class GroupRepository {
           title: Value(raw['title'] as String? ?? 'Expense'),
           amount: Value((raw['amount'] as num).toDouble()),
           paidBy: Value(raw['paidBy'] as String? ?? ''),
+          sharedWithJson: Value(encodeSharedWith(sharedWith)),
           occurredAt: Value(DateTime.tryParse(raw['at'] as String? ?? '') ?? DateTime.now()),
           note: Value(raw['note'] as String?),
         ),

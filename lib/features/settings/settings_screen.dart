@@ -1,7 +1,7 @@
 /// Settings: PIN + decoy, biometric, encrypted backup, exports, about.
-/// Everything here works offline. Drive upload stays a manual Files-app
-/// step per PLAN (export shows the exact file path); restore picks the
-/// .etbak with the system file browser.
+/// Everything here works offline. Cloud upload stays a manual Files-app
+/// step (export shows the exact file path); restore picks the .etbak with
+/// the system file browser.
 library;
 
 import 'dart:io';
@@ -12,8 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/biometric_service.dart';
 import '../../core/auth/lock_service.dart';
+import '../../core/appearance.dart';
 import '../../core/backup/codec.dart';
 import '../../core/providers.dart';
+import '../groups/group_sync.dart';
 import 'lock_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -93,7 +95,7 @@ class SettingsScreen extends ConsumerWidget {
                 try {
                   final path = await ref.read(backupServiceProvider).exportToFile(password.text);
                   if (ctx.mounted) Navigator.of(ctx).pop(true);
-                  messenger.showSnackBar(SnackBar(content: Text('Saved: $path — upload it to Drive with Files.')));
+                  messenger.showSnackBar(SnackBar(content: Text('Saved: $path — copy it to cloud storage with Files.')));
                 } on Object catch (e) {
                   setDialog(() => error = e.toString());
                 }
@@ -110,7 +112,7 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     // Pick the .etbak with the system file browser instead of hand-typing a
-    // path — the file is on Drive/Downloads, not on the device.
+    // path — the file is in Downloads/cloud storage, not on the device.
     PlatformFile? picked;
     try {
       picked = await FilePicker.pickFile(
@@ -278,11 +280,25 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pin = ref.watch(pinServiceProvider);
+    final themeMode = ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          Text('Appearance', style: Theme.of(context).textTheme.titleSmall),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto_outlined)),
+                ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
+                ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
+              ],
+              selected: {themeMode},
+              onSelectionChanged: (s) => ref.read(appearanceControllerProvider).setThemeMode(s.first),
+            ),
+          ),
           Text('Security', style: Theme.of(context).textTheme.titleSmall),
           FutureBuilder<bool>(
             future: pin.hasPin,
@@ -321,7 +337,7 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.upload_outlined),
             title: const Text('Export backup'),
-            subtitle: const Text('Password-encrypted .etbak file, then manual Drive upload'),
+            subtitle: const Text('Password-encrypted .etbak file, then manual cloud/file upload'),
             onTap: () => _export(context, ref),
           ),
           ListTile(
@@ -331,13 +347,117 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _import(context, ref),
           ),
           const SizedBox(height: 8),
+          Text('Firebase group sync (groups only)', style: Theme.of(context).textTheme.titleSmall),
+          const _GroupSyncSection(),
+          const SizedBox(height: 8),
           Text('About', style: Theme.of(context).textTheme.titleSmall),
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('ExpenseTracker'),
-            subtitle: Text('Offline-first. No backend. SQLCipher lands with the signed release.'),
+            subtitle: Text('Offline-first. Group sync uses anonymous Firebase; no personal ledger upload.'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GroupSyncSection extends ConsumerStatefulWidget {
+  const _GroupSyncSection();
+
+  @override
+  ConsumerState<_GroupSyncSection> createState() => _GroupSyncSectionState();
+}
+
+class _GroupSyncSectionState extends ConsumerState<_GroupSyncSection> {
+  bool _busy = false;
+  String? _status;
+
+  Future<void> _sync() async {
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
+    try {
+      final result = await ref.read(groupSyncServiceProvider).sync();
+      ref
+        ..invalidate(groupsProvider)
+        ..invalidate(groupBalancesProvider)
+        ..invalidate(groupSyncUidProvider);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _status = 'Synced ${result.localGroups} groups — pulled ${result.pulled}, pushed ${result.pushed}'
+            '${result.errors.isEmpty ? '.' : '; ${result.errors.length} group(s) failed.'}';
+      });
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _status = groupSyncErrorMessage(e);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(groupSyncWatcherProvider);
+    final service = ref.watch(groupSyncServiceProvider);
+    final uid = ref.watch(groupSyncUidProvider).valueOrNull;
+    final theme = Theme.of(context);
+    final shortUid = uid == null || uid.length < 8 ? null : uid.substring(0, 8);
+    final error = service.lastError;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.cloud_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    !service.enabled
+                        ? 'Off in the demo vault. Real groups never sync from here.'
+                        : error != null
+                            ? 'Sync paused: $error'
+                            : shortUid == null
+                                ? 'Connecting anonymously. No email, account or Google sign-in.'
+                                : 'On · anonymous id $shortUid…',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Group data only. The creator must sync once; anyone with the code can then '
+              'join and changes merge by id. Personal expenses never leave this phone.',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (_status != null) ...[
+              const SizedBox(height: 6),
+              Text(_status!, style: theme.textTheme.bodySmall),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy || !service.enabled ? null : _sync,
+                  icon: _busy
+                      ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.sync),
+                  label: const Text('Sync now'),
+                ),
+                if (!service.enabled) const Text('Group sync is disabled in the decoy vault.'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

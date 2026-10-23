@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /groups/{groupId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.memberUids;
+      }
+
+      function unchangedIdentity() {
+        return request.resource.data.ownerUid == resource.data.ownerUid
+            && request.resource.data.code == resource.data.code
+            && request.resource.data.code == groupId;
+      }
+
+      function joining() {
+        return signedIn()
+            && !(request.auth.uid in resource.data.memberUids)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'data', 'updatedAt'])
+            && request.resource.data.memberUids.hasAll(resource.data.memberUids)
+            && request.resource.data.memberUids.hasAny([request.auth.uid])
+            && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+            && unchangedIdentity();
+      }
+
+      // The code is the invite secret: a signed-in user can fetch one group if
+      // they know its id, but cannot list groups they are not in.
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.memberUids.hasAny([request.auth.uid]);
+      allow create: if signedIn()
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.memberUids == [request.auth.uid]
+          && request.resource.data.code == groupId;
+      allow update: if (isMember() && unchangedIdentity()) || joining();
+      allow delete: if isMember() && request.auth.uid == resource.data.ownerUid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

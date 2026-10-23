@@ -381,6 +381,79 @@ void main() {
       );
     });
 
+    test('a payer outside the share list is owed the whole amount', () async {
+      final g = await groups.create(name: 'Lend', monthKey: '2026-09', people: const ['Me', 'Ravi', 'Asha']);
+      // Me paid for Ravi only: Me owns no share, so Ravi owes Me the lot.
+      await groups.addExpense(
+        groupId: g.id,
+        title: 'Ravi ticket',
+        amount: 500,
+        paidBy: 'Me',
+        sharedWith: const ['Ravi'],
+      );
+      final b = await groups.balances(g.id);
+      expect(b.balances.firstWhere((x) => x.name == 'Me').net, 500);
+      expect(b.balances.firstWhere((x) => x.name == 'Ravi').net, -500);
+      expect(b.balances.firstWhere((x) => x.name == 'Asha').net, 0);
+
+      // A subset keeps the split inside the people who own a share.
+      await groups.addExpense(
+        groupId: g.id,
+        title: 'Cake',
+        amount: 300,
+        paidBy: 'Me',
+        sharedWith: const ['Ravi', 'Asha'],
+      );
+      final b2 = await groups.balances(g.id);
+      expect(b2.balances.firstWhere((x) => x.name == 'Ravi').net, -650);
+      expect(b2.balances.firstWhere((x) => x.name == 'Asha').net, -150);
+    });
+
+    test('a share list must name members and cannot be empty when a payer is set', () async {
+      final g = await groups.create(name: 'Trip', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      expect(
+        () => groups.addExpense(
+          groupId: g.id,
+          title: 'Bad',
+          amount: 100,
+          paidBy: 'Me',
+          sharedWith: const ['Stranger'],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => groups.addExpense(
+          groupId: g.id,
+          title: 'Nobody',
+          amount: 100,
+          paidBy: 'Me',
+          sharedWith: const [],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('export/import carries the share list, so a paid-for expense stays a lend', () async {
+      final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      await groups.addExpense(
+        groupId: g.id,
+        title: 'Ravi groceries',
+        amount: 750,
+        paidBy: 'Me',
+        sharedWith: const ['Ravi'],
+      );
+      final payload = await groups.encodeGroup(g.id);
+      expect(payload, contains('sharedWith'));
+
+      final other = AppDatabase.memory();
+      final groups2 = GroupRepository(other);
+      await groups2.decodeGroup(payload);
+      final b = await groups2.balances(g.id);
+      expect(b.balances.firstWhere((x) => x.name == 'Me').net, 750);
+      expect(b.balances.firstWhere((x) => x.name == 'Ravi').net, -750);
+      await other.close();
+    });
+
     test('export/import round-trips a group without duplicating rows', () async {
       final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
       await groups.addExpense(groupId: g.id, title: 'Groceries', amount: 1500, paidBy: 'Me');

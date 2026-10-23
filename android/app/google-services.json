@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "420991739486",
+    "project_id": "expensetracker-e22db",
+    "storage_bucket": "expensetracker-e22db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:420991739486:android:cecbde9fc867a87d26b6cf",
+        "android_client_info": {
+          "package_name": "dev.rajath.expense_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIkRLATYsW5k65XEXXHO5VNQWVyjrAdGE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

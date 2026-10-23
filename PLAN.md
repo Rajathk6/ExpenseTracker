@@ -1,7 +1,7 @@
 # PLAN — ExpenseTracker build order
 
 Stack: **Flutter 3.x + Dart + Drift(SQLite) + Riverpod + go_router + local_auth + fl_chart**.
-All data local. Backup = encrypted ZIP (JSON) via file copy or manual Drive upload. No auto-sync.
+All data local. Backup = encrypted ZIP (JSON) via file copy or manual cloud upload. Optional Firebase group sync runs only while the app is open; no background sync.
 Reports also export as **CSV / .xlsx / PDF** into public Downloads.
 Money the owner owes or is owed stays **out of every month total until it is
 absorbed** — the neutral ledger is tracked, not budgeted, until they say so.
