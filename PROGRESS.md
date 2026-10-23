@@ -20,6 +20,7 @@
 - Schema v10: nullable `groups.updatedAt` + migration; repository touches it on every group mutation; export/import carries it. New group codes are `ET-` + 8 chars.
 - Sync: `group_sync.dart` mirrors `groups/{code}` (`ownerUid`, `memberUids`, `data`, `updatedAt`), anonymous sign-in, pull/merge/push, transaction merge, 1.2s local debounce, manual Sync now; Groups/Settings UI and join-by-code wired. Firestore rules deployed and REST-verified for owner create, member/stranger read, join, non-member overwrite denial and owner-only delete.
 - Validation: `flutter analyze` clean; `flutter test` 236/236 green; debug APK ✅; release APKs ✅ signed with the personal keystore (v0.19.0+19, arm64/armeabi/x86_64). Anonymous auth enabled and rules live. Release build lowers Gradle heap to 4G because the 8G/4G daemon was OOM-killed on this 11GB machine.
+- Released: tag `v0.19.0` on `ab0375a` (merge of PR #20) → https://github.com/Rajathk6/ExpenseTracker/releases/tag/v0.19.0 with signed arm64 (39.5MB) + armeabi-v7a (33.0MB) APKs and `SHA256SUMS`; x86_64 built but not attached (emulator-only).
 - Next: install the release APK on two phones and test create/sync/join/add-from-both.
 
 ## 2026-10-22 — owner batch 4 / `develop` (categories, theme, group lends, downloads, Drive sync)
