@@ -83,6 +83,11 @@ List<String> sharedWithOf(GroupExpense expense) {
 
 String encodeSharedWith(List<String> names) => jsonEncode(names);
 
+String? _cleanCategory(String? value) {
+  final clean = value?.trim() ?? '';
+  return clean.isEmpty ? null : clean;
+}
+
 DateTime? _parseTime(Object? value) => value is String ? DateTime.tryParse(value) : null;
 
 class GroupRepository {
@@ -179,9 +184,9 @@ class GroupRepository {
     }
     final names = [for (final p in people) p.trim()].where((p) => p.isNotEmpty).toList();
     if (names.isEmpty) throw ArgumentError('A group needs at least one person');
-    await db.upsertGroup(
+    await db.updateGroup(
+      groupId,
       GroupsCompanion(
-        id: Value(groupId),
         name: Value(clean),
         monthKey: Value(monthKey),
         updatedAt: Value(DateTime.now()),
@@ -202,9 +207,9 @@ class GroupRepository {
     }
   }
 
-  Future<void> close(String groupId) => db.upsertGroup(
+  Future<void> close(String groupId) => db.updateGroup(
+        groupId,
         GroupsCompanion(
-          id: Value(groupId),
           status: const Value('closed'),
           updatedAt: Value(DateTime.now()),
         ),
@@ -220,6 +225,7 @@ class GroupRepository {
     required String groupId,
     required String title,
     required double amount,
+    String? category,
     String? paidBy,
     List<String>? sharedWith,
     DateTime? at,
@@ -250,6 +256,7 @@ class GroupRepository {
         id: Value(id),
         groupId: Value(groupId),
         title: Value(title.trim().isEmpty ? 'Expense' : title.trim()),
+        category: Value(_cleanCategory(category)),
         amount: Value(amount),
         paidBy: Value(payer),
         sharedWithJson: Value(encodeSharedWith(uniqueSharers)),
@@ -351,6 +358,7 @@ class GroupRepository {
           {
             'id': e.id,
             'title': e.title,
+            'category': e.category,
             'amount': e.amount,
             'paidBy': e.paidBy,
             'sharedWith': sharedWithOf(e),
@@ -406,10 +414,17 @@ class GroupRepository {
         );
       }
     }
-    final expenseIds = {for (final e in await db.expensesOf(groupId)) e.id};
+    final existingExpenses = {for (final e in await db.expensesOf(groupId)) e.id: e};
     for (final raw in (json['expenses'] as List? ?? const []).cast<Map<String, dynamic>>()) {
       final expenseId = raw['id'] as String;
-      if (!expenseIds.add(expenseId)) continue;
+      final category = _cleanCategory(raw['category'] as String?);
+      final existingExpense = existingExpenses[expenseId];
+      if (existingExpense != null) {
+        if (existingExpense.category == null && category != null) {
+          await db.updateGroupExpense(expenseId, GroupExpensesCompanion(category: Value(category)));
+        }
+        continue;
+      }
       final sharedWith = [
         for (final n in (raw['sharedWith'] as List? ?? const []))
           if (n is String) n,
@@ -419,6 +434,7 @@ class GroupRepository {
           id: Value(expenseId),
           groupId: Value(groupId),
           title: Value(raw['title'] as String? ?? 'Expense'),
+          category: Value(category),
           amount: Value((raw['amount'] as num).toDouble()),
           paidBy: Value(raw['paidBy'] as String? ?? ''),
           sharedWithJson: Value(encodeSharedWith(sharedWith)),

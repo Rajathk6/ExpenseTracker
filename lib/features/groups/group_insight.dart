@@ -16,6 +16,22 @@ class GroupInsight {
   const GroupInsight(this.label, this.amount, this.count);
 }
 
+/// One day of a group's spending trend.
+class GroupDay {
+  final DateTime date;
+  final double amount;
+  final int count;
+  const GroupDay(this.date, this.amount, this.count);
+}
+
+String categoryOf(GroupExpense expense) {
+  final category = expense.category?.trim() ?? '';
+  return category.isEmpty ? 'Uncategorised' : category;
+}
+
+String _dayKey(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
 /// Money with thousands separators — ₹2,400 reads better than ₹2400.
 String _money(double v) {
   final rounded = v.abs().round();
@@ -39,11 +55,30 @@ class GroupInsightReport {
   /// Spend per person (who fronted the most).
   final List<GroupInsight> perPerson;
 
-  /// Spend per category/title.
+  /// Spend per category. Entries without one are grouped as "Uncategorised".
+  final List<GroupInsight> perCategory;
+
+  /// Spend per title.
   final List<GroupInsight> perTitle;
+
+  /// Daily spend for the group's month.
+  final List<GroupDay> daily;
 
   /// The single biggest expense.
   final GroupInsight? largest;
+
+  /// Total of all settlements recorded in the group.
+  final double settledAmount;
+
+  /// How many settlements were recorded.
+  final int settlementCount;
+
+  /// Average value of one group entry.
+  final double averageEntry;
+
+  /// The rows behind the report, kept so exports can include the detail.
+  final List<GroupExpense> expenses;
+  final List<GroupPayment> payments;
 
   /// What each person is owed or owes.
   final List<Balance> balances;
@@ -63,12 +98,23 @@ class GroupInsightReport {
     required this.expenseCount,
     required this.peopleCount,
     required this.perPerson,
+    required this.perCategory,
     required this.perTitle,
+    required this.daily,
     required this.largest,
+    required this.settledAmount,
+    required this.settlementCount,
+    required this.averageEntry,
+    required this.expenses,
+    required this.payments,
     required this.balances,
     required this.settleUp,
     required this.evenness,
   });
+
+  /// Share of the group's spend that has been settled, capped at 1.0.
+  double get settlementShare =>
+      totalSpent <= 0 ? 0 : (settledAmount / totalSpent).clamp(0.0, 1.0);
 
   /// The lines worth saying out loud.
   List<String> get lines {
@@ -81,9 +127,17 @@ class GroupInsightReport {
       out.add('Biggest: ${largest!.label} ${_money(largest!.amount)}'
           '${largest!.count > 1 ? ' (${largest!.count}×)' : ''}');
     }
+    if (perCategory.isNotEmpty && perCategory.first.label != 'Uncategorised') {
+      final top = perCategory.first;
+      out.add('Top category: ${top.label} ${_money(top.amount)}');
+    }
     if (perPerson.isNotEmpty) {
       final top = perPerson.first;
       out.add('${top.label} fronted the most: ${_money(top.amount)}');
+    }
+    if (settledAmount > 0) {
+      out.add('${_money(settledAmount)} settled across '
+          '$settlementCount ${settlementCount == 1 ? 'payment' : 'payments'}.');
     }
     if (evenness < 0.8 && perPerson.length > 1) {
       out.add('Not shared evenly — the difference between the most and the least is '
@@ -111,21 +165,36 @@ GroupInsightReport buildGroupInsight({
 }) {
   var total = 0.0;
   final perPerson = <String, double>{};
+  final perCategory = <String, double>{};
+  final categoryCounts = <String, int>{};
   final perTitle = <String, double>{};
   final titleCounts = <String, int>{};
+  final daily = <String, ({double amount, int count})>{};
   GroupInsight? largest;
 
   for (final e in expenses) {
     total += e.amount;
     final payer = e.paidBy.isEmpty ? 'split evenly' : e.paidBy;
     perPerson[payer] = (perPerson[payer] ?? 0) + e.amount;
+    final category = categoryOf(e);
+    perCategory[category] = (perCategory[category] ?? 0) + e.amount;
+    categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
     perTitle[e.title] = (perTitle[e.title] ?? 0) + e.amount;
     titleCounts[e.title] = (titleCounts[e.title] ?? 0) + 1;
+    final dayKey = _dayKey(e.occurredAt);
+    final day = daily[dayKey];
+    daily[dayKey] = (amount: (day?.amount ?? 0) + e.amount, count: (day?.count ?? 0) + 1);
     // The biggest *single* expense, which is not the same as the biggest total.
     if (largest == null || e.amount > largest.amount) {
       largest = GroupInsight(e.title, e.amount, 1);
     }
   }
+
+  final settledAmount = payments.fold<double>(0, (sum, p) => sum + p.amount);
+  final dailyRows = [
+    for (final entry in daily.entries)
+      GroupDay(DateTime.parse(entry.key), entry.value.amount, entry.value.count),
+  ]..sort((a, b) => a.date.compareTo(b.date));
 
   final net = <String, double>{for (final m in members) m.name: 0};
   for (final e in expenses) {
@@ -164,10 +233,19 @@ GroupInsightReport buildGroupInsight({
     perPerson: [
       for (final e in perPerson.entries) GroupInsight(e.key, e.value, 1),
     ]..sort((a, b) => b.amount.compareTo(a.amount)),
+    perCategory: [
+      for (final e in perCategory.entries) GroupInsight(e.key, e.value, categoryCounts[e.key] ?? 1),
+    ]..sort((a, b) => b.amount.compareTo(a.amount)),
     perTitle: [
       for (final e in perTitle.entries) GroupInsight(e.key, e.value, titleCounts[e.key] ?? 1),
     ]..sort((a, b) => b.amount.compareTo(a.amount)),
+    daily: dailyRows,
     largest: largest,
+    settledAmount: settledAmount,
+    settlementCount: payments.length,
+    averageEntry: expenses.isEmpty ? 0 : total / expenses.length,
+    expenses: List<GroupExpense>.unmodifiable(expenses),
+    payments: List<GroupPayment>.unmodifiable(payments),
     balances: balances,
     settleUp: settleUpFor(balances),
     evenness: evenness,

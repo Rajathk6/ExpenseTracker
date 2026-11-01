@@ -1,7 +1,7 @@
 /// Where anything this app writes ends up: **Downloads/ExpenseTracker/** on
 /// the phone, visible in any file manager.
 ///
-/// The old behaviour put the encrypted backup in the private app documents
+/// The old behaviour put the backup in the private app documents
 /// directory, which no file manager shows — a backup nobody can find is not a
 /// backup. Writing to the *public* Downloads folder needs platform help on
 /// Android 10+ (the OS refuses direct writes), so the bytes go through

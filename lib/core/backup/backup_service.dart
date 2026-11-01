@@ -1,8 +1,9 @@
-/// Backup service: full database dump → encrypted file and back.
-/// Uses only core/database + backup/codec (no feature imports). Cloud
-/// upload stays manual: export writes a file, the user moves it with the
-/// Files app. Restoring overwrites conflicting rows (including
-/// settings/PIN hashes) — export → delete → import returns identical data.
+/// Backup service: full database dump → open JSON file and back, with
+/// read-only support for old encrypted `.etbak` files. Uses only
+/// core/database + backup/codec (no feature imports). Cloud upload stays
+/// manual: export writes a file, the user moves it with the Files app.
+/// Restoring overwrites conflicting rows — export → delete → import returns
+/// identical data.
 library;
 
 import 'dart:io';
@@ -113,20 +114,35 @@ class BackupService {
     };
   }
 
-  /// Dumps, encrypts and writes `expensetracker-<date>-<time>.etbak` into
-  /// Downloads/ExpenseTracker — a place the Files app can actually see, so
-  /// "where did my backup go?" is answerable. Returns the path.
-  Future<String> exportToFile(String password) async {
-    final packed = await encryptBackup(await dumpTables(), password);
+  /// Dumps and writes an open `expensetracker-<date>-<time>.json` into
+  /// Downloads/ExpenseTracker — a place the Files app can actually see.
+  Future<String> exportToFile() async {
+    final bytes = encodeOpenBackup(await dumpTables());
     final paths = await ExportPaths.resolve();
-    final file = paths.stamped('etbak');
-    return ExportPaths.save(file.uri.pathSegments.last, packed, paths.directory);
+    final file = paths.stamped('json');
+    return ExportPaths.save(file.uri.pathSegments.last, bytes, paths.directory);
   }
 
-  /// Reads + decrypts + restores. Wrong password throws [BackupPasswordError].
-  Future<Map<String, int>> importFromFile(String path, String password) async {
-    final packed = await File(path).readAsBytes();
-    final tables = await decryptBackup(Uint8List.fromList(packed), password);
+  Future<bool> isEncryptedFile(String path) async {
+    final bytes = Uint8List.fromList(await File(path).readAsBytes());
+    return looksLikeEncryptedBackup(bytes);
+  }
+
+  /// Reads and restores an open JSON backup. Old encrypted `.etbak` files
+  /// still work when [password] is supplied.
+  Future<Map<String, int>> importFromFile(String path, {String? password}) async {
+    final bytes = Uint8List.fromList(await File(path).readAsBytes());
+    Map<String, dynamic> tables;
+    if (password != null) {
+      tables = await decryptBackup(bytes, password);
+    } else {
+      try {
+        tables = decodeOpenBackup(bytes);
+      } on FormatException {
+        if (looksLikeEncryptedBackup(bytes)) throw BackupNeedsPassword();
+        rethrow;
+      }
+    }
     return restoreTables(tables);
   }
 }

@@ -344,6 +344,29 @@ void main() {
       expect(people, ['Me', 'Ravi', 'Asha'], reason: 'a name is never added twice');
     });
 
+    test('editing and closing keep the code and only change the requested fields', () async {
+      final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
+      await groups.update(
+        groupId: g.id,
+        name: 'Trip',
+        monthKey: '2026-10',
+        people: const ['Me', 'Asha'],
+      );
+      final edited = (await db.getGroup(g.id))!;
+      expect(edited.name, 'Trip');
+      expect(edited.monthKey, '2026-10');
+      expect(edited.code, g.code);
+      expect(edited.status, 'open');
+      final people = [for (final m in await groups.people(g.id)) m.name];
+      expect(people, ['Me', 'Asha']);
+
+      await groups.close(g.id);
+      final closed = (await db.getGroup(g.id))!;
+      expect(closed.status, 'closed');
+      expect(closed.name, 'Trip');
+      expect(closed.code, g.code);
+    });
+
     test('balances: even split, payer credited, settle-up in whole rupees', () async {
       final g = await groups.create(name: 'Trip', monthKey: '2026-09', people: const ['Me', 'Ravi', 'Asha']);
       await groups.addExpense(groupId: g.id, title: 'Hotel', amount: 900, paidBy: 'Ravi');
@@ -456,9 +479,16 @@ void main() {
 
     test('export/import round-trips a group without duplicating rows', () async {
       final g = await groups.create(name: 'Flat', monthKey: '2026-09', people: const ['Me', 'Ravi']);
-      await groups.addExpense(groupId: g.id, title: 'Groceries', amount: 1500, paidBy: 'Me');
+      await groups.addExpense(
+        groupId: g.id,
+        title: 'Groceries',
+        amount: 1500,
+        category: 'Food',
+        paidBy: 'Me',
+      );
       await groups.addPayment(groupId: g.id, paidBy: 'Ravi', paidTo: 'Me', amount: 500);
       final payload = await groups.encodeGroup(g.id);
+      expect(payload, contains('"category":"Food"'));
 
       // A second device: fresh database, same export.
       final other = AppDatabase.memory();
@@ -466,7 +496,9 @@ void main() {
       final joined = await groups2.decodeGroup(payload);
       expect(joined!.id, g.id);
       expect((await groups2.people(g.id)).length, 2);
-      expect((await groups2.expenses(g.id)).length, 1);
+      final importedExpenses = await groups2.expenses(g.id);
+      expect(importedExpenses.length, 1);
+      expect(importedExpenses.single.category, 'Food');
       expect((await groups2.payments(g.id)).length, 1);
       // Importing twice must not double anything.
       await groups2.decodeGroup(payload);

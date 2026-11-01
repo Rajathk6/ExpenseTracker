@@ -9,7 +9,10 @@ import 'package:intl/intl.dart';
 import '../../core/database.dart';
 import '../../core/months.dart';
 import '../../core/providers.dart';
+import '../../core/report/report_writer.dart' show ReportFormat;
 import '../../core/share_out.dart';
+import '../transactions/category_field.dart';
+import 'group_analytics_screen.dart';
 import 'group_insight.dart';
 import 'group_report.dart';
 import 'group_repository.dart';
@@ -18,10 +21,12 @@ final _dayFmt = DateFormat('d MMM yyyy');
 
 String _expenseLine(GroupExpense e) {
   final date = _dayFmt.format(e.occurredAt);
-  if (e.paidBy.isEmpty) return '$date · split evenly';
+  final category = e.category?.trim() ?? '';
+  final prefix = category.isEmpty ? date : '$date · $category';
+  if (e.paidBy.isEmpty) return '$prefix · split evenly';
   final shared = sharedWithOf(e);
   final who = shared.isEmpty ? 'shared by everyone' : 'for ${shared.join(', ')}';
-  return '$date · paid by ${e.paidBy} · $who';
+  return '$prefix · paid by ${e.paidBy} · $who';
 }
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -51,6 +56,13 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Group analytics',
+            icon: const Icon(Icons.insights_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => GroupAnalyticsScreen(groupId: groupId)),
+            ),
+          ),
           IconButton(
             tooltip: 'Download the group report',
             icon: const Icon(Icons.download_outlined),
@@ -134,6 +146,19 @@ class GroupDetailScreen extends ConsumerWidget {
                       child: Text('${move.from} pays ${move.to} ₹${move.amount.round()}'),
                     ),
                 ],
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => _SettleUpSheet(groupId: b.groupId, moves: b.settleUp),
+                    ),
+                    icon: const Icon(Icons.handshake_outlined),
+                    label: const Text('Settle up'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -163,12 +188,12 @@ class GroupDetailScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _Section(
-          title: 'Pay-ups',
+          title: 'Settlements',
           child: FutureBuilder<List<GroupPayment>>(
             future: repo.payments(b.groupId),
             builder: (context, snap) {
               final rows = snap.data ?? const <GroupPayment>[];
-              if (rows.isEmpty) return const Text('No pay-ups recorded yet.');
+              if (rows.isEmpty) return const Text('No settlements recorded yet — these stay separate from expenses.');
               return Column(
                 children: [
                   for (final p in rows)
@@ -191,6 +216,36 @@ class GroupDetailScreen extends ConsumerWidget {
 
 /// What the group spent, who spent it, on what, the biggest item and how to
 /// settle up (#15) — the same numbers the group's report is built from.
+Future<ReportFormat?> _pickReportFormat(BuildContext context) {
+  return showModalBottomSheet<ReportFormat>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            leading: Icon(Icons.file_download_outlined),
+            title: Text('Download group report'),
+            subtitle: Text('Analytics, categories, settlements and every entry.'),
+          ),
+          const Divider(height: 1),
+          for (final format in ReportFormat.values)
+            ListTile(
+              leading: Icon(switch (format) {
+                ReportFormat.csv => Icons.table_chart_outlined,
+                ReportFormat.xlsx => Icons.grid_on,
+                ReportFormat.pdf => Icons.picture_as_pdf_outlined,
+              }),
+              title: Text(format.label),
+              subtitle: Text(format.hint),
+              onTap: () => Navigator.of(ctx).pop(format),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
 Future<void> _downloadReport(BuildContext context, WidgetRef ref, String groupId) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
@@ -199,8 +254,11 @@ Future<void> _downloadReport(BuildContext context, WidgetRef ref, String groupId
       messenger.showSnackBar(const SnackBar(content: Text('That group is gone.')));
       return;
     }
+    if (!context.mounted) return;
+    final format = await _pickReportFormat(context);
+    if (format == null) return;
     final report = await buildGroupReport(ref.read(groupRepositoryProvider), group);
-    final path = await writeGroupReport(report);
+    final path = await writeGroupReport(report, format: format);
     messenger.showSnackBar(SnackBar(content: Text('Saved: $path')));
   } on Object catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Could not write the report: $e')));
@@ -268,14 +326,14 @@ class _GroupInsightsCard extends ConsumerWidget {
                           ],
                         ),
                     ],
-                    if (report.perTitle.isNotEmpty) ...[
+                    if (report.perCategory.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Text('Spent on', style: theme.textTheme.bodySmall),
-                      for (final t in report.perTitle.take(5))
+                      Text('By category', style: theme.textTheme.bodySmall),
+                      for (final c in report.perCategory.take(5))
                         Row(
                           children: [
-                            Expanded(child: Text(t.label, style: theme.textTheme.bodySmall)),
-                            Text('₹${t.amount.round()}', style: theme.textTheme.bodySmall),
+                            Expanded(child: Text(c.label, style: theme.textTheme.bodySmall)),
+                            Text('₹${c.amount.round()}', style: theme.textTheme.bodySmall),
                           ],
                         ),
                     ],
@@ -291,6 +349,17 @@ class _GroupInsightsCard extends ConsumerWidget {
                           ],
                         ),
                       ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => GroupAnalyticsScreen(groupId: groupId)),
+                        ),
+                        icon: const Icon(Icons.insights_outlined),
+                        label: const Text('Open analytics dashboard'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -349,6 +418,7 @@ class _GroupActionSheet extends ConsumerStatefulWidget {
 class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
   final _amount = TextEditingController();
   final _title = TextEditingController();
+  final _category = TextEditingController();
   String _mode = 'expense';
   String? _who;
   String? _paidTo;
@@ -362,6 +432,7 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
   void dispose() {
     _amount.dispose();
     _title.dispose();
+    _category.dispose();
     super.dispose();
   }
 
@@ -383,6 +454,7 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
           groupId: widget.groupId,
           title: _title.text,
           amount: amount,
+          category: _category.text,
           paidBy: payer.isEmpty ? null : payer,
           sharedWith: payer.isEmpty ? null : sharedWith,
         );
@@ -399,6 +471,7 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
         );
       }
       ref.invalidate(groupBalancesProvider(widget.groupId));
+      ref.invalidate(groupAnalyticsProvider(widget.groupId));
       if (mounted) Navigator.of(context).pop(true);
     } on Object catch (e) {
       setState(() => _error = e.toString().replaceFirst('Invalid argument(s): ', '') );
@@ -422,7 +495,7 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                 SegmentedButton<String>(
                   segments: const [
                     ButtonSegment(value: 'expense', label: Text('Expense'), icon: Icon(Icons.receipt_long_outlined)),
-                    ButtonSegment(value: 'payup', label: Text('Pay-up'), icon: Icon(Icons.handshake_outlined)),
+                    ButtonSegment(value: 'payup', label: Text('Settlement'), icon: Icon(Icons.handshake_outlined)),
                   ],
                   selected: {_mode},
                   onSelectionChanged: (s) => setState(() {
@@ -435,6 +508,15 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                   TextField(
                     controller: _title,
                     decoration: const InputDecoration(labelText: 'What was it for?', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 8),
+                  CategoryField(
+                    controller: _category,
+                    label: 'Category',
+                    hintText: 'Food, travel, rent…',
+                    helperText: 'Used in the group analytics and reports.',
+                    maxSuggestions: 4,
+                    suggestionsHeight: 132,
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -484,29 +566,6 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                           ),
                       ],
                     ),
-                    Wrap(
-                      spacing: 4,
-                      children: [
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _sharers
-                              ..clear()
-                              ..addAll(people);
-                            _sharersTouched = true;
-                          }),
-                          child: const Text('Everyone'),
-                        ),
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _sharers
-                              ..clear()
-                              ..addAll(people.where((p) => p != _who));
-                            _sharersTouched = true;
-                          }),
-                          child: const Text('I paid for them — no share for me'),
-                        ),
-                      ],
-                    ),
                     const Text(
                       'Remove yourself to record a lend: the payer is owed the whole amount, '
                       'split only between the people who own a share.',
@@ -534,8 +593,10 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                     onChanged: (v) => setState(() => _paidTo = v),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Recorded once for the group, so everyone sees the same pay-up.',
-                      style: TextStyle(fontSize: 12),),
+                  const Text(
+                    'Recorded once for the group, separately from expenses, so everyone sees the same settlement.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ],
                 if (_error != null) ...[
                   const SizedBox(height: 8),
@@ -544,7 +605,7 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: people.isEmpty ? null : () => _save(people),
-                  child: Text(_mode == 'expense' ? 'Add expense' : 'Record pay-up'),
+                  child: Text(_mode == 'expense' ? 'Add expense' : 'Record settlement'),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -552,6 +613,102 @@ class _GroupActionSheetState extends ConsumerState<_GroupActionSheet> {
           ),
         );
       },
+    );
+  }
+}
+/// Suggested settlements, recorded as group payments — never as expenses.
+class _SettleUpSheet extends ConsumerStatefulWidget {
+  final String groupId;
+  final List<({String from, String to, double amount})> moves;
+
+  const _SettleUpSheet({required this.groupId, required this.moves});
+
+  @override
+  ConsumerState<_SettleUpSheet> createState() => _SettleUpSheetState();
+}
+
+class _SettleUpSheetState extends ConsumerState<_SettleUpSheet> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _record(({String from, String to, double amount}) move) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(groupRepositoryProvider).addPayment(
+            groupId: widget.groupId,
+            paidBy: move.from,
+            paidTo: move.to,
+            amount: move.amount,
+          );
+      ref.invalidate(groupBalancesProvider(widget.groupId));
+      ref.invalidate(groupAnalyticsProvider(widget.groupId));
+      if (mounted) Navigator.of(context).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Settled: ${move.from} paid ${move.to} ₹${move.amount.round()}')),
+      );
+    } on Object catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.toString().replaceFirst('Invalid argument(s): ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 16),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Settle up', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Any member can record a suggested transfer. It is stored as a settlement, not an expense.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            if (widget.moves.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('Everyone is settled up — no transfer is needed.'),
+                ),
+              )
+            else
+              for (final move in widget.moves)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.handshake_outlined),
+                    title: Text('${move.from} pays ${move.to}'),
+                    subtitle: Text('₹${move.amount.round()}'),
+                    trailing: FilledButton.tonal(
+                      onPressed: _busy ? null : () => _record(move),
+                      child: const Text('Record'),
+                    ),
+                  ),
+                ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            ],
+            const SizedBox(height: 4),
+            Text(
+              'Need a different amount? Use Add → Settlement.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 }

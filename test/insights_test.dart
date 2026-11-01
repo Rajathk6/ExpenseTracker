@@ -95,6 +95,7 @@ void main() {
         id: 'e1',
         groupId: 'g',
         title: 'Groceries',
+        category: 'Food',
         amount: 1500,
         paidBy: 'Ravi',
         sharedWithJson: '[]',
@@ -104,6 +105,7 @@ void main() {
         id: 'e2',
         groupId: 'g',
         title: 'Pizza',
+        category: 'Food',
         amount: 600,
         paidBy: 'Me',
         sharedWithJson: '[]',
@@ -113,6 +115,7 @@ void main() {
         id: 'e3',
         groupId: 'g',
         title: 'Groceries',
+        category: 'Household',
         amount: 300,
         paidBy: 'Me',
         sharedWithJson: '[]',
@@ -214,6 +217,35 @@ void main() {
       expect(report.settleUp.single.to, 'Me');
     });
 
+    test('category split, daily trend, average and settlements feed the dashboard', () {
+      final report = buildGroupInsight(
+        name: 'Flat',
+        code: 'ET-ABCD',
+        monthKey: '2026-09',
+        members: members,
+        expenses: expenses,
+        payments: [
+          GroupPayment(
+            id: 'p1',
+            groupId: 'g',
+            paidBy: 'Asha',
+            paidTo: 'Ravi',
+            amount: 500,
+            occurredAt: DateTime(2026, 9, 6),
+          ),
+        ],
+      );
+      expect(report.perCategory.first.label, 'Food');
+      expect(report.perCategory.first.amount, 2100);
+      expect(report.perCategory.last.label, 'Household');
+      expect(report.perCategory.last.amount, 300);
+      expect(report.daily.length, 3);
+      expect(report.averageEntry, closeTo(800, 0.01));
+      expect(report.settledAmount, 500);
+      expect(report.settlementCount, 1);
+      expect(report.settlementShare, closeTo(500 / 2400, 0.001));
+    });
+
     test('the CSV report carries every section', () {
       final report = buildGroupInsight(
         name: 'Flat',
@@ -225,12 +257,35 @@ void main() {
       );
       final csv = renderGroupCsv(report);
       expect(csv, contains('GROUP'));
+      expect(csv, contains('CATEGORIES'));
       expect(csv, contains('WHO SPENT WHAT'));
       expect(csv, contains('SPENT ON'));
+      expect(csv, contains('DAILY SPEND'));
       expect(csv, contains('BALANCES'));
       expect(csv, contains('SETTLE UP'));
+      expect(csv, contains('SETTLEMENTS'));
+      expect(csv, contains('EXPENSES'));
+      expect(csv, contains('Food'));
+      expect(csv, contains('Household'));
       expect(csv, contains('Groceries'));
       expect(csv, contains('Ravi'));
+    });
+
+    test('Excel and PDF group reports are real files with the analytics', () async {
+      final report = buildGroupInsight(
+        name: 'Flat',
+        code: 'ET-ABCD',
+        monthKey: '2026-09',
+        members: members,
+        expenses: expenses,
+        payments: const [],
+      );
+      final xlsx = renderGroupXlsx(report);
+      expect(xlsx.length, greaterThan(1000));
+      expect([xlsx[0], xlsx[1]], [0x50, 0x4B]);
+      final pdf = await renderGroupPdf(report);
+      expect(pdf.length, greaterThan(1000));
+      expect(String.fromCharCodes(pdf.take(4)), '%PDF');
     });
   });
 }
