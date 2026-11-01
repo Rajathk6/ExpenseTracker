@@ -6048,6 +6048,17 @@ class $GroupExpensesTable extends GroupExpenses
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<double> amount = GeneratedColumn<double>(
@@ -6103,6 +6114,7 @@ class $GroupExpensesTable extends GroupExpenses
     id,
     groupId,
     title,
+    category,
     amount,
     paidBy,
     sharedWithJson,
@@ -6141,6 +6153,12 @@ class $GroupExpensesTable extends GroupExpenses
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
     }
     if (data.containsKey('amount')) {
       context.handle(
@@ -6202,6 +6220,10 @@ class $GroupExpensesTable extends GroupExpenses
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
       amount: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}amount'],
@@ -6235,6 +6257,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
   final String id;
   final String groupId;
   final String title;
+  final String? category;
   final double amount;
 
   /// Participant name who paid.
@@ -6251,6 +6274,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
     required this.id,
     required this.groupId,
     required this.title,
+    this.category,
     required this.amount,
     required this.paidBy,
     required this.sharedWithJson,
@@ -6263,6 +6287,9 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
     map['id'] = Variable<String>(id);
     map['group_id'] = Variable<String>(groupId);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
     map['amount'] = Variable<double>(amount);
     map['paid_by'] = Variable<String>(paidBy);
     map['shared_with_json'] = Variable<String>(sharedWithJson);
@@ -6278,6 +6305,9 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
       id: Value(id),
       groupId: Value(groupId),
       title: Value(title),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
       amount: Value(amount),
       paidBy: Value(paidBy),
       sharedWithJson: Value(sharedWithJson),
@@ -6295,6 +6325,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
       id: serializer.fromJson<String>(json['id']),
       groupId: serializer.fromJson<String>(json['groupId']),
       title: serializer.fromJson<String>(json['title']),
+      category: serializer.fromJson<String?>(json['category']),
       amount: serializer.fromJson<double>(json['amount']),
       paidBy: serializer.fromJson<String>(json['paidBy']),
       sharedWithJson: serializer.fromJson<String>(json['sharedWithJson']),
@@ -6309,6 +6340,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
       'id': serializer.toJson<String>(id),
       'groupId': serializer.toJson<String>(groupId),
       'title': serializer.toJson<String>(title),
+      'category': serializer.toJson<String?>(category),
       'amount': serializer.toJson<double>(amount),
       'paidBy': serializer.toJson<String>(paidBy),
       'sharedWithJson': serializer.toJson<String>(sharedWithJson),
@@ -6321,6 +6353,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
     String? id,
     String? groupId,
     String? title,
+    Value<String?> category = const Value.absent(),
     double? amount,
     String? paidBy,
     String? sharedWithJson,
@@ -6330,6 +6363,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
     id: id ?? this.id,
     groupId: groupId ?? this.groupId,
     title: title ?? this.title,
+    category: category.present ? category.value : this.category,
     amount: amount ?? this.amount,
     paidBy: paidBy ?? this.paidBy,
     sharedWithJson: sharedWithJson ?? this.sharedWithJson,
@@ -6341,6 +6375,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
       id: data.id.present ? data.id.value : this.id,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       title: data.title.present ? data.title.value : this.title,
+      category: data.category.present ? data.category.value : this.category,
       amount: data.amount.present ? data.amount.value : this.amount,
       paidBy: data.paidBy.present ? data.paidBy.value : this.paidBy,
       sharedWithJson: data.sharedWithJson.present
@@ -6359,6 +6394,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
           ..write('id: $id, ')
           ..write('groupId: $groupId, ')
           ..write('title: $title, ')
+          ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('paidBy: $paidBy, ')
           ..write('sharedWithJson: $sharedWithJson, ')
@@ -6373,6 +6409,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
     id,
     groupId,
     title,
+    category,
     amount,
     paidBy,
     sharedWithJson,
@@ -6386,6 +6423,7 @@ class GroupExpense extends DataClass implements Insertable<GroupExpense> {
           other.id == this.id &&
           other.groupId == this.groupId &&
           other.title == this.title &&
+          other.category == this.category &&
           other.amount == this.amount &&
           other.paidBy == this.paidBy &&
           other.sharedWithJson == this.sharedWithJson &&
@@ -6397,6 +6435,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
   final Value<String> id;
   final Value<String> groupId;
   final Value<String> title;
+  final Value<String?> category;
   final Value<double> amount;
   final Value<String> paidBy;
   final Value<String> sharedWithJson;
@@ -6407,6 +6446,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
     this.id = const Value.absent(),
     this.groupId = const Value.absent(),
     this.title = const Value.absent(),
+    this.category = const Value.absent(),
     this.amount = const Value.absent(),
     this.paidBy = const Value.absent(),
     this.sharedWithJson = const Value.absent(),
@@ -6418,6 +6458,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
     required String id,
     required String groupId,
     required String title,
+    this.category = const Value.absent(),
     required double amount,
     required String paidBy,
     this.sharedWithJson = const Value.absent(),
@@ -6434,6 +6475,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
     Expression<String>? id,
     Expression<String>? groupId,
     Expression<String>? title,
+    Expression<String>? category,
     Expression<double>? amount,
     Expression<String>? paidBy,
     Expression<String>? sharedWithJson,
@@ -6445,6 +6487,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
       if (id != null) 'id': id,
       if (groupId != null) 'group_id': groupId,
       if (title != null) 'title': title,
+      if (category != null) 'category': category,
       if (amount != null) 'amount': amount,
       if (paidBy != null) 'paid_by': paidBy,
       if (sharedWithJson != null) 'shared_with_json': sharedWithJson,
@@ -6458,6 +6501,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
     Value<String>? id,
     Value<String>? groupId,
     Value<String>? title,
+    Value<String?>? category,
     Value<double>? amount,
     Value<String>? paidBy,
     Value<String>? sharedWithJson,
@@ -6469,6 +6513,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
       id: id ?? this.id,
       groupId: groupId ?? this.groupId,
       title: title ?? this.title,
+      category: category ?? this.category,
       amount: amount ?? this.amount,
       paidBy: paidBy ?? this.paidBy,
       sharedWithJson: sharedWithJson ?? this.sharedWithJson,
@@ -6489,6 +6534,9 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
@@ -6517,6 +6565,7 @@ class GroupExpensesCompanion extends UpdateCompanion<GroupExpense> {
           ..write('id: $id, ')
           ..write('groupId: $groupId, ')
           ..write('title: $title, ')
+          ..write('category: $category, ')
           ..write('amount: $amount, ')
           ..write('paidBy: $paidBy, ')
           ..write('sharedWithJson: $sharedWithJson, ')
@@ -10424,6 +10473,7 @@ typedef $$GroupExpensesTableCreateCompanionBuilder =
       required String id,
       required String groupId,
       required String title,
+      Value<String?> category,
       required double amount,
       required String paidBy,
       Value<String> sharedWithJson,
@@ -10436,6 +10486,7 @@ typedef $$GroupExpensesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> groupId,
       Value<String> title,
+      Value<String?> category,
       Value<double> amount,
       Value<String> paidBy,
       Value<String> sharedWithJson,
@@ -10465,6 +10516,11 @@ class $$GroupExpensesTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10518,6 +10574,11 @@ class $$GroupExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnOrderings(column),
@@ -10561,6 +10622,9 @@ class $$GroupExpensesTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<double> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
@@ -10616,6 +10680,7 @@ class $$GroupExpensesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> groupId = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String?> category = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<String> paidBy = const Value.absent(),
                 Value<String> sharedWithJson = const Value.absent(),
@@ -10626,6 +10691,7 @@ class $$GroupExpensesTableTableManager
                 id: id,
                 groupId: groupId,
                 title: title,
+                category: category,
                 amount: amount,
                 paidBy: paidBy,
                 sharedWithJson: sharedWithJson,
@@ -10638,6 +10704,7 @@ class $$GroupExpensesTableTableManager
                 required String id,
                 required String groupId,
                 required String title,
+                Value<String?> category = const Value.absent(),
                 required double amount,
                 required String paidBy,
                 Value<String> sharedWithJson = const Value.absent(),
@@ -10648,6 +10715,7 @@ class $$GroupExpensesTableTableManager
                 id: id,
                 groupId: groupId,
                 title: title,
+                category: category,
                 amount: amount,
                 paidBy: paidBy,
                 sharedWithJson: sharedWithJson,

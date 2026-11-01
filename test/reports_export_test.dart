@@ -53,6 +53,7 @@ void main() {
           id: const Value('e1'),
           groupId: const Value('g1'),
           title: const Value('Groceries'),
+          category: const Value('Food'),
           amount: const Value(500),
           paidBy: const Value('Me'),
           occurredAt: Value(DateTime(2026, 9, 4)),
@@ -98,6 +99,7 @@ void main() {
       expect(counts['debts'], 1);
       expect((await db.allRecurringRules()).single.categoryRaw, 'salary');
       expect((await db.allGroups()).single.code, 'ET-ABCD');
+      expect((await db.allGroupExpenses()).single.category, 'Food');
       expect((await db.allGroupExpenses()).single.amount, 500);
     });
   });

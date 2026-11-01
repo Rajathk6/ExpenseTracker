@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -80,6 +82,17 @@ void main() {
       expect(() => decryptBackup(packed, 'wrong-horse'), throwsA(isA<BackupPasswordError>()));
       expect(() => decryptBackup(Uint8List.fromList([1, 2, 3]), 'x'), throwsFormatException);
       expect(() => encryptBackup(sample(), ''), throwsArgumentError);
+    });
+
+    test('open backup round-trips as readable JSON without a password', () async {
+      final bytes = encodeOpenBackup(sample());
+      expect(utf8.decode(bytes), contains('"format": "expense-tracker-backup"'));
+      expect(utf8.decode(bytes), contains('"Cash"'));
+      expect(decodeOpenBackup(bytes)['accounts'], sample()['accounts']);
+      expect(looksLikeOpenBackup(bytes), true);
+      expect(looksLikeEncryptedBackup(bytes), false);
+      final encrypted = await encryptBackup(sample(), 'pw');
+      expect(() => decodeOpenBackup(encrypted), throwsFormatException);
     });
   });
 
@@ -198,6 +211,28 @@ void main() {
         for (final m in (tables['settings'] as List).cast<Map<String, dynamic>>()) m['key'] as String,
       ];
       expect(settingsKeys, isNot(contains(anyOf(secretSettingKeys))));
+    });
+
+    test('open file imports without a password; encrypted file asks for one', () async {
+      await AccountRepository(db).create(name: 'Cash');
+      final service = BackupService(db);
+      final tables = await service.dumpTables();
+      final dir = await Directory.systemTemp.createTemp('et-backup-');
+      addTearDown(() => dir.delete(recursive: true));
+
+      final open = File('${dir.path}/backup.json')..writeAsBytesSync(encodeOpenBackup(tables));
+      expect(await service.isEncryptedFile(open.path), false);
+      expect((await service.importFromFile(open.path))['accounts'], 1);
+
+      final legacy = File('${dir.path}/backup.etbak')
+        ..writeAsBytesSync(await encryptBackup(tables, 'pw'));
+      expect(await service.isEncryptedFile(legacy.path), true);
+      expect(() => service.importFromFile(legacy.path), throwsA(isA<BackupNeedsPassword>()));
+      expect(
+        () => service.importFromFile(legacy.path, password: 'wrong'),
+        throwsA(isA<BackupPasswordError>()),
+      );
+      expect((await service.importFromFile(legacy.path, password: 'pw'))['accounts'], 1);
     });
 
     test('export → wipe → import restores everything', () async {

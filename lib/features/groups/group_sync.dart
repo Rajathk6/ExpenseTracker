@@ -116,18 +116,26 @@ List<String> _mergeNames(Map<String, dynamic> local, Map<String, dynamic> remote
 }
 
 List<Map<String, dynamic>> _mergeRows(Map<String, dynamic> local, Map<String, dynamic> remote, String key) {
-  final seen = <String>{};
-  final out = <Map<String, dynamic>>[];
+  final byId = <String, Map<String, dynamic>>{};
   for (final source in [local, remote]) {
     for (final raw in (source[key] as Iterable? ?? const [])) {
       final row = _map(raw);
       if (row == null) continue;
       final id = _string(row['id']);
-      if (id == null || !seen.add(id)) continue;
-      out.add(row);
+      if (id == null) continue;
+      final existing = byId[id];
+      if (existing == null) {
+        byId[id] = Map<String, dynamic>.from(row);
+        continue;
+      }
+      for (final entry in row.entries) {
+        final current = existing[entry.key];
+        final missing = current == null || (current is String && current.trim().isEmpty);
+        if (missing) existing[entry.key] = entry.value;
+      }
     }
   }
-  return out;
+  return byId.values.toList();
 }
 
 bool _hasRowsMissingFromRemote(Map<String, dynamic> local, Map<String, dynamic> remote) {

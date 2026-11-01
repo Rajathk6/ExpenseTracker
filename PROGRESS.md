@@ -15,6 +15,12 @@
 | 10 backup+security | `pr/10-backup-security` | done, verified | #8/#9 ✅ 2026-09-11 | settings table (v6) + PIN/decoy/autolock + encrypted ZIP + settings UI + phase10_test, 78/78 + analyze clean |
 | 11 hardening | `pr/11-hardening` | done, verified | full gate green | crash guard + release signing template + 0.9.0+9, 78/78 + analyze clean |
 
+## 2026-11-01 — group analytics + categories + settlements + open backups / `develop`
+- Fixed group rename/close: `GroupRepository.update`/`close` were sending a partial `GroupsCompanion` through `insertOnConflictUpdate`, which failed because `code` is required; added `AppDatabase.updateGroup` and targeted updates. Removed the extra “Everyone” / “I paid for them — no share for me” shortcuts from the share picker.
+- Backup: new exports are open, readable `.json` with no password; `BackupService.importFromFile` auto-detects open JSON and still imports legacy encrypted `.etbak` with a password (`BackupNeedsPassword` drives the prompt). Android MIME map now labels `.json`.
+- Groups: schema v11 nullable `group_expenses.category` (+ migration and generated code), `CategoryField` in the add sheet with inline “New”, category carried through export/import/sync/backup. New interactive `GroupAnalyticsScreen` (category pie, daily bars, performance, top expenses, settlements), separate **Settle up** sheet that records `GroupPayments` only, and CSV/XLSX/PDF group reports that include categories, daily spend, settlements and entries.
+- Validation: `flutter analyze` clean; `flutter test` 242/242 green; debug APK ✅. Release v0.19.1+20 prepared with signed split APKs; live two-phone sync still pending.
+
 ## 2026-10-23 — Firebase group sync + v0.19.0 / `develop` (replaces Google Drive)
 - Done: replaced Google Drive/OAuth sync with anonymous Firebase Auth + Firestore. Project `expensetracker-e22db`; FlutterFire generated `firebase_options.dart`, `android/app/google-services.json`, Gradle Google-services plugin. Added `firebase_core`/`firebase_auth`/`cloud_firestore`, removed `google_sign_in`/`googleapis`/`http`.
 - Schema v10: nullable `groups.updatedAt` + migration; repository touches it on every group mutation; export/import carries it. New group codes are `ET-` + 8 chars.

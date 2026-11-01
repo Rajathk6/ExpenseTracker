@@ -8,6 +8,7 @@ import '../../core/database.dart';
 import '../../core/months.dart';
 import '../../core/owner_profile.dart';
 import '../../core/providers.dart';
+import '../../core/report/report_writer.dart' show ReportFormat;
 import 'group_detail_screen.dart';
 import 'group_report.dart';
 
@@ -58,19 +59,23 @@ class GroupCard extends ConsumerWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
+            PopupMenuButton<ReportFormat>(
               tooltip: 'Download report',
               icon: const Icon(Icons.download_outlined),
-              onPressed: () async {
+              onSelected: (format) async {
                 final messenger = ScaffoldMessenger.of(context);
                 try {
                   final report = await buildGroupReport(ref.read(groupRepositoryProvider), group);
-                  final path = await writeGroupReport(report);
+                  final path = await writeGroupReport(report, format: format);
                   messenger.showSnackBar(SnackBar(content: Text('Saved: $path')));
                 } on Object catch (e) {
                   messenger.showSnackBar(SnackBar(content: Text('Could not write the report: $e')));
                 }
               },
+              itemBuilder: (_) => [
+                for (final format in ReportFormat.values)
+                  PopupMenuItem(value: format, child: Text(format.label)),
+              ],
             ),
             if (group.status == 'open')
               PopupMenuButton<String>(

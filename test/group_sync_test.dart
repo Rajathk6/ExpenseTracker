@@ -86,6 +86,38 @@ void main() {
     expect([for (final e in merged['expenses'] as List) e['id']], ['e1', 'e2']);
   });
 
+  test('a category added on one phone is not lost when the other phone still has the old row', () {
+    final local = _payload(
+      id: 'g1',
+      code: 'ET-ABCD1234',
+      name: 'Flat',
+      updatedAt: '2026-10-01T10:00:00.000Z',
+      expenses: [
+        {'id': 'e1', 'title': 'Milk', 'amount': 40, 'paidBy': 'Me', 'sharedWith': <String>[], 'at': '2026-10-01'},
+      ],
+    );
+    final remote = _payload(
+      id: 'g1',
+      code: 'ET-ABCD1234',
+      name: 'Flat',
+      updatedAt: '2026-10-02T10:00:00.000Z',
+      expenses: [
+        {
+          'id': 'e1',
+          'title': 'Milk',
+          'category': 'Food',
+          'amount': 40,
+          'paidBy': 'Me',
+          'sharedWith': <String>[],
+          'at': '2026-10-01',
+        },
+      ],
+    );
+
+    final merged = mergeGroupPayloads(local: local, remote: remote);
+    expect((merged['expenses'] as List).single['category'], 'Food');
+  });
+
   test('missing Firebase is reported instead of crashing the app', () async {
     if (Firebase.apps.isNotEmpty) return;
     final db = AppDatabase.memory();

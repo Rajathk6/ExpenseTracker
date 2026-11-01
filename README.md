@@ -29,7 +29,7 @@ Installable APKs are attached to every GitHub Release; see `PROGRESS.md` for the
 
 ## Optional Firebase group sync
 Groups work offline and personal expenses never leave the phone. Group sync is the
-only network path: it mirrors group payloads (members, expenses, pay-ups) to
+only network path: it mirrors group payloads (members, categorised expenses, settlements) to
 Firestore so different phones can share a group by code.
 
 - **Auth:** anonymous Firebase Auth — no email, Google account or OAuth consent.
@@ -40,7 +40,7 @@ Firestore so different phones can share a group by code.
   into local, then pushes in a Firestore transaction, so two phones adding rows
   at once keep both. Only group data is stored — never the ledger or backups.
   Members are unioned too, so a person removed on one phone can be re-added by
-  another phone's older copy; expenses/pay-ups have no delete path to lose.
+  another phone's older copy; expenses/settlements have no delete path to lose.
 - **Deploy rules:** `firebase deploy --only firestore:rules` (`.firebaserc` defaults to `expensetracker-e22db`).
   Enable **Authentication → Anonymous** once in the Firebase console.
 - **Config:** `lib/firebase_options.dart` and `android/app/google-services.json`

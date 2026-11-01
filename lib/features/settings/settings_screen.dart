@@ -1,7 +1,7 @@
-/// Settings: PIN + decoy, biometric, encrypted backup, exports, about.
+/// Settings: PIN + decoy, biometric, open JSON backup, exports, about.
 /// Everything here works offline. Cloud upload stays a manual Files-app
-/// step (export shows the exact file path); restore picks the .etbak with
-/// the system file browser.
+/// step (export shows the exact file path); restore picks the JSON (or an
+/// old encrypted .etbak) with the system file browser.
 library;
 
 import 'dart:io';
@@ -68,56 +68,25 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final password = TextEditingController();
-    String? error;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Encrypted backup'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('One password encrypts everything. Lose it and the file is unreadable — by design.'),
-              const SizedBox(height: 8),
-              TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Backup password', border: OutlineInputBorder())),
-              if (error != null) Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                if (password.text.isEmpty) {
-                  setDialog(() => error = 'Enter a password');
-                  return;
-                }
-                try {
-                  final path = await ref.read(backupServiceProvider).exportToFile(password.text);
-                  if (ctx.mounted) Navigator.of(ctx).pop(true);
-                  messenger.showSnackBar(SnackBar(content: Text('Saved: $path — copy it to cloud storage with Files.')));
-                } on Object catch (e) {
-                  setDialog(() => error = e.toString());
-                }
-              },
-              child: const Text('Export'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok ?? false) _refreshAll(ref);
+    try {
+      final path = await ref.read(backupServiceProvider).exportToFile();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Saved: $path — open JSON, no password needed.')),
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not export: $e')));
+    }
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    // Pick the .etbak with the system file browser instead of hand-typing a
+    // Pick the backup with the system file browser instead of hand-typing a
     // path — the file is in Downloads/cloud storage, not on the device.
     PlatformFile? picked;
     try {
       picked = await FilePicker.pickFile(
         type: FileType.any,
-        dialogTitle: 'Choose an ExpenseTracker backup (.etbak)',
+        dialogTitle: 'Choose an ExpenseTracker backup (.json or .etbak)',
       );
     } on Object catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Could not open the file browser: $e')));
@@ -126,13 +95,22 @@ class SettingsScreen extends ConsumerWidget {
     final path = picked?.path;
     if (path == null || path.isEmpty) return;
     if (!context.mounted) return;
+    final backup = ref.read(backupServiceProvider);
+    late final bool encrypted;
+    try {
+      encrypted = await backup.isEncryptedFile(path);
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not read the backup: $e')));
+      return;
+    }
+    if (!context.mounted) return;
     final password = TextEditingController();
     String? error;
     final counts = await showDialog<Map<String, int>>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Restore backup'),
+          title: Text(encrypted ? 'Restore old encrypted backup' : 'Restore backup'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -144,8 +122,21 @@ class SettingsScreen extends ConsumerWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
-              TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Backup password', border: OutlineInputBorder())),
+              if (encrypted) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Old backup password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('Open JSON — no password needed.'),
+                ),
               if (error != null) Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
             ],
           ),
@@ -153,12 +144,15 @@ class SettingsScreen extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
-                if (password.text.isEmpty) {
+                if (encrypted && password.text.isEmpty) {
                   setDialog(() => error = 'Enter the password this backup was made with');
                   return;
                 }
                 try {
-                  final c = await ref.read(backupServiceProvider).importFromFile(path, password.text);
+                  final c = await backup.importFromFile(
+                    path,
+                    password: encrypted ? password.text : null,
+                  );
                   if (ctx.mounted) Navigator.of(ctx).pop(c);
                 } on BackupPasswordError {
                   setDialog(() => error = 'Wrong password — file untouched');
@@ -333,17 +327,17 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => ref.read(lockProvider.notifier).lock(),
           ),
           const SizedBox(height: 8),
-          Text('Backup (encrypted, offline)', style: Theme.of(context).textTheme.titleSmall),
+          Text('Backup (open JSON, offline)', style: Theme.of(context).textTheme.titleSmall),
           ListTile(
             leading: const Icon(Icons.upload_outlined),
             title: const Text('Export backup'),
-            subtitle: const Text('Password-encrypted .etbak file, then manual cloud/file upload'),
+            subtitle: const Text('Unencrypted .json file — anyone with it can read your data'),
             onTap: () => _export(context, ref),
           ),
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: const Text('Restore backup'),
-            subtitle: const Text('Wrong password fails cleanly, file untouched'),
+            subtitle: const Text('Open JSON needs no password; old encrypted .etbak still works'),
             onTap: () => _import(context, ref),
           ),
           const SizedBox(height: 8),

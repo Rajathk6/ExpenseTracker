@@ -36,9 +36,11 @@ lib/
                    // via core/months.dart (re-exported by reconcile_logic).
     intake/       // Confirm screen (mandatory human checkpoint), the Android share target
                    // (our own manifest filter + two channels, no plugin) and on-device OCR.
-    settings/      // PIN/biometric/decoy, encrypted backup, appearance, Firebase group sync, about.
+    settings/      // PIN/biometric/decoy, open JSON backup (legacy encrypted import), appearance,
+                   // Firebase group sync, about.
     shared/        // The merged Shared-money screen: Lent / Borrowed / Splits / Groups tabs.
-    groups/        // Splitwise-style groups (code, members, expenses, pay-ups) + balances +
+    groups/        // Splitwise-style groups (code, members, categorised expenses, settlements) +
+                   // balances, settle-up, interactive analytics, CSV/XLSX/PDF reports, and
                    // optional Firebase group sync (anonymous auth, pull/merge first, then push).
 ```
 
@@ -49,7 +51,7 @@ lib/
 - DB schema change = `core/database.dart` migration only, features untouched.
 - Security is a gate (`AppLock`), not sprinkled per screen — decoy PIN just swaps the DB file handle.
 
-## Data model (Drift v10, codegen + tests green — 236/236 as of 2026-10-23)
+## Data model (Drift v11, codegen + tests green — 242/242 as of 2026-11-01)
 - `transactions(id, kind, actual, budgetImpact, occurredAt, categoryRaw, level0..2, item, bucket, absorbed, person, note, accountId, linkId, linkType)` — append-only; corrections are reversals. `absorbed` is the owner's "count this neutral row in the month" decision (0 by default) and `person` names the counterparty.
 - `budgets(month, total, bucketsJson)` — bucketsJson = `[{name,pct}]`, sum must = 100 (validated in bucket_math.dart, enforced by BudgetRepository).
 - `accounts(id, name UNIQUE, kind freeform, openingBalance, note)` — no DB-level FK from transactions (drift_dev/analyzer-14 codegen conflict); repositories own the discipline.
@@ -58,11 +60,12 @@ lib/
 - `snapshots(month, accountId, openBalance, countedClose, hasClose, createdAt)` (v5, PK = month+account) — reconcile inputs. Report reads ledger via transactionsBetween; price memory reads item history (no table); net-worth timeline derives bank/cash from openings + all actuals.
 - `settings(key, value)` (v6) — non-secret settings only: the biometric toggle and the recovery question text. PIN/decoy/recovery hashes live in the OS keychain (`core/auth/secret_store.dart`), namespaced per vault and migrated out of this table on first read. `month_open(...)` (v7) — the optional month-start form.
 - v8 adds `splits.code` (share code), `recurring_rules(id, kind, amount, categoryRaw, bucket, accountId, dayOfMonth, months, startMonth, lastAppliedMonth)`, and the groups quartet: `groups(id, name, code, monthKey, status)`, `group_members`, `group_expenses(groupId, title, amount, paidBy, occurredAt)`, `group_payments(groupId, paidBy, paidTo, amount, occurredAt)`. Applying a repeating rule writes *real* transactions, so the ledger never contains a row nobody confirmed.
-- v9 adds `categories(id, name, createdAt)` for the owner's category shortcut buttons, and `group_expenses.sharedWithJson` (JSON list of the people who own a share; empty = everyone). A payer not in that list owns no share and is owed the full amount — the group-lend case. Both are carried by the encrypted backup.
+- v9 adds `categories(id, name, createdAt)` for the owner's category shortcut buttons, and `group_expenses.sharedWithJson` (JSON list of the people who own a share; empty = everyone). A payer not in that list owns no share and is owed the full amount — the group-lend case. Both are carried by the backup.
 - v10 adds nullable `groups.updatedAt` for metadata last-write-wins during sync; the migration is `<10`.
+- v11 adds nullable `group_expenses.category` for group analytics; blank is shown as “Uncategorised”. The migration is `<11`, and old backups without the field still restore.
 - Optional group sync uses anonymous Firebase Auth + Firestore (`features/groups/group_sync.dart`). Documents live at `groups/{code}` with `{code, ownerUid, memberUids, data, updatedAt}` and hold only the `exportGroup` payload. It pulls and merges before pushing, uses a transaction for concurrent rows, and never uploads the ledger or backups. `firestore.rules` limits reads to one known code and lists to members; no app server exists.
 - Later: `prices(item, amount, date, place)` only if derived history proves too slow.
-- `core/backup/backup_service.dart` walks the single `backupTables` list (15 tables) — a new table must be added there or it silently misses every .etbak. A round-trip test asserts the list and the dump agree, so this cannot regress silently again.
+- `core/backup/backup_service.dart` walks the single `backupTables` list (15 tables) — a new table must be added there or it silently misses every backup. New exports are open, readable `.json`; old encrypted `.etbak` files remain importable with their password. A round-trip test asserts the list and the dump agree, so this cannot regress silently again.
 - Exports (backups and reports) are written to **public** Downloads/ExpenseTracker through `core/export/export_paths.dart`, which uses MainActivity's MediaStore channel — `getExternalStorageDirectory()` would land in a folder no file manager shows.
 - One bucket vocabulary (`bucket_math.dart:defaultBuckets`) is shared by the month opener, the Budget presets and the entry picker; `canonicalBucket` matches case-insensitively.
 - Gotcha (2026-09-04): never name a column getter identical to a Drift builder (`dateTime`); drift_dev 2.34 + analyzer 14 crashes parsing it. Used `occurredAt`.
@@ -80,7 +83,7 @@ history. Right now the file is a plain SQLite database.
    plaintext `expense_tracker.sqlite`. Switching the opener to SQLCipher means
    detecting that file and re-encrypting it (`ATTACH` + `sqlcipher_export`, or
    dump → new encrypted file → verify → delete old). A bug there loses the
-   owner's real data, and there is no server to restore from — only the .etbak.
+   owner's real data, and there is no server to restore from — only the backup.
 2. **Key custody.** The DB key has to live in `flutter_secure_storage` (the
    Android Keystore). Keystore entries are lost when the app is uninstalled or
    its signing key changes. Today a reinstall just re-reads a plaintext file;
@@ -90,13 +93,13 @@ history. Right now the file is a plain SQLite database.
    (they both provide the `sqlite3` native library), which is another
    dependency to keep building against the pinned compileSdk.
 4. **It duplicates a control that already exists.** The app already has a PIN
-   gate, keychain-held secrets, biometric unlock, a manual lock and a
-   password-encrypted export that is tested end to end. SQLCipher protects a
+   gate, keychain-held secrets, biometric unlock, a manual lock and a backup
+   export/restore path that is tested end to end. SQLCipher protects a
    different threat (off-device file access) with a much bigger blast radius.
 
 **Decision: keep the file database as is.** The remaining exposure is
 off-device file access, which for a personal, offline, non-rooted phone is
-already covered by the app lock plus the encrypted backup.
+already covered by the app lock plus the open backup (new exports are not encrypted; the UI says so).
 
 **When to revisit:** the same day release signing lands (so the signing key
 stops changing and reinstalls stop invalidating the Keystore entry), and with a

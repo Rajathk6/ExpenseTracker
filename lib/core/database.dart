@@ -241,6 +241,7 @@ class GroupExpenses extends Table {
   TextColumn get id => text()();
   TextColumn get groupId => text()();
   TextColumn get title => text()();
+  TextColumn get category => text().nullable()();
   RealColumn get amount => real()();
   /// Participant name who paid.
   TextColumn get paidBy => text()();
@@ -320,7 +321,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.memory() => AppDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -351,6 +352,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 10) {
             await m.addColumn(groups, groups.updatedAt);
+          }
+          if (from < 11) {
+            await m.addColumn(groupExpenses, groupExpenses.category);
           }
         },
       );
@@ -585,6 +589,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertGroup(GroupsCompanion entry) => into(groups).insertOnConflictUpdate(entry);
 
+  Future<void> updateGroup(String id, GroupsCompanion entry) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(entry);
+
   /// Marks a group changed if the caller did not already write [updatedAt].
   Future<void> touchGroup(String id, {DateTime? at}) => (update(groups)..where((g) => g.id.equals(id)))
       .write(GroupsCompanion(updatedAt: Value(at ?? DateTime.now())));
@@ -597,6 +604,9 @@ class AppDatabase extends _$AppDatabase {
       (select(groupExpenses)..where((e) => e.groupId.equals(groupId))..orderBy([(e) => OrderingTerm.desc(e.occurredAt)])).get();
 
   Future<void> insertGroupExpense(GroupExpensesCompanion entry) => into(groupExpenses).insert(entry);
+
+  Future<void> updateGroupExpense(String id, GroupExpensesCompanion entry) =>
+      (update(groupExpenses)..where((e) => e.id.equals(id))).write(entry);
 
   Future<List<GroupPayment>> paymentsOf(String groupId) =>
       (select(groupPayments)..where((p) => p.groupId.equals(groupId))..orderBy([(p) => OrderingTerm.desc(p.occurredAt)])).get();
